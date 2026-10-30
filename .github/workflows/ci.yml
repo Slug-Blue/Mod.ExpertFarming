@@ -93,3 +93,60 @@ jobs:
             mod/build/reports/tests/
             mod/run/logs/
           retention-days: 7
+
+  # WR-014 / SEC-44: behavioural proof of "zero outgoing connections".
+  # Phase 4: a scaffold, not yet a required check; required green from
+  # phase 7 (WR-605).
+  gametest-offline:
+    name: GameTest without network
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Temurin 17 with Gradle cache
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      # online: fill the Gradle and ForgeGradle caches, compile everything
+      - name: Warm up caches
+        run: >-
+          ./gradlew --no-daemon --stacktrace
+          -Porg.gradle.java.installations.auto-download=false
+          build :mod:prepareRunGameTestServer
+
+      - name: Disable the Forge version check (versionCheck = false)
+        run: bash ci/offline-gametest.sh prepare
+
+      # a fresh network namespace has only a loopback interface: any
+      # outgoing connection fails
+      - name: Run GameTest without network
+        run: |
+          sudo unshare --net -- bash -euo pipefail -c '
+            ip link set lo up
+            if curl -sS --max-time 5 https://services.gradle.org/ >/dev/null 2>&1; then
+              echo "the network namespace still has network access" >&2
+              exit 1
+            fi
+            exec sudo -u "$1" env HOME="$2" JAVA_HOME="$3" PATH="$3/bin:/usr/local/bin:/usr/bin:/bin" \
+              ./gradlew --offline --no-daemon --stacktrace \
+              -Porg.gradle.java.installations.auto-download=false :mod:runGameTestServer
+          ' _ "$USER" "$HOME" "$JAVA_HOME"
+
+      # a caught connection attempt does not fail a GameTest by itself
+      - name: Scan the server log for network attempts
+        run: bash ci/offline-gametest.sh scan
+
+      - name: Upload server logs
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: gametest-offline-logs
+          path: mod/run/logs/
+          retention-days: 7

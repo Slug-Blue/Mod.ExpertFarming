@@ -20,6 +20,7 @@ expect_fail check-workflows bash ci/check-workflows.sh ci/fixtures/bad-workflow.
 expect_fail check-workflows-release bash ci/check-workflows.sh ci/fixtures/release-bad.yml.txt
 
 expect_fail check-sources bash ci/check-sources.sh ci/fixtures/bad-project
+expect_fail offline-gametest-scan bash ci/offline-gametest.sh scan ci/fixtures/network-attempt.log.txt
 
 # a jar with a nested jar, a native library and a class outside the package
 tmp="$(mktemp -d)"
