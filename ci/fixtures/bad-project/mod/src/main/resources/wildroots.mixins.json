@@ -1,0 +1,7 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "io.github.slugblue.wildroots.mixin",
+  "injectors": { "defaultRequire": 0 },
+  "mixins": ["NotInAllowlistMixin"]
+}

@@ -1,0 +1,7 @@
+# Allowlist of mixin classes in mod/src/main/resources/wildroots.mixins.json
+# (ADR-0014, SEC-45). One class per line, relative to the mixin package
+# io.github.slugblue.wildroots.mixin, exactly as in the JSON lists.
+#
+# Closed list M1-M7 (ADR-0014). A line is added only by the task that
+# implements the mixin, together with the ADR-0014 status change.
+# Phase 4: empty.

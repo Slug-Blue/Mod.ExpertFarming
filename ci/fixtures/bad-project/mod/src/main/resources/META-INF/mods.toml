@@ -1,0 +1,6 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+issueTrackerURL="https://github.com/Slug-Blue/Mod.ExpertFarming/issues"
+[[mods]]
+modId="wildroots"
+updateJSONURL="https://example.invalid/update.json"

@@ -1,0 +1,7 @@
+# Allowlist of META-INF/accesstransformer.cfg entries (docs/05-architecture.md
+# §16, ADR-0014, SEC-45). One AT line per line, exactly as in the file
+# (comments and blank lines of the .cfg are ignored).
+#
+# Candidates from §16 (Bee#setHasNectar, Biome#getHeightAdjustedTemperature,
+# StructureTemplatePool templates/rawTemplates, Mob#goalSelector) are added
+# with SRG names by the task that needs them. Phase 4: empty.

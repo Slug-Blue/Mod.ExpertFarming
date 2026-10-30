@@ -35,6 +35,18 @@ jobs:
       - name: Check workflows
         run: bash ci/check-workflows.sh
 
+      # SEC-38, SEC-43, SEC-45: forbidden constructs, exact versions,
+      # mixin and access transformer allowlists, no @Overwrite
+      - name: Check sources and allowlists
+        run: bash ci/check-sources.sh
+
+      # the jar self-test needs the JDK 'jar' tool
+      - name: Set up Temurin 17
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+
       # every check must reject its negative fixture
       - name: Self-test of the checks
         run: bash ci/selftest.sh
@@ -66,6 +78,10 @@ jobs:
           ./gradlew --no-daemon --stacktrace
           -Porg.gradle.java.installations.auto-download=false
           :genetics:test :mod:test :mod:runGameTestServer build
+
+      # SEC-42: jar content allowlist, no nested jars or native libraries
+      - name: Check jar content
+        run: bash ci/check-jar.sh
 
       - name: Upload test reports
         if: failure()

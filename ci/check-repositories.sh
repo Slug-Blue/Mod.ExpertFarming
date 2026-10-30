@@ -23,7 +23,7 @@ ALLOWED_HOSTS=(
 if [ "$#" -gt 0 ]; then
   files=("$@")
 else
-  mapfile -t files < <(git ls-files --cached --others --exclude-standard -- '*.gradle' '*.gradle.kts' 'gradle.properties' '*/gradle.properties' | sort -u)
+  mapfile -t files < <(git ls-files --cached --others --exclude-standard -- '*.gradle' '*.gradle.kts' 'gradle.properties' '*/gradle.properties' ':!ci/fixtures/**' | sort -u)
 fi
 
 status=0

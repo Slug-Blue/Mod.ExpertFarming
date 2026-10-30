@@ -1,0 +1,6 @@
+dependencies {
+    implementation 'com.example:dynamic:1.+'
+    implementation 'com.example:latest:latest.release'
+    implementation 'com.example:snap:1.0-SNAPSHOT'
+    implementation 'com.example:range:[1.0,2.0)'
+}

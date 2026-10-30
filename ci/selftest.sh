@@ -19,4 +19,14 @@ expect_fail check-repositories bash ci/check-repositories.sh ci/fixtures/bad-rep
 expect_fail check-workflows bash ci/check-workflows.sh ci/fixtures/bad-workflow.yml.txt
 expect_fail check-workflows-release bash ci/check-workflows.sh ci/fixtures/release-bad.yml.txt
 
+expect_fail check-sources bash ci/check-sources.sh ci/fixtures/bad-project
+
+# a jar with a nested jar, a native library and a class outside the package
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+mkdir -p "$tmp/j/META-INF/jarjar" "$tmp/j/io/github/slugblue/wildroots" "$tmp/j/com/example"
+touch "$tmp/j/io/github/slugblue/wildroots/WildRoots.class" "$tmp/j/META-INF/jarjar/lib.jar"       "$tmp/j/libnative.so" "$tmp/j/com/example/Evil.class"
+(cd "$tmp/j" && jar cf ../bad.jar .) || { echo "selftest: cannot build the bad jar" >&2; exit 1; }
+expect_fail check-jar bash ci/check-jar.sh "$tmp/bad.jar"
+
 exit "$status"
