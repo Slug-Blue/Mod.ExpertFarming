@@ -1,0 +1,13 @@
+# Negative example: a release workflow that also runs on a tag push.
+name: release
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+jobs:
+  x:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: echo release

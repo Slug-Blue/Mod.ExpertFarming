@@ -1,0 +1,79 @@
+# WR-010: build, JUnit (:genetics, :mod, ArchUnit) and GameTest on every PR
+# and on push to main (docs/05-architecture.md §17, ADR-0016).
+# SEC-41: every action is pinned by full commit SHA (tag in the comment),
+# the token is read-only, and the PR event is pull_request (no secrets).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Repository checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # SEC-37: only official repositories, https, no mavenLocal/JitPack/flatDir
+      - name: Check Gradle repositories
+        run: bash ci/check-repositories.sh
+
+      # SEC-41: actions pinned by SHA, no pull_request_target, manual release
+      - name: Check workflows
+        run: bash ci/check-workflows.sh
+
+      # every check must reject its negative fixture
+      - name: Self-test of the checks
+        run: bash ci/selftest.sh
+
+  build:
+    name: Build, tests, GameTest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # SEC-39: gradle-wrapper.jar must be an official Gradle wrapper
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+
+      # SEC-40: JDK 17 comes from setup-java; toolchain auto-download is off
+      - name: Set up Temurin 17 with Gradle cache
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Build, JUnit and GameTest
+        run: >-
+          ./gradlew --no-daemon --stacktrace
+          -Porg.gradle.java.installations.auto-download=false
+          :genetics:test :mod:test :mod:runGameTestServer build
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-reports
+          path: |
+            genetics/build/reports/tests/
+            mod/build/reports/tests/
+            mod/run/logs/
+          retention-days: 7

@@ -16,5 +16,7 @@ expect_fail() {
 }
 
 expect_fail check-repositories bash ci/check-repositories.sh ci/fixtures/bad-repositories.gradle.txt
+expect_fail check-workflows bash ci/check-workflows.sh ci/fixtures/bad-workflow.yml.txt
+expect_fail check-workflows-release bash ci/check-workflows.sh ci/fixtures/release-bad.yml.txt
 
 exit "$status"
