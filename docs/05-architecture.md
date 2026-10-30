@@ -732,20 +732,20 @@ BloomIndex (на ServerLevel, только в памяти)
 | Компонент | Версия | Примечание |
 |---|---|---|
 | JDK (toolchain) | 17 | `java.toolchain.languageVersion = 17`; локально JDK загружает foojay (разрешено владельцем), в CI — `actions/setup-java` Temurin 17 (SEC-40) |
-| Gradle wrapper | 8.8 `[ПРОВЕРИТЬ]` по MDK 47.x | Wrapper фиксирует версию и `distributionSha256Sum` (официальная сумма с gradle.org); обновление — отдельным PR (SEC-39) |
-| `org.gradle.toolchains.foojay-resolver-convention` | 0.8.0 `[ПРОВЕРИТЬ]` | В `settings.gradle` |
-| ForgeGradle (`net.minecraftforge.gradle`) | 6.0.x, последняя 6.0 `[ПРОВЕРИТЬ]` номер (MDK 1.20.1 задаёт `[6.0,6.2)`, фиксируем точную) | |
-| Parchment Librarian (`org.parchmentmc.librarian.forgegradle`) | 1.2.x `[ПРОВЕРИТЬ]` | |
-| Parchment mappings | `2023.09.03-1.20.1` `[ПРОВЕРИТЬ]` (последний известный мне выпуск для 1.20.1) | канал `parchment` |
-| MixinGradle (`org.spongepowered.mixin`) | 0.7.38 `[ПРОВЕРИТЬ]` | Только для refmap |
-| Mixin (annotation processor) | `org.spongepowered:mixin:0.8.5:processor` | Совпадает с Mixin в Forge 47.x `[ПРОВЕРИТЬ]` |
+| Gradle wrapper | 8.8 (проверено: `gradle-wrapper.properties` из MDK `1.20.1-47.4.28`) | Wrapper фиксирует версию и `distributionSha256Sum` (официальная сумма с gradle.org); обновление — отдельным PR (SEC-39) |
+| `org.gradle.toolchains.foojay-resolver-convention` | 1.0.0 (проверено: `maven-metadata.xml` Gradle Plugin Portal, release; работает на Gradle 8.8) | В `settings.gradle`; MDK задаёт 0.7.0, берём последнюю |
+| ForgeGradle (`net.minecraftforge.gradle`) | 6.0.54 (проверено: `maven-metadata.xml` на maven.minecraftforge.net, release; MDK 1.20.1 задаёт `[6.0,6.2)`, фиксируем точную) | |
+| Parchment Librarian (`org.parchmentmc.librarian.forgegradle`) | 1.2.0 (проверено: `maven-metadata.xml` на maven.parchmentmc.org, release; новее — только `-dev-SNAPSHOT`) | |
+| Parchment mappings | `2023.09.03-1.20.1` (проверено: последний не-nightly выпуск в `org/parchmentmc/data/parchment-1.20.1/maven-metadata.xml`) | канал `parchment` |
+| MixinGradle (`org.spongepowered.mixin`) | 0.7.38 (проверено: `maven-metadata.xml` на repo.spongepowered.org, release) | Только для refmap |
+| Mixin (annotation processor) | `org.spongepowered:mixin:0.8.5:processor` | Совпадает с Mixin в Forge 47.x (проверено: `config.json` из `forge-1.20.1-47.4.28-userdev.jar` перечисляет `org.spongepowered:mixin:0.8.5`) |
 
 **Рантайм**
 
 | Компонент | Версия | Тип |
 |---|---|---|
 | Minecraft | 1.20.1 | — |
-| Forge | 47.4.0 `[ПРОВЕРИТЬ]` — последняя стабильная 47.x на момент фазы 4; `mods.toml`: `loaderVersion = "[47,)"`, зависимость `forge` `[47.2.0,)` `[ПРОВЕРИТЬ]` нижнюю границу по API, которым пользуемся | обязательная |
+| Forge | 47.4.28 (проверено: `promotions_slim.json`, `1.20.1-recommended` = `1.20.1-latest` = 47.4.28, 2026-10-30); `mods.toml`: `loaderVersion = "[47,)"`, зависимость `forge` `[47.2.0,)` `[ПРОВЕРИТЬ]` нижнюю границу по API, которым пользуемся | обязательная |
 | Farmer's Delight | `1.20.1-1.2.7` `[ПРОВЕРИТЬ]`; `versionRange = "[1.2.4,)"` `[ПРОВЕРИТЬ]` | soft; Maven — Modrinth (`maven.modrinth:farmers-delight`) или CurseMaven `[ПРОВЕРИТЬ]` координаты |
 | JEI | `15.20.0.x` для 1.20.1 `[ПРОВЕРИТЬ]`; `mezz.jei:jei-1.20.1-forge-api` (compileOnly), `jei-1.20.1-forge` (runtimeOnly); репозиторий `maven.blamejared.com` | soft |
 | EMI | `1.1.x+1.20.1` `[ПРОВЕРИТЬ]`; `dev.emi:emi-forge`; `maven.terraformersmc.com` | soft, после волны 1 |
@@ -758,8 +758,8 @@ BloomIndex (на ServerLevel, только в памяти)
 
 | Компонент | Версия |
 |---|---|
-| JUnit Jupiter (BOM) | 5.10.2 `[ПРОВЕРИТЬ]` |
-| ArchUnit (`archunit-junit5`) | 1.3.0 `[ПРОВЕРИТЬ]` |
+| JUnit Jupiter (BOM) | 5.14.4 (проверено: последняя 5.x в `org/junit/junit-bom/maven-metadata.xml` Maven Central; 6.x — новая мажорная, не берём без ADR) |
+| ArchUnit (`archunit-junit5`) | 1.5.1 (проверено: release в `com/tngtech/archunit/archunit-junit5/maven-metadata.xml` Maven Central) |
 
 **Dev-only (не в jar, не обязательны):** `spark` для профилирования на стенде — ставится вручную, в Gradle его нет.
 

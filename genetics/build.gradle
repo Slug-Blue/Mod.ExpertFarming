@@ -1,0 +1,4 @@
+// :genetics: pure-Java genetics engine (ADR-0001). Fleshed out in WR-006.
+plugins {
+    id 'java-library'
+}
