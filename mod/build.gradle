@@ -163,3 +163,10 @@ tasks.named('jar', Jar).configure {
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
+
+// SEC-42: reproducible archives (no file timestamps, fixed entry order), so
+// two builds of the same commit give the same sha256.
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}

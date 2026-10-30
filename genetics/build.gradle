@@ -40,3 +40,10 @@ tasks.withType(JavaCompile).configureEach {
 tasks.named('test', Test).configure {
     useJUnitPlatform()
 }
+
+// SEC-42: reproducible archives (no file timestamps, fixed entry order), so
+// two builds of the same commit give the same sha256.
+tasks.withType(AbstractArchiveTask).configureEach {
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}

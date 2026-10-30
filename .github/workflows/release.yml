@@ -1,0 +1,126 @@
+# WR-016: manual release (docs/05-architecture.md §17, ADR-0016, SEC-41,
+# SEC-42). Only workflow_dispatch: a tag or a push is never a release.
+# The release job runs in the environment "release", which needs the owner's
+# approval; platform tokens (if any) live only in that environment's secrets.
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  # Two independent builds of the same commit on two runners (SEC-42).
+  build:
+    name: Build ${{ matrix.attempt }}
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: true
+      matrix:
+        attempt: [1, 2]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+
+      # no Gradle cache: a release is built from the verified sources only
+      - name: Set up Temurin 17
+        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Build and test
+        run: >-
+          ./gradlew --no-daemon --stacktrace
+          -Porg.gradle.java.installations.auto-download=false
+          :genetics:test :mod:test :mod:runGameTestServer build
+
+      - name: Check jar content
+        run: bash ci/check-jar.sh
+
+      - name: Upload jar
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: jar-${{ matrix.attempt }}
+          path: mod/build/libs/wildroots-*.jar
+          if-no-files-found: error
+          retention-days: 7
+
+  # The two jars must be byte-identical, otherwise the release is red.
+  reproducibility:
+    name: Compare sha256 of both builds
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Download both jars
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: jar-*
+          path: jars
+
+      - name: Compare
+        run: |
+          a=$(sha256sum jars/jar-1/*.jar | cut -d' ' -f1)
+          b=$(sha256sum jars/jar-2/*.jar | cut -d' ' -f1)
+          echo "build 1: $a"
+          echo "build 2: $b"
+          if [ "$a" != "$b" ]; then
+            echo "The two builds differ: the jar is not reproducible (SEC-42)" >&2
+            exit 1
+          fi
+
+  release:
+    name: Release artifacts
+    needs: reproducibility
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    # owner approval and environment-only secrets (configured in GitHub)
+    environment: release
+    permissions:
+      contents: read
+      id-token: write       # provenance attestation (Sigstore)
+      attestations: write
+    steps:
+      - name: Download the jar of build 1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: jar-1
+          path: dist
+
+      - name: Write SHA256SUMS
+        working-directory: dist
+        run: |
+          sha256sum wildroots-*.jar > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/wildroots-*.jar
+
+      - name: Upload release files
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release
+          path: |
+            dist/wildroots-*.jar
+            dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 90
+
+      # Publishing to Modrinth / CurseForge is a later task: its step will
+      # read the token from this environment's secrets, never from the
+      # repository secrets, and never echo it.
