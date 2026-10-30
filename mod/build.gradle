@@ -9,6 +9,10 @@ plugins {
     id 'org.spongepowered.mixin'
 }
 
+// :genetics must be configured first: its source set is used in the runs
+// and in the jar below.
+evaluationDependsOn(':genetics')
+
 version = mod_version
 group = mod_group_id
 
@@ -42,6 +46,8 @@ minecraft {
             mods {
                 "${mod_id}" {
                     source sourceSets.main
+                    // The engine is part of the wildroots mod in dev runs (ADR-0001)
+                    source project(':genetics').sourceSets.main
                 }
             }
         }
@@ -71,10 +77,13 @@ mixin {
 
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+    implementation project(':genetics')
     annotationProcessor "org.spongepowered:mixin:${mixin_version}:processor"
 }
 
 tasks.named('jar', Jar).configure {
+    // Engine classes ship inside the mod jar, not as a nested jar (ADR-0001, SEC-42)
+    from(project(':genetics').sourceSets.main.output)
     finalizedBy 'reobfJar'
 }
 

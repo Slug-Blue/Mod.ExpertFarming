@@ -1,4 +1,6 @@
-// :genetics: pure-Java genetics engine (ADR-0001). Fleshed out in WR-006.
+// :genetics: pure-Java genetics engine (ADR-0001, docs/05-architecture.md §3).
+// No dependencies at all: no Minecraft, no Forge, no libraries. Only JUnit 5
+// for tests. A class that imports net.minecraft.* does not compile here.
 plugins {
     id 'java-library'
 }
@@ -7,3 +9,24 @@ plugins {
 // the JDK if none is installed; CI installs Temurin 17 via actions/setup-java
 // and disables auto-download (SEC-40).
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+group = mod_group_id
+version = mod_version
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation platform("org.junit:junit-bom:${junit_version}")
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
+}
