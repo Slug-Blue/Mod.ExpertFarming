@@ -111,6 +111,7 @@ seeded from the plant hash, so results are deterministic in tests.
 
 - **Новая зависимость = ADR + PR**, который меняет `gradle/verification-metadata.xml` и указывает источник артефакта (`docs/05-architecture.md` §18, ADR-0016). Версии — точные, в `gradle.properties`; без `+`, диапазонов, `latest.*`, `-SNAPSHOT`. Репозитории — только из списка §18, через `exclusiveContent`.
 - **Ревью диффа `verification-metadata.xml`:** ревьюер DevOps сверяет каждую новую или изменённую sha256 с источником (страница Maven-репозитория или локально скачанный артефакт), проверяет, что не добавлены `trusted-artifacts` сверх ≤ 5 правил ADR-0016 и не включена проверка подписей. Изменения файла без изменения зависимостей отклоняются.
+- **Обновление `verification-metadata.xml`:** `./gradlew --write-verification-metadata sha256 build :mod:runGameTestServer` на JDK 17, затем ревью диффа. Записи для доверенных артефактов (`trusted-artifacts`, генерируются FG локально) Gradle не пишет. Файлы удалённых зависимостей вычищаются вручную.
 - **Новый mixin = изменение ADR-0014.** Закрытый список M1–M7; mixin вне списка не принимается, пока ADR не обновлён и не одобрен. `wildroots.mixins.json` и `accesstransformer.cfg` сверяются в CI с allowlist.
 - **Gradle wrapper** обновляется отдельным PR с официальной `distributionSha256Sum` (SEC-39).
 - **Workflow-файлы:** `uses:` по полному SHA, `permissions: contents: read` (SEC-41).
