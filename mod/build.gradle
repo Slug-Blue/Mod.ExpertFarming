@@ -129,6 +129,16 @@ dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
     implementation project(':genetics')
     annotationProcessor "org.spongepowered:mixin:${mixin_version}:processor"
+
+    // Tests only: JUnit 5 and ArchUnit (WR-012, §18)
+    testImplementation platform("org.junit:junit-bom:${junit_version}")
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation "com.tngtech.archunit:archunit-junit5:${archunit_version}"
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
 }
 
 // Expand mod metadata from gradle.properties into mods.toml and pack.mcmeta.
