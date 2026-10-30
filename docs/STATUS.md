@@ -3,7 +3,7 @@
 Ведёт главная сессия (оркестратор). Обновляется после каждой фазы.
 
 ## Текущая фаза
-**3. Планирование** — завершена, шлюз пройден (`06-tasks.md`: 163 задачи, 248.5 чел.-дня; решения оркестратора в §11). Следующая: **4. Каркас** (ждёт подтверждения).
+**4. Каркас** — завершена, шлюз пройден локально (WR-001…WR-017 в `main`; CI-команда `:genetics:test :mod:test :mod:runGameTestServer build` зелёная, `ci/selftest.sh` зелёный; `docs/dev-onboarding.md`). В GitHub Actions не запускалось. Следующая: **spike S1–S14** (кроме S6, S8, S13), затем **5. Реализация**, волна 1 (ждёт подтверждения).
 
 ## Ответы владельца на вопросы фазы 1
 См. `00-vision.md`, «Ответы владельца на вопросы фазы 1», п. 6–11: тыква и арбуз получают линии в MVP;
@@ -48,7 +48,7 @@ Game Designer должен принять/отклонить и внести в 
 | 1. Дизайн | `docs/01-gdd.md`, `02-economy.md`, `03-worldgen.md`, `04-narrative.md` | ✅ v0.3 |
 | 2. Архитектура | `docs/05-architecture.md`, `docs/adr/` | ✅ rev 0.2, ADR 0001–0016, threat model |
 | 3. Планирование | `docs/06-tasks.md` | ✅ 163 задачи |
-| 4. Каркас | MDK, Gradle, CI, `CONTRIBUTING.md` | ожидает |
+| 4. Каркас | MDK, Gradle, CI, `CONTRIBUTING.md`, `dev-onboarding.md` | ✅ локально; Actions не запускались |
 | 5. Реализация | код + тесты, зелёный CI | ожидает |
 | 6. Арт и звук | `assets/`, `docs/07-art-audio.md` | ожидает |
 | 7. Проверки | `docs/08-perf.md`, `09-security.md`, `10-test-report.md` | ожидает |
@@ -57,7 +57,22 @@ Game Designer должен принять/отклонить и внести в 
 | 10. Финальный шлюз | `docs/11-release-verdict.md` | ожидает |
 
 ## Открытые задачи
-- Фаза 4: каркас WR-001…WR-017 (DevOps Automator, Git Workflow Master), затем 11 spike до фазы 5 (S6, S8, S13 — позже, до зависимых задач).
+- 11 spike до фазы 5 (S6, S8, S13 — позже, до зависимых задач). S7 (WR-026) подтверждает regex `trusted-artifacts` в `verification-metadata.xml`.
+- Вручную проверить `runClient` и строку `Done` у `runServer` (EULA принимает владелец).
+- Первый прогон CI в GitHub Actions после push: gitleaks на тестовом секрете, `gametest-offline`, красный CI на падающем тесте (черновой PR).
+
+## Открытые вопросы фазы 4 (дефолт в скобках)
+- Лицензия мода (сейчас заглушка `All Rights Reserved`; дефолт — оставить до решения владельца); авторы `Slug-Blue` (да).
+- Имя логотипа `wildroots_logo.png` в allowlist jar (да).
+- GameTest в отдельном source set `mod/src/gametest`, не попадает в jar (да).
+- Maven Central в `pluginManagement` без `exclusiveContent` — запасной для библиотек плагинов (принять, записано в §18).
+- Публикация на Modrinth/CurseForge в `release.yml` не реализована — отдельная задача перед первым релизом (да).
+- Версии FD/JEI/Jade остаются `[ПРОВЕРИТЬ]` до задач compat (да).
+
+## Действия владельца в GitHub (чек-лист — `CONTRIBUTING.md` §10)
+- Secret scanning + push protection, Dependabot alerts.
+- Защита `main`: обязательные проверки `Repository checks`, `Secret scan (gitleaks)`, `Build, tests, GameTest`; только squash; без force-push.
+- Actions: `GITHUB_TOKEN` только на чтение; environment `release` с ревьюером-владельцем и деплоем только из `main`.
 - Level Designer должен учесть: в чанках, сгенерированных после включения линии, ванильные культуры модовых
   деревень становятся дикими (следствие SEC-23, `05-architecture.md` §21).
 
@@ -79,6 +94,7 @@ Game Designer должен принять/отклонить и внести в 
   тон селекционера на «ты» (да); бумага при равнинном старте — тростник только у тропической/саванной воды (принять).
 
 ## Блокеры и решения, нужные от пользователя
-- Git: локальный репозиторий, ветка `main`, remote `origin` = https://github.com/Slug-Blue/Mod.ExpertFarming.
-  Push — только после подтверждения владельца. `CONTRIBUTING.md` — Git Workflow Master в фазе 4.
+- Git: ветка `main`, remote `origin` = https://github.com/Slug-Blue/Mod.ExpertFarming.
+  Push — только после подтверждения владельца. Правила веток и коммитов — `CONTRIBUTING.md`.
+- JDK 17 для Gradle: Temurin 17.0.20.1+1 в `%USERPROFILE%\.jdks\temurin-17` (sha256 сверен), `JAVA_HOME` задаётся в команде; системные настройки не менялись.
 - Папка проекта: `C:\Users\user\Desktop\Mod.ExpertFarming`.
