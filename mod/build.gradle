@@ -3,6 +3,10 @@ plugins {
     id 'eclipse'
     id 'idea'
     id 'net.minecraftforge.gradle'
+    // Parchment parameter names on top of Mojang mappings (§18)
+    id 'org.parchmentmc.librarian.forgegradle'
+    // MixinGradle: only for the refmap (ADR-0014, §16)
+    id 'org.spongepowered.mixin'
 }
 
 version = mod_version
@@ -18,7 +22,11 @@ base {
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
 minecraft {
-    mappings channel: 'official', version: minecraft_version
+    mappings channel: 'parchment', version: "${parchment_mappings_version}-${minecraft_version}"
+
+    // Access transformer: entries only from docs/05-architecture.md §16,
+    // checked against an allowlist in CI (SEC-45). Empty in phase 4.
+    accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
 
     copyIdeResources = true
 
@@ -27,6 +35,9 @@ minecraft {
             workingDirectory project.file('run')
             property 'forge.logging.markers', 'REGISTRIES'
             property 'forge.logging.console.level', 'debug'
+            // Refmap remapping for dev runs (MixinGradle + ForgeGradle 6)
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
 
             mods {
                 "${mod_id}" {
@@ -53,8 +64,14 @@ minecraft {
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
+mixin {
+    add sourceSets.main, "${mod_id}.refmap.json"
+    config "${mod_id}.mixins.json"
+}
+
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+    annotationProcessor "org.spongepowered:mixin:${mixin_version}:processor"
 }
 
 tasks.named('jar', Jar).configure {
