@@ -11,6 +11,15 @@ updates:
     commit-message:
       prefix: build
       include: scope
+    # ForgeGradle 6 (Minecraft 1.20.1) runs only on Gradle 8.x; Forge 47.x and
+    # Parchment are pinned to Minecraft 1.20.1. Majors are bumped by hand.
+    ignore:
+      - dependency-name: gradle-wrapper
+        update-types: ["version-update:semver-major"]
+      - dependency-name: net.minecraftforge.gradle*
+        update-types: ["version-update:semver-major"]
+      - dependency-name: net.minecraftforge:forge
+      - dependency-name: org.parchmentmc*
 
   - package-ecosystem: github-actions
     directory: /
