@@ -81,6 +81,19 @@ dependencies {
     annotationProcessor "org.spongepowered:mixin:${mixin_version}:processor"
 }
 
+// Expand mod metadata from gradle.properties into mods.toml and pack.mcmeta.
+tasks.named('processResources', ProcessResources).configure {
+    var replaceProperties = [
+            mod_id: mod_id, mod_name: mod_name, mod_license: mod_license,
+            mod_version: mod_version, mod_authors: mod_authors,
+    ]
+    inputs.properties replaceProperties
+
+    filesMatching(['META-INF/mods.toml', 'pack.mcmeta']) {
+        expand replaceProperties
+    }
+}
+
 tasks.named('jar', Jar).configure {
     // Engine classes ship inside the mod jar, not as a nested jar (ADR-0001, SEC-42)
     from(project(':genetics').sourceSets.main.output)

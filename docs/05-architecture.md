@@ -745,7 +745,7 @@ BloomIndex (на ServerLevel, только в памяти)
 | Компонент | Версия | Тип |
 |---|---|---|
 | Minecraft | 1.20.1 | — |
-| Forge | 47.4.28 (проверено: `promotions_slim.json`, `1.20.1-recommended` = `1.20.1-latest` = 47.4.28, 2026-10-30); `mods.toml`: `loaderVersion = "[47,)"`, зависимость `forge` `[47.2.0,)` `[ПРОВЕРИТЬ]` нижнюю границу по API, которым пользуемся | обязательная |
+| Forge | 47.4.28 (проверено: `promotions_slim.json`, `1.20.1-recommended` = `1.20.1-latest` = 47.4.28, 2026-10-30); `mods.toml`: `loaderVersion = "[47,)"`, зависимость `forge` `[47.2.0,)` (проверено для каркаса: `1.20.1-47.2.0` есть в `maven-metadata.xml` Forge, каркас использует только `@Mod` и логгер; границу поднимает задача, которая начнёт пользоваться API новее 47.2.0) | обязательная |
 | Farmer's Delight | `1.20.1-1.2.7` `[ПРОВЕРИТЬ]`; `versionRange = "[1.2.4,)"` `[ПРОВЕРИТЬ]` | soft; Maven — Modrinth (`maven.modrinth:farmers-delight`) или CurseMaven `[ПРОВЕРИТЬ]` координаты |
 | JEI | `15.20.0.x` для 1.20.1 `[ПРОВЕРИТЬ]`; `mezz.jei:jei-1.20.1-forge-api` (compileOnly), `jei-1.20.1-forge` (runtimeOnly); репозиторий `maven.blamejared.com` | soft |
 | EMI | `1.1.x+1.20.1` `[ПРОВЕРИТЬ]`; `dev.emi:emi-forge`; `maven.terraformersmc.com` | soft, после волны 1 |

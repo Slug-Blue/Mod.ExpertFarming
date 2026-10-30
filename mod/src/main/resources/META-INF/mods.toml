@@ -1,0 +1,51 @@
+# Wild Roots mod metadata (Forge 47.x, docs/05-architecture.md §18).
+# No update-check URL key: it turns on the Forge update checker, which makes a network
+# call (SEC-43). displayURL / issueTrackerURL are metadata opened only on click.
+modLoader="javafml"
+loaderVersion="[47,)"
+license="${mod_license}"
+issueTrackerURL="https://github.com/Slug-Blue/Mod.ExpertFarming/issues"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+authors="${mod_authors}"
+description='''Wild crops with real genetics: find wild plants, cross them and breed your own cultivars.'''
+
+[[dependencies.${mod_id}]]
+    modId="forge"
+    mandatory=true
+    versionRange="[47.2.0,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.20.1,1.21)"
+    ordering="NONE"
+    side="BOTH"
+
+# Optional integrations (docs/05-architecture.md §13). Version lower bounds are
+# set by the compat tasks that start using their APIs.
+[[dependencies.${mod_id}]]
+    modId="farmersdelight"
+    mandatory=false
+    versionRange="*"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="jei"
+    mandatory=false
+    versionRange="*"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="jade"
+    mandatory=false
+    versionRange="*"
+    ordering="AFTER"
+    side="BOTH"
