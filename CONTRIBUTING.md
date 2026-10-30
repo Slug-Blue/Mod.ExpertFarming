@@ -116,6 +116,7 @@ seeded from the plant hash, so results are deterministic in tests.
 - **Gradle wrapper** обновляется отдельным PR с официальной `distributionSha256Sum` (SEC-39).
 - **Workflow-файлы:** `uses:` по полному SHA, `permissions: contents: read` (SEC-41).
 - Секреты, токены и личные данные в репозиторий не попадают (gitleaks в CI).
+- Пропуск хуков (`git commit --no-verify`, `git push --no-verify`) запрещён (SEC-41). Найденный gitleaks секрет не «чинят» коммитом поверх: секрет отзывают, историю ветки переписывают до слияния.
 
 ## 8. Команды
 
@@ -153,3 +154,17 @@ git diff --stat origin/main...HEAD
 ## 9. Pull request
 
 Шаблон — `.github/pull_request_template.md`. Заголовок PR — будущий squash-коммит: `<тип>(<scope>): <что сделано>`, в описании — ID задачи, критерии приёмки с отметкой и ссылкой на тест или ручную проверку, чек-лист DoD.
+
+## 10. Настройки репозитория на GitHub (включает владелец)
+
+Агенты настроек аккаунта и репозитория не меняют (WR-015, SEC-41). Владелец включает в **Settings** репозитория:
+
+| Где | Что включить |
+|---|---|
+| Code security → Secret scanning | **Secret scanning** и **Push protection** |
+| Code security → Dependabot | **Dependabot alerts** и **security updates**; версии обновляет `.github/dependabot.yml` (еженедельно, `gradle` и `github-actions`) |
+| Branches → правило для `main` (или Rulesets) | Только через PR; обязательные проверки `Repository checks`, `Secret scan (gitleaks)`, `Build, tests, GameTest` (`GameTest without network` — обязательной с фазы 7, WR-605); ветка актуальна перед слиянием; только squash merge, линейная история; запрет force-push и удаления ветки; правило действует и для администраторов |
+| Actions → General | Workflow permissions: **Read repository contents**; запретить Actions создавать и одобрять PR; при наличии — «Require actions to be pinned to a full-length commit SHA»; для PR из форков — подтверждение запуска |
+| Environments → `release` | Required reviewer — владелец; deployment branches — только `main`; секреты площадок (`MODRINTH_TOKEN`, `CURSEFORGE_TOKEN`) — только здесь, не в секретах репозитория (WR-016, SEC-41) |
+
+Обновление Dependabot для Gradle проходит CI, только если в том же PR перегенерирован и проверен `gradle/verification-metadata.xml` (§7).
