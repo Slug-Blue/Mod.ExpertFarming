@@ -20,6 +20,20 @@ base {
     archivesName = mod_id
 }
 
+// GameTests (WR-011, docs/05-architecture.md §17) live in their own source
+// set: they run in dev runs and in runGameTestServer but never ship in the jar.
+sourceSets {
+    gametest {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+configurations {
+    gametestImplementation.extendsFrom implementation
+    gametestRuntimeOnly.extendsFrom runtimeOnly
+}
+
 // Java 17 toolchain: Mojang ships Java 17 to players in 1.18+ (§18).
 // Locally foojay downloads the JDK if none is installed; CI installs
 // Temurin 17 via actions/setup-java and disables auto-download (SEC-40).
@@ -48,6 +62,7 @@ minecraft {
                     source sourceSets.main
                     // The engine is part of the wildroots mod in dev runs (ADR-0001)
                     source project(':genetics').sourceSets.main
+                    source sourceSets.gametest
                 }
             }
         }
@@ -59,6 +74,12 @@ minecraft {
         server {
             property 'forge.enabledGameTestNamespaces', mod_id
             args '--nogui'
+        }
+
+        // Runs every GameTest of the wildroots namespace headless, then exits
+        // with the number of failed required tests as the exit code.
+        gameTestServer {
+            property 'forge.enabledGameTestNamespaces', mod_id
         }
 
         data {

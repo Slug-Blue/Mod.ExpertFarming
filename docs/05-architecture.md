@@ -710,6 +710,8 @@ BloomIndex (на ServerLevel, только в памяти)
 | Перф | Стенд (ручной, spike S9 и фаза 7), `spark` | MSPT на 10 000 растений; время генерации чанка | Нет (нужен стабильный хост) |
 | Клиент | Ручной чек-лист + `runClient` | Рендер, тултипы, экраны | Нет |
 
+**Где лежат GameTest (WR-011):** отдельный source set `mod/src/gametest` (классы в `io.github.slugblue.wildroots.gametest`, шаблоны — `data/wildroots/structures/gametest/*.nbt`). Он подключён ко всем dev-запускам и к `runGameTestServer` как часть мода `wildroots`, но в jar не попадает. `@PrefixGameTestTemplate(false)`: id шаблона — `wildroots:gametest/<имя>`. `runGameTestServer` завершается с кодом, равным числу упавших обязательных тестов. Forge 47.x сам принимает EULA только для GameTest-сервера (`Eula`: `ForgeGameTestHooks.isGametestServer()`), поэтому `eula.txt` в CI не нужен.
+
 Дополнительно из threat model: фаззинг декодеров пакетов и NBT (100 000 мутированных входов на декодер, ни одного неперехваченного исключения; SEC-03, SEC-10); `MenuFuzz` — инвариант сохранения предметов во всех наших меню и в мешочке (SEC-14, SEC-17); бюджет пакетов на худших мешочках (SEC-12); ArchUnit-правила `NoNetworkNoExecTest`, `LoadedLevelAccess`, `ServerPacketGuard`, `WorldSecret` (SEC-01, SEC-25, SEC-32, SEC-43).
 
 **CI (GitHub Actions, фаза 4):**
