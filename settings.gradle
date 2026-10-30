@@ -2,20 +2,56 @@
 // Plugin versions are exact and live in gradle.properties (SEC-38).
 
 pluginManagement {
+    // Repositories (docs/05-architecture.md §18, SEC-37): official hosts only,
+    // https only, each one limited to its own groups with exclusiveContent.
+    // Checked by ci/check-repositories.sh.
     repositories {
-        maven {
-            name = 'MinecraftForge'
-            url = 'https://maven.minecraftforge.net/'
+        exclusiveContent {
+            forRepository {
+                maven {
+                    name = 'MinecraftForge'
+                    url = 'https://maven.minecraftforge.net/'
+                }
+            }
+            filter {
+                includeGroupByRegex 'net\\.minecraftforge(\\..*)?'
+                includeGroup 'de.oceanlabs.mcp'
+            }
         }
-        maven {
-            name = 'ParchmentMC'
-            url = 'https://maven.parchmentmc.org/'
+        exclusiveContent {
+            forRepository {
+                maven {
+                    name = 'ParchmentMC'
+                    url = 'https://maven.parchmentmc.org/'
+                }
+            }
+            filter {
+                includeGroupByRegex 'org\\.parchmentmc(\\..*)?'
+            }
         }
-        maven {
-            name = 'SpongePowered'
-            url = 'https://repo.spongepowered.org/repository/maven-public/'
+        exclusiveContent {
+            forRepository {
+                maven {
+                    name = 'SpongePowered'
+                    url = 'https://repo.spongepowered.org/repository/maven-public/'
+                }
+            }
+            filter {
+                includeGroupByRegex 'org\\.spongepowered(\\..*)?'
+            }
         }
-        gradlePluginPortal()
+        exclusiveContent {
+            forRepository {
+                gradlePluginPortal()
+            }
+            filter {
+                // plugin markers and artifacts that live only on the Plugin Portal
+                includeGroupByRegex 'org\\.gradle\\.toolchains(\\..*)?'
+            }
+        }
+        // Plain libraries on the plugin classpath (gson, commons-io, asm, ...).
+        // Every artifact is pinned by gradle/verification-metadata.xml (SEC-40).
+        mavenCentral()
     }
     plugins {
         id 'net.minecraftforge.gradle' version "${forgegradle_version}"

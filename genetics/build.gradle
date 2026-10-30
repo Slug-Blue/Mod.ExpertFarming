@@ -13,8 +13,18 @@ java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 group = mod_group_id
 version = mod_version
 
+// SEC-37: Maven Central only, limited to the test libraries.
 repositories {
-    mavenCentral()
+    exclusiveContent {
+        forRepository {
+            mavenCentral()
+        }
+        filter {
+            includeGroupByRegex 'org\\.junit(\\..*)?'
+            includeGroup 'org.opentest4j'
+            includeGroup 'org.apiguardian'
+        }
+    }
 }
 
 dependencies {

@@ -1,0 +1,8 @@
+// Negative example for ci/check-repositories.sh (must fail on every line).
+repositories {
+    mavenLocal()
+    maven { url = 'https://jitpack.io' }
+    flatDir { dirs 'libs' }
+    maven { url = 'http://maven.minecraftforge.net/' }
+    maven { url = 'https://example.invalid/maven' }
+}

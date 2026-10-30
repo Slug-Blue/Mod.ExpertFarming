@@ -70,6 +70,35 @@ minecraft {
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
+// SEC-37: our repositories are official, https-only and limited to their
+// groups with exclusiveContent. ForgeGradle adds its own repositories
+// (Forge maven, Mojang libraries, Maven Central and local caches) on top;
+// every artifact is pinned by gradle/verification-metadata.xml (SEC-40).
+repositories {
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = 'SpongePowered'
+                url = 'https://repo.spongepowered.org/repository/maven-public/'
+            }
+        }
+        filter {
+            includeGroupByRegex 'org\\.spongepowered(\\..*)?'
+        }
+    }
+    exclusiveContent {
+        forRepository {
+            mavenCentral()
+        }
+        filter {
+            includeGroupByRegex 'org\\.junit(\\..*)?'
+            includeGroup 'org.opentest4j'
+            includeGroup 'org.apiguardian'
+            includeGroup 'com.tngtech.archunit'
+        }
+    }
+}
+
 mixin {
     add sourceSets.main, "${mod_id}.refmap.json"
     config "${mod_id}.mixins.json"
