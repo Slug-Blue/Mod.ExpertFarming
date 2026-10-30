@@ -1,10 +1,48 @@
+# Wild Roots — .gitignore
+# Сверено с .gitignore Forge MDK 1.20.1 (47.x, ForgeGradle 6) и дополнено
+# под два подпроекта (:genetics, :mod). Шаблоны без ведущего "/" действуют
+# на любой глубине, поэтому покрывают и genetics/build/, и mod/run/.
+
+# --- Gradle ---
 .gradle/
 build/
-out/
+# Gradle wrapper коммитится всегда (WR-001, WR-003)
+!gradle/wrapper/gradle-wrapper.jar
+
+# --- ForgeGradle 6 / MDK: рабочие каталоги запусков ---
 run/
 runs/
+run-data/
+logs/
+crash-reports/
+repo/
+# кэш data generators; сами сгенерированные ресурсы коммитятся
+**/src/generated/resources/.cache/
+
+# --- Eclipse (из MDK) ---
+bin/
+eclipse/
+*.launch
+.settings/
+.metadata/
+.classpath
+.project
+
+# --- IntelliJ IDEA (из MDK) ---
+out/
 .idea/
 *.iml
 *.ipr
 *.iws
+
+# --- VS Code ---
 .vscode/
+
+# --- ОС ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Прочее ---
+*.log
+*.hprof
