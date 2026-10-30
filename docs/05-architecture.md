@@ -732,7 +732,7 @@ BloomIndex (на ServerLevel, только в памяти)
 | Компонент | Версия | Примечание |
 |---|---|---|
 | JDK (toolchain) | 17 | `java.toolchain.languageVersion = 17`; локально JDK загружает foojay (разрешено владельцем), в CI — `actions/setup-java` Temurin 17 (SEC-40) |
-| Gradle wrapper | 8.8 (проверено: `gradle-wrapper.properties` из MDK `1.20.1-47.4.28`) | Wrapper фиксирует версию и `distributionSha256Sum` (официальная сумма с gradle.org); обновление — отдельным PR (SEC-39) |
+| Gradle wrapper | 8.8 (проверено: `gradle-wrapper.properties` из MDK `1.20.1-47.4.28`) | Wrapper фиксирует версию и `distributionSha256Sum` = `a4b4158601f8636cdeeab09bd76afb640030bb5b144aafe261a5e8af027dc612` (официальная сумма `gradle-8.8-bin.zip.sha256` с services.gradle.org); `gradle-wrapper.jar` = официальный jar 8.8 (sha256 `cb0da675…56b8`); обновление — отдельным PR (SEC-39) |
 | `org.gradle.toolchains.foojay-resolver-convention` | 1.0.0 (проверено: `maven-metadata.xml` Gradle Plugin Portal, release; работает на Gradle 8.8) | В `settings.gradle`; MDK задаёт 0.7.0, берём последнюю |
 | ForgeGradle (`net.minecraftforge.gradle`) | 6.0.54 (проверено: `maven-metadata.xml` на maven.minecraftforge.net, release; MDK 1.20.1 задаёт `[6.0,6.2)`, фиксируем точную) | |
 | Parchment Librarian (`org.parchmentmc.librarian.forgegradle`) | 1.2.0 (проверено: `maven-metadata.xml` на maven.parchmentmc.org, release; новее — только `-dev-SNAPSHOT`) | |
