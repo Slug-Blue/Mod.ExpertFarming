@@ -120,6 +120,8 @@ seeded from the plant hash, so results are deterministic in tests.
 
 Работают на чистом клоне в Git Bash, Linux и macOS. Gradle-команды доступны после импорта MDK (WR-002); в Windows вместо `./gradlew` можно `gradlew.bat`.
 
+**JDK для запуска Gradle.** Wrapper — Gradle 8.8 (его требует ForgeGradle 6), он запускается на JDK 17–22, а ForgeGradle и foojay требуют для запуска JDK ≥ 17. Компиляцию ведёт toolchain Java 17 (`java.toolchain.languageVersion = 17` в обоих подпроектах): если JDK 17 не найден, его скачивает foojay. Если в системе только JDK новее 22 (например, 25), поставьте Temurin 17 и укажите его Gradle, не меняя системных переменных: `JAVA_HOME=~/.jdks/temurin-17 ./gradlew build` в Git Bash или строка `org.gradle.java.home=C:/Users/<вы>/.jdks/temurin-17` в **пользовательском** `~/.gradle/gradle.properties` (не в репозитории). В CI JDK ставит `actions/setup-java` (Temurin 17), автозагрузка toolchain выключена (`org.gradle.java.installations.auto-download=false`, SEC-40).
+
 ```bash
 # клон
 git clone https://github.com/Slug-Blue/Mod.ExpertFarming.git

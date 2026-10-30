@@ -12,7 +12,9 @@ base {
     archivesName = mod_id
 }
 
-// Mojang ships Java 17 to players in 1.18+.
+// Java 17 toolchain: Mojang ships Java 17 to players in 1.18+ (§18).
+// Locally foojay downloads the JDK if none is installed; CI installs
+// Temurin 17 via actions/setup-java and disables auto-download (SEC-40).
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
 minecraft {

@@ -2,3 +2,8 @@
 plugins {
     id 'java-library'
 }
+
+// Java 17 toolchain (docs/05-architecture.md §18). Locally foojay downloads
+// the JDK if none is installed; CI installs Temurin 17 via actions/setup-java
+// and disables auto-download (SEC-40).
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
