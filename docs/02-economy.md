@@ -337,7 +337,7 @@ g_out = min(cap, g_raw) + (booster ? 1 : 0),  не выше 4 и не выше c
   "genotype_lab":   { "cost": [ { "item": "minecraft:bone_meal", "count": 1 }, { "item": "minecraft:gold_nugget", "count": 1 } ],
                      "ticks": 600, "recipe_gate_tag": "wildroots:cultivar_produce" },
   "pollination_brush": { "durability": 64, "cost_per_transfer": 1 },
-  "seed_pouch": { "capacity_seeds": 32, "accepts": ["wildroots:seed_lot"], "order": "lifo", "merge_entries": false },
+  "seed_pouch": { "capacity_seeds": 16, "accepts": ["wildroots:seed_lot"], "order": "lifo", "merge_entries": false },
   "bonemeal": { "stage_advance_chance": 0.35, "stages_allowed": [1, 2, 3, 5], "affects_E": false } }
 ```
 
