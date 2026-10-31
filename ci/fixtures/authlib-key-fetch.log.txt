@@ -1,0 +1,6 @@
+[31Oct2026 20:16:36.113] [Yggdrasil Key Fetcher/ERROR] [com.mojang.authlib.yggdrasil.YggdrasilServicesKeyInfo/]: Failed to request yggdrasil public key
+com.mojang.authlib.exceptions.AuthenticationUnavailableException: Cannot contact authentication server
+	at com.mojang.authlib.yggdrasil.YggdrasilServicesKeyInfo.fetch(YggdrasilServicesKeyInfo.java:94) ~[authlib-4.0.43.jar:?]
+Caused by: java.net.UnknownHostException: api.minecraftservices.com
+	at java.net.InetAddress$CachedAddresses.get(InetAddress.java:801) ~[?:?]
+[31Oct2026 20:16:54.000] [Server thread/INFO] [minecraft/GameTestServer]: All 1 required tests passed :)

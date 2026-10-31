@@ -25,8 +25,22 @@ case "${1:-}" in
     log="${2:-$RUN_DIR/logs/debug.log}"
     [ -f "$log" ] || { echo "offline-gametest: no log at $log" >&2; exit 1; }
     pattern='java\.net\.(ConnectException|UnknownHostException|NoRouteToHostException|SocketException|SocketTimeoutException)|Network is unreachable|Starting version check|java\.net\.http\.HttpConnectTimeoutException'
-    if grep -nE "$pattern" "$log"; then
+    # Known vanilla attempt, not ours: authlib's "Yggdrasil Key Fetcher"
+    # thread asks api.minecraftservices.com for the services public key on
+    # every server start (YggdrasilServicesKeyInfo). Lines of that one log
+    # entry (its header and stack trace) are skipped; anything else counts.
+    allowed='\[Yggdrasil Key Fetcher/[A-Z]+\] \[com\.mojang\.authlib\.yggdrasil\.YggdrasilServicesKeyInfo/'
+    # patterns go through ENVIRON: awk -v would eat the backslashes
+    rc=0
+    PAT="$pattern" OK="$allowed" awk '
+        /^\[/ { skip = ($0 ~ ENVIRON["OK"]) }
+        !skip && $0 ~ ENVIRON["PAT"] { print FNR ":" $0; hit = 1 }
+        END { exit (hit ? 0 : 1) }' "$log" || rc=$?
+    if [ "$rc" -eq 0 ]; then
       echo "offline-gametest: the server tried to open a network connection (SEC-44)" >&2
+      exit 1
+    elif [ "$rc" -ne 1 ]; then
+      echo "offline-gametest: scan failed (awk exit $rc)" >&2
       exit 1
     fi
     echo "offline-gametest: no network attempts in $log"

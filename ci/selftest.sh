@@ -21,6 +21,14 @@ expect_fail check-workflows-release bash ci/check-workflows.sh ci/fixtures/relea
 
 expect_fail check-sources bash ci/check-sources.sh ci/fixtures/bad-project
 expect_fail offline-gametest-scan bash ci/offline-gametest.sh scan ci/fixtures/network-attempt.log.txt
+expect_fail offline-gametest-scan-mixed bash ci/offline-gametest.sh scan ci/fixtures/network-attempt-with-authlib.log.txt
+# the known vanilla authlib key fetch alone must not fail the job
+if bash ci/offline-gametest.sh scan ci/fixtures/authlib-key-fetch.log.txt >/dev/null 2>&1; then
+  echo "selftest: ok — 'offline-gametest-scan' accepts the vanilla authlib key fetch"
+else
+  echo "selftest: FAIL — 'offline-gametest-scan' rejects the vanilla authlib key fetch" >&2
+  status=1
+fi
 
 # a jar with a nested jar, a native library and a class outside the package
 tmp="$(mktemp -d)"
