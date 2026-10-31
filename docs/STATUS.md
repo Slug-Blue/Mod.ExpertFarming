@@ -3,7 +3,7 @@
 Ведёт главная сессия (оркестратор). Обновляется после каждой фазы.
 
 ## Текущая фаза
-**4. Каркас** — завершена, шлюз пройден локально (WR-001…WR-017 в `main`; CI-команда `:genetics:test :mod:test :mod:runGameTestServer build` зелёная, `ci/selftest.sh` зелёный; `docs/dev-onboarding.md`). В GitHub Actions не запускалось. Spike S1–S5, S10–S12, S14 закрыты, итоги внесены в архитектуру, ADR, `09-security.md`, `06-tasks.md` (2026-10-31, отчёты — `docs/spikes/`). Открыты: S9 (в работе), S7 (ждёт зелёного CI в GitHub Actions); S6, S8, S13 — позже. Следующая: **5. Реализация**, волна 1 (ждёт подтверждения и ответов ниже).
+**4. Каркас** — завершена, шлюз пройден локально (WR-001…WR-017 в `main`; CI-команда `:genetics:test :mod:test :mod:runGameTestServer build` зелёная, `ci/selftest.sh` зелёный; `docs/dev-onboarding.md`). В GitHub Actions не запускалось. Spike S1–S5, S9–S12, S14 закрыты, итоги внесены в архитектуру, ADR, `09-security.md`, `06-tasks.md` (2026-10-31, отчёты — `docs/spikes/`). Открыт S7 (ждёт зелёного CI в GitHub Actions); S6, S8, S13 — позже. Следующая: **5. Реализация**, волна 1 (ждёт подтверждения и ответов ниже).
 
 ## Ответы владельца на вопросы фазы 1
 См. `00-vision.md`, «Ответы владельца на вопросы фазы 1», п. 6–11: тыква и арбуз получают линии в MVP;
@@ -57,7 +57,7 @@ Game Designer должен принять/отклонить и внести в 
 | 10. Финальный шлюз | `docs/11-release-verdict.md` | ожидает |
 
 ## Открытые задачи
-- Spike до фазы 5: S9 (WR-028) в работе; S7 (WR-026) ждёт зелёного CI в GitHub Actions и подтверждает regex `trusted-artifacts` в `verification-metadata.xml`. S6, S8, S13 — позже, до зависимых задач.
+- Spike до фазы 5: S7 (WR-026) ждёт зелёного CI в GitHub Actions и подтверждает regex `trusted-artifacts` в `verification-metadata.xml`. S6, S8, S13 — позже, до зависимых задач.
 - Вручную проверить `runClient` и строку `Done` у `runServer` (EULA принимает владелец).
 - Первый прогон CI в GitHub Actions после push: gitleaks на тестовом секрете, `gametest-offline`, красный CI на падающем тесте (черновой PR).
 
