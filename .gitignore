@@ -46,3 +46,6 @@ desktop.ini
 # --- Прочее ---
 *.log
 *.hprof
+
+# Claude Code agent worktrees
+.claude/worktrees/
