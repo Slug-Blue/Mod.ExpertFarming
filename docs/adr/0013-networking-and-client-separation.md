@@ -3,6 +3,7 @@
 ## Статус
 Предложено (2026-10-29)
 Ревизия 1 (2026-10-29, threat model SEC-01…SEC-08, SEC-31, SEC-43, SEC-44): единственная точка регистрации C→S — `ServerPacketGuard`; token bucket и отключение при флуде; клиент шлёт только намерение; декодирование ограничено до аллокации; единый санитайзер `PlayerText`; лимит и разбиение `DefinitionsSync`; запреты сетевых API проверяются ArchUnit и offline-GameTest.
+Ревизия 2 (2026-10-31, spike S14, `docs/spikes/S14-packet-limits.md`): лимиты подтверждены — C→S custom payload ≤ 32 767 Б, S→C ≤ 1 048 576 Б; Forge не разбивает пакеты `SimpleChannel`, поэтому нарезка `DefinitionsSync` своя и обязательна; `readUtf(max)` считает UTF-16 code units, лимиты в кодовых точках проверяются отдельно.
 
 ## Контекст
 Видение: сервер авторитарен, клиент рисует; мод работает на выделенном сервере без клиентских классов; ноль исходящих соединений. Клиенту нужны данные для рендера и UI, а пакеты от клиента — потенциальный вектор атаки.
@@ -10,8 +11,8 @@
 ## Решение
 - Сначала ванильные механизмы: `BlockState` для рендера растений, синхронизация контейнеров для предметов, `clickMenuButton` для кнопок машин, `NetworkHooks.openScreen` с буфером для экранов.
 - Один `SimpleChannel` `wildroots:main`, версия протокола `"1"`. S→C: `DefinitionsSync`, `JournalSync`, `Toast`, `AnalysisResult`. C→S: `NameSelection`, `JournalAction`.
-- Обработка C→S (ревизия 1): все обработчики регистрируются только через `ServerPacketGuard.register` — он проверяет отправителя, выполняет `enqueueWork`, перехватывает исключения и всегда ставит `setPacketHandled`. Поля пакетов — только `int`/`long`/`boolean`/`String`/`ResourceLocation` (ArchUnit). `readUtf(max)` и проверка длин до аллокации. Текст игрока — только через `PlayerText.sanitize` (NFC, без `§`, управляющих, bidi и zero-width символов, ограниченный алфавит, ≤ 24 кодовые точки для имени сорта), показывается как `Component.literal`. Token bucket 5/5 с на (игрок, тип), `NameSelection` ≤ 3 в минуту, отключение при ≥ 200 отброшенных за 10 с. Позиция и меню: `containerId`, `stillValid`, загруженный чанк, ≤ 8 блоков, тип BE.
-- `DefinitionsSync` ≤ 512 КиБ, крупнее — части ≤ 256 КиБ; S→C не несут частот, порогов и чужих UUID.
+- Обработка C→S (ревизия 1): все обработчики регистрируются только через `ServerPacketGuard.register` — он проверяет отправителя, выполняет `enqueueWork`, перехватывает исключения и всегда ставит `setPacketHandled`. Поля пакетов — только `int`/`long`/`boolean`/`String`/`ResourceLocation` (ArchUnit). `readUtf(max)` и проверка длин до аллокации; `readUtf(max)` проверяет байты ≤ 3·max и `length()` ≤ max в UTF-16 code units, поэтому `max` = 2 × лимит в кодовых точках, а кодовые точки проверяет `PlayerText` (S14). C→S пакет ≤ 32 767 Б. Текст игрока — только через `PlayerText.sanitize` (NFC, без `§`, управляющих, bidi и zero-width символов, ограниченный алфавит, ≤ 24 кодовые точки для имени сорта), показывается как `Component.literal`. Token bucket 5/5 с на (игрок, тип), `NameSelection` ≤ 3 в минуту, отключение при ≥ 200 отброшенных за 10 с. Позиция и меню: `containerId`, `stillValid`, загруженный чанк, ≤ 8 блоков, тип BE.
+- `DefinitionsSync` ≤ 512 КиБ, крупнее — части ≤ 256 КиБ (своя нарезка: Forge режет только рецепты, теги, достижения и login; S→C payload ≤ 1 048 576 Б, S14); S→C не несут частот, порогов и чужих UUID.
 - Клиентский код только в `client/`; обработчики S→C вызываются через `DistExecutor`; ArchUnit-тест запрещает ссылки на `net.minecraft.client` вне `client`; GameTest-сервер в CI ловит утечки клиентских классов.
 
 ## Альтернативы

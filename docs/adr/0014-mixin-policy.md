@@ -3,27 +3,28 @@
 ## Статус
 Предложено (2026-10-29)
 Ревизия 1 (2026-10-29, threat model SEC-34, SEC-45, Δ2, Δ7): флаг отключения mixin проверяется в обработчике во время выполнения; `@Redirect` только с обоснованием здесь; CI-allowlist для `wildroots.mixins.json` и AT; в список добавлен условный M7.
+Ревизия 2 (2026-10-31, spike S2, S4, S5; `docs/spikes/S2-bee-goal.md`, `S4-mixin-points.md`, `S5-furnace-quality.md`): M1 уточнён до четырёх классов mixin (три метода `Villager` и `TradeWithVillager#tick`); M2 — метод Forge-патча, `remap = false`, события свойств еды в 47.x нет; M3 — запасной (слияние в печи закрыто защитой в `matches`, ADR-0012); M5 не нужен. Refmap генерируется и mixin применяются в `runGameTestServer` (S4). Принято в части M1, M2, M3, M5; M4, M6, M7 — без изменений.
 
 ## Контекст
 Mixin ломается при конфликтах с другими модами и усложняет отладку. Задание фазы: mixin только там, где без него никак. Часть требований GDD упирается в зашитый код ванили 1.20.1 (еда жителей, свойства еды ванильных предметов, число сделок).
 
 ## Решение
 - **Порядок выбора:** событие Forge → подкласс ванильного класса с переопределением → расширения `IForge*` → access transformer → mixin.
-- **Правила для mixin:** одна цель и одна инъекция на класс mixin; предпочтительны `@Inject`/`@ModifyArg`, `@Redirect` — только с обоснованием в этом ADR (два `@Redirect` разных модов на один вызов дают краш), `@Overwrite` запрещён; `"required": true`, `injectors.defaultRequire = 1`, `minVersion = "0.8.5"`; никаких mixin в классы других модов; обработчики — O(1), без I/O, в `Guarded.run`; GameTest на каждый mixin, включая «флаг выключен → ваниль»; новый mixin — только через изменение этого ADR; CI сверяет `wildroots.mixins.json` и `accesstransformer.cfg` с allowlist в репозитории.
+- **Правила для mixin:** одна цель и одна инъекция на класс mixin (M1 — исключение по смыслу: один ванильный класс `Villager` и `TradeWithVillager`, но четыре класса mixin, у каждого одна инъекция); у методов, которые добавил патч Forge (нет SRG-имени), — `remap = false`; предпочтительны `@Inject`/`@ModifyArg`, `@Redirect` — только с обоснованием в этом ADR (два `@Redirect` разных модов на один вызов дают краш), `@Overwrite` запрещён; `"required": true`, `injectors.defaultRequire = 1`, `minVersion = "0.8.5"`; никаких mixin в классы других модов; обработчики — O(1), без I/O, в `Guarded.run`; GameTest на каждый mixin, включая «флаг выключен → ваниль»; новый mixin — только через изменение этого ADR; CI сверяет `wildroots.mixins.json` и `accesstransformer.cfg` с allowlist в репозитории.
 - **Флаг отключения (ревизия 1)** живёт в COMMON-конфиге и **проверяется в обработчике во время выполнения**: mixin применяется раньше, чем Forge загружает конфиги. При выключенном флаге обработчик сразу отдаёт ванильное поведение. Вариант с `IMixinConfigPlugin.shouldApplyMixin`, читающим файл конфига вручную, отклонён: второй разборщик конфига расходится с `ForgeConfigSpec`.
 - **Закрытый список:**
 
 | # | Цель | Статус |
 |---|---|---|
-| M1 | `Villager`: очки еды и подбор предметов (`#wildroots:villager_food`) | Нужен (волна 1) |
-| M2 | `FoodData.eat(Item, ItemStack, LivingEntity)`: класс у ванильных продуктов | Нужен (волна 1) |
-| M3 | `AbstractFurnaceBlockEntity.canBurn`/`burn`: сравнение выхода с NBT | Условный (S5) |
+| M1 | M1a `Villager#countFoodPointsInInventory`, M1b `#eatUntilFull`, M1c `#wantsToPickUp` (по одной `@Inject(HEAD, cancellable)`; очки по стаку и тегу `#wildroots:villager_food`); M1d `TradeWithVillager#tick` (`@ModifyArg` набора в `throwHalfStack`, обмен едой) — S4 | Нужен (волна 1). M1d найден по байткоду и нужен потому, что урожай ландраса собирает только фермер; прототипа нет, проверяет WR-166 |
+| M2 | `FoodData#eat(Item, ItemStack, @Nullable LivingEntity)` — метод Forge-патча, `@Inject(HEAD, cancellable, remap = false)`; события свойств еды в Forge 47.x нет (S4) | Нужен (волна 1) |
+| M3 | `AbstractFurnaceBlockEntity.canBurn`/`burn`: сравнение выхода с NBT | Запасной: слияние подтверждено в S5, по умолчанию закрыто защитой в `matches` (ADR-0012) |
 | M4 | `Villager.updateTrades`: 3 сделки на уровень для `farmer`/`plant_breeder` | Нужен при подтверждении владельца |
-| M5 | `Bee.BeePollinateGoal` | Запасной (S2) |
+| M5 | `Bee.BeePollinateGoal` | Не нужен (S2 подтвердил путь без mixin) |
 | M6 | `JigsawPlacement.Placer` | Запасной (если LD отклонит ADR-0011) |
 | M7 | `MerchantResultSlot` / `MerchantContainer`: результат и списание сделки в момент взятия (ADR-0015) | Условный: только если S13 не подтвердит подкласс `MerchantOffer` или событие **и** владелец выберет M7 вместо меню услуг (рекомендация — меню услуг) |
 
-- **Явно без mixin:** пчёлы (цель через событие), фермер (подкласс `CropBlock`), голем (подкласс `CarvedPumpkinBlock`), корм животных (события), запрет посадки (события), старые ванильные культуры (`CropGrowEvent.Pre`), маска эндермена (`isEnderMask`).
+- **Явно без mixin:** пчёлы (цель через событие, S2), фермер (подкласс `CropBlock` с `getAge`, S3), печь (защита в `matches`, S5), голем (подкласс `CarvedPumpkinBlock`), корм животных (события), запрет посадки (события), старые ванильные культуры (`CropGrowEvent.Pre`), маска эндермена (`isEnderMask`).
 - **Отложено:** глобальная зачистка шаблонов структур (mixin в `StructureTemplate`) — только если плейтест покажет утечку.
 
 ## Альтернативы

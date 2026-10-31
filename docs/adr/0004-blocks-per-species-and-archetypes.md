@@ -9,7 +9,7 @@
 ## Решение
 - **Встроенные виды** получают свой блок (`wild_carrot`, …, `apple_trunk`, `gourd_fruit`, `watermelon_fruit`), созданный из общего класса архетипа с параметром «вид». Ванильные модели blockstate, имена, ресурспаки.
 - **Датапачные виды** используют архетипные блоки `generic_*` (field, tall, water, vine + vine_fruit, bush). Модель общая, цвет — из JSON вида через `BlockColor` (клиенту из BE синхронизируется только id вида). Урожай — `generic_produce` с id сорта в NBT. Деревья, тростник и плоды на стволе — только у встроенных видов.
-- **`BlockState`** = `stage`, `size` (4 ступени), `variant` (окраска), `ailing`, `village`, `active`. Рендер — запечённые модели по состоянию, без `BlockEntityRenderer` и `ModelData`. Логике (`isRandomlyTicking`, `isMaxAge`) доступ к BE не нужен.
+- **`BlockState`** = `stage`, `size` (4 ступени), `variant` (окраска), `ailing`, `village`, `active`. Рендер — запечённые модели по состоянию, без `BlockEntityRenderer` и `ModelData`. Логике (`isRandomlyTicking`, `getAge`/`isMaxAge`) доступ к BE не нужен. `isMaxAge` у `CropBlock` в 1.20.1 — `final`, архетип `field` переопределяет `getAge` (ADR-0010, ревизия 2, S3).
 - Архетип `field` наследует `CropBlock` (это нужно фермеру, ADR-0010).
 
 ## Альтернативы
