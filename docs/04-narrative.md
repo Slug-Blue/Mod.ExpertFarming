@@ -470,6 +470,7 @@
 | `feral_planting` | Здесь был сад / There Was a Garden Here | Первое открытие одичавшего насаждения (садовый тростник, роща насьональ, одичавший сад, одичавшая малина) | Ряды слишком ровные для дикого леса, а в траве — камни старой межи. Здесь когда-то был сад. Растения одичали, но кое-что от прежних хозяев в них осталось. | The rows are too straight for wild woodland, and old boundary stones lie in the grass. There was a garden here once. The plants have gone wild, but something of their old keepers remains in them. |
 | `breeder_met` | Селекционер / The Plant Breeder | Событие `breeder_trade`: первая сделка с селекционером | В этой деревне есть житель, который понимает, чем занята эта грядка. У него можно оценить семена, продать удачную находку и узнать, где искать лучшее. | There's a villager here who understands what this garden bed is about. Seeds can be assessed there, lucky finds sold, and advice had on where to look for the best. |
 | `rare_find_sold` | Удачная находка / A Lucky Find | Первая продажа селекционеру лота с необычным растением или редким аллелем | Селекционер долго вертел пакетик в руках и заплатил не торгуясь. Похоже, такое попадается нечасто. | The breeder turned the packet over for a long while and paid without haggling. Finds like this must be rare. |
+| `graded_by_hand` | Руками / By Hand | Первый крафт продукта с классом качества (рецепт `wildroots:quality_*`) | Урожай с отметкой качества книга рецептов сама не раскладывает. Его кладут на верстак руками — зато видно, что из чего выйдет. | The recipe book won't lay out graded produce on its own. It goes on the table by hand — and you see what will come of it. |
 | `seed_pouch` | Мешочек / The Pouch | Первый мешочек для семян в инвентаре | Пакетики семян теперь не рассыпаются по карманам. В мешочке каждый лежит отдельно, и наружу первым выходит тот, что положен последним. | Seed packets no longer spill across every pocket. In the pouch each lies apart, and the last one in is the first one out. |
 
 ### 4.6 Страницы инструментов (`wildroots.journal.tool.<id>`)
@@ -765,6 +766,7 @@
 |---|---|---|
 | `item.wildroots.seed_pouch` | Seed Pouch | Мешочек для семян |
 | `wildroots.tooltip.pouch.fill` | Seeds: %1$d / %2$d | Семян: %1$d из %2$d |
+| `wildroots.tooltip.pouch.places` | Places: %1$d / %2$d | Мест: %1$d из %2$d |
 | `wildroots.tooltip.pouch.entry` | %1$s ×%2$d | %1$s ×%2$d |
 | `wildroots.tooltip.pouch.last` | Last put in: %s | Последним положено: %s |
 | `wildroots.tooltip.pouch.more` | …and %d more | …и ещё записей: %d |
@@ -772,7 +774,7 @@
 | `wildroots.message.pouch.full` | The pouch is full | Мешочек полон |
 | `wildroots.message.pouch.not_seeds` | Only seeds go in the pouch | В мешочек — только семена |
 
-Список содержимого: последняя положенная запись сверху, до 6 строк, остальное — строкой `more`. Строка `entry` — имя лота (§7.2) и число семян в записи.
+Список содержимого: последняя положенная запись сверху, до 6 строк, остальное — строкой `more`. Строка `entry` — имя лота (§7.2) и число семян в записи. Мешочек вмещает 16 мест (записей) и 32 семени (`00-vision.md` п. 21): `pouch.full` выводится, когда кончились места или семена.
 
 ### 7.4 Маточники и клоны
 
