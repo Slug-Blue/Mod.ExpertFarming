@@ -17,7 +17,7 @@
  },
  "timing": {
   "seed_stage_min": 5,
-  "to_harvest_min": 11
+  "to_harvest_min": 13
  },
  "wild_allele_freq": {
   "elite": [

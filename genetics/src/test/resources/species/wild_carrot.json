@@ -40,7 +40,7 @@
   "mutation": { "quantitative": 0.004, "qualitative": 0.001 },
   "pollination": { "mode": "insect", "self_compatible": true, "radius": 2, "outcross": 0.60,
                    "bees": { "outcross": 0.95, "carry_range": 16 }, "seed_set_no_pollinator": 0.5 },
-  "timing": { "to_harvest_min": 11, "seed_stage_min": 5 },
+  "timing": { "to_harvest_min": 13, "seed_stage_min": 5 },
   "propagation": "seed",
   "quality_axes": { "fruit_size": 0.5, "flavor": 0.5 }
 }

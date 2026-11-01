@@ -175,7 +175,7 @@
   "seed_set_no_pollinator": 0.5
  },
  "timing": {
-  "to_harvest_min": 11,
+  "to_harvest_min": 13,
   "seed_stage_min": 5
  },
  "propagation": "seed",
