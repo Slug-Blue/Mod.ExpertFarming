@@ -35,7 +35,14 @@ import io.github.slugblue.wildroots.genetics.phenotype.CompiledSpecies;
 import io.github.slugblue.wildroots.genetics.phenotype.PhenotypeCalculator;
 import io.github.slugblue.wildroots.genetics.pollination.Candidate;
 import io.github.slugblue.wildroots.genetics.pollination.Donor;
+import io.github.slugblue.wildroots.genetics.pollination.Brush;
 import io.github.slugblue.wildroots.genetics.pollination.FatherSelector;
+import io.github.slugblue.wildroots.genetics.pollination.Outcrossing;
+import io.github.slugblue.wildroots.genetics.pollination.SeedSet;
+import io.github.slugblue.wildroots.genetics.codec.GenomeCodec;
+import io.github.slugblue.wildroots.genetics.codec.GenomeMigrator;
+import io.github.slugblue.wildroots.genetics.codec.GenomeRecord;
+import io.github.slugblue.wildroots.genetics.codec.LayoutDictionary;
 import io.github.slugblue.wildroots.genetics.population.WildPopulation;
 import io.github.slugblue.wildroots.genetics.quality.Booster;
 import io.github.slugblue.wildroots.genetics.quality.Grade;
@@ -115,6 +122,13 @@ class EngineTotalityPropertyTest {
         }
         Genome child = Offspring.of(new LotRecord(wild, sel.fathers(), rng.nextDouble()), s.mutation(), rng.nextLong());
         assertEquals(l, child.layout());
+        double pOut = Outcrossing.pOut(s, sel.compatibleNeighbours(), sel.compatibleDonors(), rng.nextBoolean(),
+                Brush.values()[rng.nextInt(3)]);
+        unit(new double[] {pOut});
+        double seeds = SeedSet.expected(s, rng.nextDouble(), rng.nextBoolean(), sel.compatiblePollen(),
+                Brush.values()[rng.nextInt(3)], rng.nextBoolean());
+        assertTrue(Double.isFinite(seeds) && seeds >= 0 && seeds <= 12);
+        exerciseCodec(s, any, rng);
         List<GradedInput> in = new ArrayList<>();
         for (int i = 0; i < 1 + rng.nextInt(9); i++) {
             in.add(new GradedInput(1 + rng.nextInt(4), rng.nextInt(3), 1 + rng.nextInt(64), rng.nextBoolean()));
@@ -147,36 +161,49 @@ class EngineTotalityPropertyTest {
         return new AlleleFreq(p0, p1, 1 - p0 - p1);
     }
 
+    /**
+     * Random valid species up to the DataLimits bounds: 0–16 qualitative traits
+     * (an S-locus with up to 16 alleles), 0–16 load loci, 1–32 quantitative
+     * traits of 1–16 loci, all within 512 bits; 0–64 trade-off pairs with c up
+     * to 10; budget weights up to 10, limit up to 32; mutation up to 0.05.
+     */
     static SpeciesDef randomSpecies(SplitMix64 rng, int n) {
-        int nq = 1 + rng.nextInt(8);
-        List<QuantTrait> quant = new ArrayList<>();
-        Map<TraitId, Integer> elite = new TreeMap<>();
-        int bits = 0;
-        for (int i = 0; i < nq; i++) {
-            int loci = 1 + rng.nextInt(16);
-            if (bits + loci * 4 > 400) {
-                loci = 1;
-            }
-            bits += loci * 4;
-            TraitId id = TraitId.of(i == 0 ? "yield" : i == 1 ? "fruit_size" : "t" + i);
-            quant.add(new QuantTrait(id, loci, u(rng, 0, 0.5), rng.nextBoolean()));
-            elite.put(id, rng.nextInt(loci + 1) / 2);
-        }
         List<QualTrait> qual = new ArrayList<>();
-        int nc = rng.nextInt(5);
-        for (int i = 0; i < nc; i++) {
-            qual.add(new QualTrait(TraitId.of(i == 0 ? "bitterness" : "c" + i),
-                    rng.nextBoolean() ? Dominance.WILD : Dominance.DOMESTIC, rng.nextDouble(), rng.nextBoolean(), 2,
-                    false, 2));
-        }
+        int bits = 0;
         boolean si = rng.nextInt(4) == 0;
         if (si) {
             int alleles = 2 + rng.nextInt(15);
             qual.add(new QualTrait(TraitId.of("self_incompat"), Dominance.WILD, 0, false, alleles, true,
                     1 + rng.nextInt(alleles)));
+            bits += 2 * (32 - Integer.numberOfLeadingZeros(alleles - 1));
         }
+        int nc = rng.nextInt(si ? 16 : 17);
+        for (int i = 0; i < nc; i++) {
+            qual.add(new QualTrait(TraitId.of(i == 0 ? "bitterness" : "c" + i),
+                    rng.nextBoolean() ? Dominance.WILD : Dominance.DOMESTIC, rng.nextDouble(), rng.nextBoolean(), 2,
+                    false, 2));
+            bits += 2;
+        }
+        int loadLoci = rng.nextInt(17);
+        bits += 2 * loadLoci;
+        int nq = 1 + rng.nextInt(32);
+        List<QuantTrait> quant = new ArrayList<>();
+        Map<TraitId, Integer> elite = new TreeMap<>();
+        for (int i = 0; i < nq; i++) {
+            int room = (512 - bits) / 4 - (nq - i - 1);
+            if (room < 1) {
+                break;
+            }
+            int loci = 1 + rng.nextInt(Math.min(16, room));
+            bits += loci * 4;
+            TraitId id = TraitId.of(i == 0 ? "yield" : i == 1 ? "fruit_size" : "t" + i);
+            quant.add(new QuantTrait(id, loci, u(rng, 0, 0.5), rng.nextBoolean()));
+            elite.put(id, rng.nextInt(loci + 1) / 2);
+        }
+        nq = quant.size();
         List<Tradeoff> trade = new ArrayList<>();
-        for (int i = 0; i < rng.nextInt(10); i++) {
+        int pairs = rng.nextInt(65);
+        for (int i = 0; i < pairs; i++) {
             trade.add(new Tradeoff(quant.get(rng.nextInt(nq)).id(), quant.get(rng.nextInt(nq)).id(), u(rng, 0, 10),
                     rng.nextDouble()));
         }
@@ -192,15 +219,87 @@ class EngineTotalityPropertyTest {
         }
         Map<TraitId, Double> axes = new TreeMap<>();
         axes.put(quant.get(0).id(), 0.5);
-        axes.put(quant.get(nq - 1).id(), nq == 1 ? 0.5 : 0.5);
+        axes.put(quant.get(nq - 1).id(), 0.5);
         return new SpeciesDef("test:s" + n, u(rng, -2, 0), u(rng, 0, 2), quant, trade, budget,
                 new WildFrequencies(freq(rng), freq(rng), elite, freq(rng), Map.of()), rng.nextDouble(), qual,
-                Map.of(), new LoadDef(rng.nextInt(17), rng.nextDouble(), u(rng, 0.01, 1)),
+                Map.of(), new LoadDef(loadLoci, rng.nextDouble(), u(rng, 0.01, 1)),
                 new MutationRates(u(rng, 0, 0.05), u(rng, 0, 0.05)),
                 new Pollination("insect", !si, rng.nextInt(17), rng.nextDouble(),
                         rng.nextBoolean() ? Optional.of(new Bees(rng.nextDouble(), rng.nextInt(65))) : Optional.empty(),
                         rng.nextDouble()),
                 new Timing(u(rng, 0.1, 1440), 0), axes);
+    }
+
+    /**
+     * A species exactly on the DataLimits bounds: 32 quantitative traits of 4
+     * loci (512 bits), 64 trade-off pairs at c 10, every budget weight 10,
+     * the given limit, mutation 0.05, radius 16.
+     */
+    static SpeciesDef boundarySpecies(double limit, double theta) {
+        List<QuantTrait> quant = new ArrayList<>();
+        Map<TraitId, Double> w = new TreeMap<>();
+        Map<TraitId, Integer> elite = new TreeMap<>();
+        for (int i = 0; i < 32; i++) {
+            TraitId id = TraitId.of(i == 0 ? "yield" : i == 1 ? "fruit_size" : String.format("t%02d", i));
+            quant.add(new QuantTrait(id, 4, 0.5, i % 2 == 0));
+            w.put(id, 10.0);
+            elite.put(id, 4);
+        }
+        List<Tradeoff> trade = new ArrayList<>();
+        for (int i = 0; i < 64; i++) {
+            trade.add(new Tradeoff(quant.get(i % 32).id(), quant.get((i * 7 + 1) % 32).id(), 10, theta));
+        }
+        return new SpeciesDef("test:boundary", -4, 4, quant, trade, new Budget(limit, w),
+                new WildFrequencies(new AlleleFreq(0, 0, 1), new AlleleFreq(1, 0, 0), elite,
+                        new AlleleFreq(0, 0, 1), Map.of()), 1, List.of(), Map.of(), new LoadDef(0, 1, 0.01),
+                new MutationRates(0.05, 0.05), new Pollination("insect", true, 16, 1, Optional.of(new Bees(1, 64)), 0),
+                new Timing(1440, 0), Map.of(quant.get(0).id(), 1.0));
+    }
+
+    @Test
+    void engineIsTotalOnBoundaryDefinitions() {
+        SplitMix64 rng = new SplitMix64(1101);
+        for (double limit : new double[] {0.01, 32}) {
+            for (double theta : new double[] {0, 1}) {
+                SpeciesDef s = boundarySpecies(limit, theta);
+                List<Problem> p = DefinitionValidator.validate(s);
+                assertTrue(!DefinitionValidator.hasErrors(p), p::toString);
+                assertEquals(512, GenomeLayout.of(s).totalBits());
+                List<CultivarDef> profiles = List.of(randomCultivar(rng, s, "a"), randomCultivar(rng, s, "b"));
+                for (int k = 0; k < 200; k++) {
+                    exercise(s, profiles, rng, k);
+                }
+            }
+        }
+    }
+
+    /** Decode and migration of a random genome into an edited species (one trait dropped, one locus added). */
+    static void exerciseCodec(SpeciesDef s, Genome g, SplitMix64 rng) {
+        GenomeRecord r = GenomeCodec.encode(g);
+        assertEquals(g, GenomeCodec.decode(r, s.id(), g.layout()).genome());
+        List<QuantTrait> edited = new ArrayList<>(s.quantitative());
+        if (edited.size() > 1) {
+            edited.remove(edited.size() - 1);
+        }
+        QuantTrait first = edited.get(0);
+        edited.set(0, new QuantTrait(first.id(), Math.min(16, first.loci() + 1), first.sigmaEnv(),
+                first.vigorAffected()));
+        SpeciesDef next = new SpeciesDef(s.id(), s.tempMin(), s.tempMax(), edited, List.of(), Budget.NONE, s.wild(),
+                s.wildF(), s.qualitative(), s.starterFreq(), s.load(), s.mutation(), s.pollination(), s.timing(),
+                Map.of(edited.get(0).id(), 1.0));
+        if (GenomeLayout.bitsOf(next) > 512) {
+            return;
+        }
+        GenomeLayout nl = GenomeLayout.of(next);
+        LayoutDictionary d = new LayoutDictionary();
+        d.register(s.id(), g.layout());
+        d.register(s.id(), nl);
+        GenomeMigrator.Result m = GenomeMigrator.migrate(r, next, nl, d, rng.nextLong());
+        assertTrue(m.genome().isPresent(), m.warnings()::toString);
+        assertEquals(nl, m.genome().get().layout());
+        GenomeMigrator.Result unknown = GenomeMigrator.migrate(r, next, nl, new LayoutDictionary(), rng.nextLong());
+        assertEquals(nl.equals(g.layout()) ? GenomeMigrator.Status.UNCHANGED
+                : GenomeMigrator.Status.REGENERATED_UNKNOWN_LAYOUT, unknown.status());
     }
 
     static CultivarDef randomCultivar(SplitMix64 rng, SpeciesDef s, String suffix) {

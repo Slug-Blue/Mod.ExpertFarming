@@ -51,7 +51,7 @@ Wild Roots (`wildroots`) — Gradle-сборка мода для Minecraft 1.20.
 
 Файл `genetics/build.gradle`: плагин `java-library`, toolchain Java 17. Зависимостей нет, кроме тестовых JUnit 5 (BOM `junit_version`). Единственный репозиторий — Maven Central через `exclusiveContent` с группами `org.junit*`, `org.opentest4j`, `org.apiguardian`.
 
-- `genetics/src/main/java/io/github/slugblue/wildroots/genetics/` — пакеты `api`, `model`, `random`, `codec`, `phenotype`, `breeding`, `pollination`, `classify`, `population`, `quality`, `validation` (архитектура §3). Тесты — `genetics/src/test/java/…`, эталоны — `genetics/src/test/resources/golden/`; полный прогон модели темпа — `./gradlew :genetics:tempoFull` (не входит в `build`).
+- `genetics/src/main/java/io/github/slugblue/wildroots/genetics/` — пакеты `api`, `model`, `random`, `codec`, `phenotype`, `breeding`, `pollination`, `classify`, `population`, `quality`, `validation` (архитектура §3). Тесты — `genetics/src/test/java/…`, эталоны — `genetics/src/test/resources/golden/`; полный прогон модели темпа — `./gradlew :genetics:tempoFull`, замер времени вызовов движка (SEC-30) — `./gradlew :genetics:perfTest`; обе задачи не входят в `build`.
 - `genetics/src/test/java/io/github/slugblue/wildroots/genetics/GeneticsIsolationTest.java` — проверяет, что `GeneticsService` — интерфейс и что `net.minecraft.world.level.Level` и `net.minecraftforge.fml.common.Mod` на classpath не находятся (`ClassNotFoundException`).
 
 Класс, который импортирует `net.minecraft.*`, в `:genetics` не скомпилируется: Minecraft на classpath подпроекта нет. Это же проверяют правила ArchUnit `geneticsUsesOnlyJdk` и `geneticsDoesNotDependOnMod` (§4.5).

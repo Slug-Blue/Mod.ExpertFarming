@@ -40,7 +40,7 @@ tasks.withType(JavaCompile).configureEach {
 tasks.named('test', Test).configure {
     useJUnitPlatform {
         // WR-112: the full tempo-model run (500 repeats) is on demand only
-        excludeTags 'tempo-full'
+        excludeTags 'tempo-full', 'perf'
     }
     testLogging {
         showStandardStreams = false
@@ -69,4 +69,21 @@ tasks.register('tempoFull', Test) {
 tasks.withType(AbstractArchiveTask).configureEach {
     preserveFileTimestamps = false
     reproducibleFileOrder = true
+}
+
+// SEC-30: p99 timing of engine calls, noisy on shared runners, so on demand only.
+// ./gradlew :genetics:perfTest
+tasks.register('perfTest', Test) {
+    description = 'Runs the SEC-30 engine timing test (p99 <= 50 us per call).'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'perf'
+    }
+    testLogging {
+        showStandardStreams = true
+    }
+    shouldRunAfter tasks.named('test')
+    outputs.upToDateWhen { false }
 }
