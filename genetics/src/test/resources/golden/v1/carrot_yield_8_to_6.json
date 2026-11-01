@@ -1,0 +1,15 @@
+{
+  "description": "yield 8 -> 6 loci: loci 6..7 dropped with a warning",
+  "old_species": "wild_carrot_yield8",
+  "old_layout_registered": true,
+  "current_species": "wild_carrot",
+  "record": { "v": 1, "sp": "wildroots:wild_carrot", "lh": "01d480b4ddad9ec9", "a": ["a9092a40a5a98418", "515855a124a45918", "00000000002c6447"] },
+  "expected": {
+    "status": "MIGRATED",
+    "lh": "cee0bc2c52916ae3",
+    "a": ["a9092a40a5a98418", "475855a124a45918", "0000000000002c64"],
+    "warnings": [
+      "trait yield lost loci 6..7"
+    ]
+  }
+}

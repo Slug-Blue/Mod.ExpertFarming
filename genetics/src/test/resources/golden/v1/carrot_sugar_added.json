@@ -1,0 +1,15 @@
+{
+  "description": "new trait sugar: background with a warning",
+  "old_species": "wild_carrot",
+  "old_layout_registered": true,
+  "current_species": "wild_carrot_sugar",
+  "record": { "v": 1, "sp": "wildroots:wild_carrot", "lh": "cee0bc2c52916ae3", "a": ["09288846a6156409", "cc596914891505a6", "0000000000000517"] },
+  "expected": {
+    "status": "MIGRATED",
+    "lh": "6e6c95df019d870a",
+    "a": ["09288846a6156409", "6914800a891505a6", "000000000517cc59"],
+    "warnings": [
+      "new trait sugar: background"
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "description": "current layout: decoded as is",
+  "old_species": "wild_carrot",
+  "old_layout_registered": true,
+  "current_species": "wild_carrot",
+  "record": { "v": 1, "sp": "wildroots:wild_carrot", "lh": "cee0bc2c52916ae3", "a": ["589010a915586969", "4771180a0a4aa945", "00000000000025de"] },
+  "expected": {
+    "status": "UNCHANGED",
+    "lh": "cee0bc2c52916ae3",
+    "a": ["589010a915586969", "4771180a0a4aa945", "00000000000025de"],
+    "warnings": []
+  }
+}

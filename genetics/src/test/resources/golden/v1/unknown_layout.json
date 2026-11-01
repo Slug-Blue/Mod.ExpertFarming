@@ -1,0 +1,15 @@
+{
+  "description": "layout missing from the dictionary: regenerated as wild",
+  "old_species": "wild_carrot_yield8",
+  "old_layout_registered": false,
+  "current_species": "wild_carrot",
+  "record": { "v": 1, "sp": "wildroots:wild_carrot", "lh": "01d480b4ddad9ec9", "a": ["09295291a218908a", "0451a2610a148988", "00000000003a6776"] },
+  "expected": {
+    "status": "REGENERATED_UNKNOWN_LAYOUT",
+    "lh": "cee0bc2c52916ae3",
+    "a": ["1442051000001508", "8201101104451044", "0000000000000a23"],
+    "warnings": [
+      "unknown layout 1d480b4ddad9ec9 of wildroots:wild_carrot: genome regenerated as wild"
+    ]
+  }
+}

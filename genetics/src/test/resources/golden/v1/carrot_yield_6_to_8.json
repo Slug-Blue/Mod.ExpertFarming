@@ -1,0 +1,15 @@
+{
+  "description": "yield 6 -> 8 loci: old alleles kept, new loci background",
+  "old_species": "wild_carrot",
+  "old_layout_registered": true,
+  "current_species": "wild_carrot_yield8",
+  "record": { "v": 1, "sp": "wildroots:wild_carrot", "lh": "cee0bc2c52916ae3", "a": ["605a14142558a499", "d9451494a6822064", "000000000000071c"] },
+  "expected": {
+    "status": "MIGRATED",
+    "lh": "01d480b4ddad9ec9",
+    "a": ["605a14142558a499", "44551494a6822064", "0000000000071cd9"],
+    "warnings": [
+      "trait yield new loci 6..7: background"
+    ]
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "description": "S-locus narrowed 10 -> 6 alleles: values >= 6 replaced with a warning",
+  "old_species": "wild_carrot_s10",
+  "old_layout_registered": true,
+  "current_species": "wild_carrot_s6",
+  "record": { "v": 1, "sp": "wildroots:wild_carrot", "lh": "ab21548d6e65c036", "a": ["1a02526061946465", "bb910480a1464858", "00000000001da777"] },
+  "expected": {
+    "status": "MIGRATED",
+    "lh": "f1e2c2bae1a6bf43",
+    "a": ["1a02526061946465", "bb910480a1464858", "0000000000096777"],
+    "warnings": [
+      "trait self_incompat locus 0 allele 6 >= 6: background",
+      "trait self_incompat locus 0 allele 7 >= 6: background"
+    ]
+  }
+}

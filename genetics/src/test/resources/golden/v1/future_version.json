@@ -1,0 +1,15 @@
+{
+  "description": "format version 2 from a newer mod: inert, raw kept",
+  "old_species": "wild_carrot",
+  "old_layout_registered": true,
+  "current_species": "wild_carrot",
+  "record": { "v": 2, "sp": "wildroots:wild_carrot", "lh": "cee0bc2c52916ae3", "a": ["9416a6080802aa88", "9c69580a45065856", "0000000000003336"] },
+  "expected": {
+    "status": "INERT",
+    "lh": null,
+    "a": null,
+    "warnings": [
+      "format version 2 is from a newer mod version: kept raw"
+    ]
+  }
+}

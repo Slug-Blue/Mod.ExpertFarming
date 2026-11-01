@@ -1,0 +1,15 @@
+{
+  "description": "dormancy qualitative -> quantitative: background with a warning",
+  "old_species": "wild_carrot",
+  "old_layout_registered": true,
+  "current_species": "wild_carrot_dormancy_quant",
+  "record": { "v": 1, "sp": "wildroots:wild_carrot", "lh": "cee0bc2c52916ae3", "a": ["9294262518480906", "5014a21528a1641a", "00000000000029d6"] },
+  "expected": {
+    "status": "MIGRATED",
+    "lh": "1ff8c47e9fb861e6",
+    "a": ["9426251848011906", "14a21528a1641a92", "000000000009d650"],
+    "warnings": [
+      "trait dormancy changed kind QUALITATIVE -> QUANTITATIVE: background"
+    ]
+  }
+}

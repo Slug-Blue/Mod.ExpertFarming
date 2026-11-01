@@ -1,0 +1,15 @@
+{
+  "description": "flavor removed: dropped with a warning",
+  "old_species": "wild_carrot",
+  "old_layout_registered": true,
+  "current_species": "wild_carrot_noflavor",
+  "record": { "v": 1, "sp": "wildroots:wild_carrot", "lh": "cee0bc2c52916ae3", "a": ["24991121a9a46569", "414aa166640a29a0", "0000000000001a81"] },
+  "expected": {
+    "status": "MIGRATED",
+    "lh": "9149e5ec793d1c80",
+    "a": ["29a0249911a46569", "1a81414aa166640a"],
+    "warnings": [
+      "trait flavor removed: dropped"
+    ]
+  }
+}

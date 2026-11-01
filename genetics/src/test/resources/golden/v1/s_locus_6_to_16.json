@@ -1,0 +1,13 @@
+{
+  "description": "S-locus widened 6 -> 16 alleles: values kept",
+  "old_species": "wild_carrot_s6",
+  "old_layout_registered": true,
+  "current_species": "wild_carrot_s16",
+  "record": { "v": 1, "sp": "wildroots:wild_carrot", "lh": "f1e2c2bae1a6bf43", "a": ["264a52926a841161", "f135106690190851", "0000000000001734"] },
+  "expected": {
+    "status": "MIGRATED",
+    "lh": "ab21568d6e65c39c",
+    "a": ["264a52926a841161", "f135106690190851", "0000000000001734"],
+    "warnings": []
+  }
+}
