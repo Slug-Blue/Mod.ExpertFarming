@@ -75,7 +75,7 @@ public final class DefJson {
             Map<String, Object> q = d.obj(e.getValue(), path);
             QuantTrait def = Defaults.quantTrait(TraitId.of(e.getKey()));
             quant.add(new QuantTrait(def.id(),
-                    (int) d.numOr(q.get("loci"), def.loci(), path + ".loci"),
+                    d.intOr(q.get("loci"), def.loci(), path + ".loci", true),
                     d.numOr(q.get("sigma_env"), def.sigmaEnv(), path + ".sigma_env"),
                     d.boolOr(q.get("vigor_affected"), def.vigorAffected(), path + ".vigor_affected")));
         }
@@ -128,12 +128,12 @@ public final class DefJson {
             Map<String, Object> q = d.obj(e.getValue(), path);
             String dom = d.str(q.get("dominant"), path + ".dominant", "wild");
             boolean s = d.boolOr(q.get("self_incompat"), false, path + ".self_incompat", false);
-            int alleles = (int) d.numOr(q.get("alleles"), 2, path + ".alleles", false);
+            int alleles = d.intOr(q.get("alleles"), 2, path + ".alleles", false);
             qual.add(new QualTrait(TraitId.of(e.getKey()),
                     "domestic".equals(dom) ? Dominance.DOMESTIC : Dominance.WILD,
                     d.numOr(q.get("wild_freq"), 0.0, path + ".wild_freq", !s),
                     d.boolOr(q.get("toxic"), false, path + ".toxic", false), alleles, s,
-                    (int) d.numOr(q.get("patch_alleles"), s ? Defaults.S_ALLELES_PER_PATCH : 2,
+                    d.intOr(q.get("patch_alleles"), s ? Defaults.S_ALLELES_PER_PATCH : 2,
                             path + ".patch_alleles", false)));
         }
         Map<TraitId, Double> starter = d.numMap(m.get("starter_freq"), "starter_freq");
@@ -144,7 +144,7 @@ public final class DefJson {
             load = Defaults.LOAD;
         } else {
             Map<String, Object> l = d.obj(m.get("load"), "load");
-            load = new LoadDef((int) d.numOr(l.get("loci"), Defaults.LOAD.loci(), "load.loci"),
+            load = new LoadDef(d.intOr(l.get("loci"), Defaults.LOAD.loci(), "load.loci", true),
                     d.numOr(l.get("freq"), Defaults.LOAD.freq(), "load.freq"),
                     d.numOr(l.get("step"), Defaults.LOAD.step(), "load.step"));
         }
@@ -158,11 +158,11 @@ public final class DefJson {
         if (po.get("bees") != null) {
             Map<String, Object> b = d.obj(po.get("bees"), "pollination.bees");
             bees = Optional.of(new Bees(d.num(b.get("outcross"), "pollination.bees.outcross"),
-                    (int) d.num(b.get("carry_range"), "pollination.bees.carry_range")));
+                    d.intOr(b.get("carry_range"), 0, "pollination.bees.carry_range", true)));
         }
         Pollination pol = new Pollination(d.str(po.get("mode"), "pollination.mode", "insect"),
                 d.boolOr(po.get("self_compatible"), true, "pollination.self_compatible"),
-                (int) d.num(po.get("radius"), "pollination.radius"),
+                d.intOr(po.get("radius"), 0, "pollination.radius", true),
                 d.num(po.get("outcross"), "pollination.outcross"), bees,
                 d.numOr(po.get("seed_set_no_pollinator"), Defaults.SEED_SET_NO_POLLINATOR,
                         "pollination.seed_set_no_pollinator"));
@@ -203,8 +203,8 @@ public final class DefJson {
                 : Optional.of(CultivarId.of(d.str(m.get("parent"), "parent", "")));
         return new CultivarDef(CultivarId.of(d.str(m.get("id"), "id", "")),
                 d.str(m.get("species"), "species", ""),
-                (int) d.num(m.get("tier"), "tier"),
-                (int) d.numOr(m.get("priority"), 0, "priority", false),
+                d.intOr(m.get("tier"), 0, "tier", true),
+                d.intOr(m.get("priority"), 0, "priority", false),
                 new TreeMap<>(quant), new TreeMap<>(qual),
                 anyOf.stream().map(TreeMap::new).map(t -> (java.util.SortedMap<TraitId, QualReq>) t).toList(),
                 d.numOr(m.get("hysteresis"), Defaults.HYSTERESIS, "hysteresis"),
@@ -259,6 +259,19 @@ public final class DefJson {
         return num(v, path);
     }
 
+    /** An int field: missing → default (WARN if {@code warn}); non-finite or fractional → ERROR. */
+    private int intOr(Object v, int def, String path, boolean warn) {
+        if (v == null) {
+            if (warn) {
+                problems.add(Problem.warn(path, "missing, default " + def + " applied"));
+            }
+            return def;
+        }
+        double x = num(v, path);
+        return Double.isNaN(x) && !(v instanceof Double) ? def
+                : io.github.slugblue.wildroots.genetics.validation.DataLimits.toInt(x, def, path, problems);
+    }
+
     private boolean boolOr(Object v, boolean def, String path) {
         return boolOr(v, def, path, true);
     }
@@ -300,8 +313,7 @@ public final class DefJson {
             return out;
         }
         for (Map.Entry<String, Object> e : obj(v, path).entrySet()) {
-            double x = num(e.getValue(), path + "." + e.getKey());
-            out.put(TraitId.of(e.getKey()), Double.isFinite(x) ? (int) x : Integer.MIN_VALUE);
+            out.put(TraitId.of(e.getKey()), intOr(e.getValue(), Integer.MIN_VALUE, path + "." + e.getKey(), true));
         }
         return out;
     }

@@ -1,0 +1,40 @@
+{
+ "id": "wildroots:carrot",
+ "species": "wildroots:wild_carrot",
+ "tier": 2,
+ "priority": 0,
+ "requires": {
+  "quantitative": {
+   "fruit_size": {
+    "min": 0.75
+   },
+   "flavor": {
+    "min": 0.6
+   },
+   "sugar": {
+    "min": 0.5
+   }
+  },
+  "qualitative": {
+   "bitterness": "domestic",
+   "color_y1": "domestic",
+   "color_y2": "domestic",
+   "color_p": "wild"
+  }
+ },
+ "hysteresis": 0.05,
+ "produce": {
+  "item": "wildroots:carrot",
+  "food_mult": 1.0,
+  "food_reference": {
+   "nutrition": 3,
+   "saturation": 0.6
+  },
+  "quality_axes": {
+   "fruit_size": 0.5,
+   "flavor": 0.5
+  },
+  "mother_item": "wildroots:mother_root"
+ },
+ "pollination_override": null
+}

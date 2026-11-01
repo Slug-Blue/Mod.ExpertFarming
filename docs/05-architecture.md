@@ -96,7 +96,7 @@ mod/                       ForgeGradle 6 + Parchment + MixinGradle; implementati
 | `quality` | `QualityIndex`, `Grade`, `ProcessingQuality` (формула GDD §6.6) |
 | `random` | `SplitMix64`, `Hash64` (свой 64-битный хэш), `Gaussian` (свой Box–Muller) |
 | `codec` | `GenomeRecord` (нейтральная форма для сохранения), `LayoutDescriptor`, `GenomeMigrator` |
-| `validation` | `DefinitionValidator`, `Problem` (путь в JSON + сообщение) |
+| `validation` | `DefinitionValidator`, `Problem` (путь в JSON + сообщение), `DataLimits` (таблица SEC-28; единственная копия, мод-слой её использует), `ReferenceGraph` (ссылки и циклы, SEC-29) |
 
 **Пакеты `:mod`** (`io.github.slugblue.wildroots`):
 
@@ -106,7 +106,7 @@ mod/                       ForgeGradle 6 + Parchment + MixinGradle; implementati
 | `core.registry` | `ModBlocks`, `ModItems`, `ModBlockEntities`, `ModMenus`, `ModRecipeSerializers`, `ModLootModifiers`, `ModPoiTypes`, `ModProfessions`, `ModFeatures`, `ModProcessors`, `ModPoolElements`, `ModConditions`, `ModTriggers`, `ModCreativeTabs` |
 | `core.config` | `CommonConfig` (`disabledLines`, отладка), `ServerConfig` (`mode` = `strict`/`soft` и прочие параметры мира) |
 | `core.line` | `LineRegistry` (неизменяем после загрузки модов), `LinePackFinder` (`AddPackFindersEvent`), `LineLoadedCondition` |
-| `core.safety` | Общие защитные библиотеки (`09-security.md` Δ8), одна реализация на весь мод, копий по фичам нет: `LoadedLevelAccess` (чтение блоков и BE только в загруженных чанках, SEC-32), `Guarded.run` (изоляция исключений в точках входа, SEC-34), `NbtLimits`/`NbtBudget` (SEC-09), `DataLimits` (SEC-28), `PlayerText` (санитайзер текста игрока, SEC-07), `WorldSecret` (секрет мира, SEC-25; недоступен из `network`, `client`, `compat`), `AuditLog` (SEC-47) |
+| `core.safety` | Общие защитные библиотеки (`09-security.md` Δ8), одна реализация на весь мод, копий по фичам нет: `LoadedLevelAccess` (чтение блоков и BE только в загруженных чанках, SEC-32), `Guarded.run` (изоляция исключений в точках входа, SEC-34), `NbtLimits`/`NbtBudget` (SEC-09), `DataLimits` (SEC-28; класс живёт в `:genetics` — `genetics.validation.DataLimits`, потому что его использует валидатор движка; WR-110), `PlayerText` (санитайзер текста игрока, SEC-07), `WorldSecret` (секрет мира, SEC-25; недоступен из `network`, `client`, `compat`), `AuditLog` (SEC-47) |
 | `data` | `SpeciesManager`, `CultivarManager`, `QualityRolesManager` (reload listeners), Codec-схемы JSON, `DefinitionsSnapshot` (неизменяемый снимок для потока сервера), `DefinitionsSyncPacket` |
 | `plant` | `PlantBlock` и архетипы (§7), `PlantBlockEntity`, `PlantService`, `GrowthLogic`, `ClimateService`, `HarvestService` |
 | `pollination` | `BloomIndex`, `BeePollinationGoal`, `BeePollenCapability`, `BrushItem` |
