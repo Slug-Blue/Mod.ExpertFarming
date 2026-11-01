@@ -13,6 +13,7 @@ import io.github.slugblue.wildroots.genetics.model.Locus;
 import io.github.slugblue.wildroots.genetics.model.TraitId;
 import io.github.slugblue.wildroots.genetics.phenotype.CompiledSpecies;
 import io.github.slugblue.wildroots.genetics.phenotype.GenotypicValue;
+import io.github.slugblue.wildroots.genetics.phenotype.PhenotypeCalculator;
 import io.github.slugblue.wildroots.genetics.random.Hash64;
 import io.github.slugblue.wildroots.genetics.testutil.Carrot;
 import io.github.slugblue.wildroots.genetics.testutil.ChiSquare;
@@ -167,11 +168,20 @@ class PopulationTest {
         Locus y2 = Carrot.LAYOUT.section(Carrot.Y2);
         long[] cy2 = new long[2];
         Set<String> fruitArrangements = new HashSet<>();
+        int exact = 0;
         for (int i = 0; i < 2000; i++) {
             Genome g = t.plant(Carrot.SPECIES, Carrot.LAYOUT, Hash64.of(SEED, 42L, i));
-            // golden: G is threshold + 0.05 rounded up to the allele grid
-            assertEquals(11 / 24.0, GenotypicValue.of(g, fruit), 1e-12);
-            assertEquals(6 / 16.0, GenotypicValue.of(g, flavor), 1e-12);
+            // golden: G is threshold + 0.05 rounded up to the allele grid (fruit 11/24, flavor 6/16);
+            // when flavor ← yield pulls G_eff below the target, flavor is raised until G_eff holds
+            double gFruit = GenotypicValue.of(g, fruit);
+            double gFlavor = GenotypicValue.of(g, flavor);
+            double[] eff = PhenotypeCalculator.gEff(cs, g);
+            assertTrue(gFruit >= 11 / 24.0 - 1e-12);
+            assertTrue(gFlavor >= 6 / 16.0 - 1e-12);
+            assertTrue(eff[cs.quantIndex(Traits.FLAVOR)] >= 0.35 - 1e-9 && eff[cs.quantIndex(Traits.FRUIT_SIZE)] >= 0.45 - 1e-9);
+            if (Math.abs(gFlavor - 6 / 16.0) < 1e-12 && Math.abs(gFruit - 11 / 24.0) < 1e-12) {
+                exact++;
+            }
             Classification c = CultivarClassifier.classify(cs, g, Carrot.PROFILES, Optional.empty());
             assertEquals(Optional.of(Carrot.EASTERN.id()), c.cultivar(), "village plant is the landrace");
             cy2[g.allele(y2, 0, 0)]++;
@@ -183,6 +193,7 @@ class PopulationTest {
         }
         assertTrue(ChiSquare.pValue(cy2, new double[] {0.70, 0.30}) > 0.01, "y2 " + java.util.Arrays.toString(cy2));
         assertTrue(fruitArrangements.size() > 100, "alleles sit on varying loci");
+        assertTrue(exact > 1500, "most plants sit exactly on the grid target: " + exact);
         assertEquals(0.3, t.wildF());
         assertEquals(0.15, t.loadFreq());
     }

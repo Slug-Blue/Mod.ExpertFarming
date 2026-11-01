@@ -12,7 +12,9 @@ import io.github.slugblue.wildroots.genetics.model.GenomeLayout;
 import io.github.slugblue.wildroots.genetics.model.Immutable;
 import io.github.slugblue.wildroots.genetics.model.Locus;
 import io.github.slugblue.wildroots.genetics.model.TraitId;
+import io.github.slugblue.wildroots.genetics.phenotype.CompiledSpecies;
 import io.github.slugblue.wildroots.genetics.random.SplitMix64;
+import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -84,6 +86,20 @@ public record VillageTemplate(CultivarId landrace, SortedMap<TraitId, Double> ta
 
     /** Genome of a village plant. */
     public Genome plant(SpeciesDef s, GenomeLayout layout, long key) {
+        return plant(new CompiledSpecies(s, layout), key);
+    }
+
+    /**
+     * Genome of a village plant. After the targets are laid out on the allele
+     * grid, trade-offs and the budget may pull a target trait's {@code G_eff}
+     * below its target (e.g. {@code flavor ← yield} when the drawn yield is
+     * high). Then the plant is corrected towards the target by {@code G_eff}:
+     * one allele unit is added to the short trait, or, if it is full, removed
+     * from a drawn (non-target) trait, until every target holds (bounded loop).
+     */
+    public Genome plant(CompiledSpecies cs, long key) {
+        SpeciesDef s = cs.def();
+        GenomeLayout layout = cs.layout();
         SplitMix64 rng = new SplitMix64(key);
         Genome.Builder b = Genome.builder(s.id(), layout);
         double[] bg = s.wild().background().asArray();
@@ -114,7 +130,65 @@ public record VillageTemplate(CultivarId landrace, SortedMap<TraitId, Double> ta
                 Alleles.drawLocus(b, c, 0, Alleles.biallelic(fq != null ? fq : def.wildFreq()), wildF, rng);
             }
         }
+        correctByGEff(cs, b, rng);
         return b.build();
+    }
+
+    void correctByGEff(CompiledSpecies cs, Genome.Builder b, SplitMix64 rng) {
+        List<Locus> quant = cs.layout().quantitative();
+        for (int step = 0; step < 256; step++) {
+            double[] g = new double[quant.size()];
+            for (int i = 0; i < g.length; i++) {
+                g[i] = sum(b, quant.get(i)) / (4.0 * quant.get(i).loci());
+            }
+            double[] eff = cs.gEffOf(g);
+            Locus shortTrait = null;
+            for (int i = 0; i < g.length; i++) {
+                Double t = targets.get(quant.get(i).trait());
+                if (t != null && eff[i] < Math.min(1, t) - 1e-9) {
+                    shortTrait = quant.get(i);
+                    break;
+                }
+            }
+            if (shortTrait == null) {
+                return;
+            }
+            if (!bump(b, shortTrait, +1, rng)) {
+                boolean lowered = false;
+                for (Locus q : quant) {
+                    if (!targets.containsKey(q.trait()) && bump(b, q, -1, rng)) {
+                        lowered = true;
+                        break;
+                    }
+                }
+                if (!lowered) {
+                    return;
+                }
+            }
+        }
+    }
+
+    static int sum(Genome.Builder b, Locus q) {
+        int s = 0;
+        for (int l = 0; l < q.loci(); l++) {
+            s += b.get(q, l, 0) + b.get(q, l, 1);
+        }
+        return s;
+    }
+
+    /** Adds ({@code +1}) or removes ({@code −1}) one allele unit at a random slot that allows it. */
+    static boolean bump(Genome.Builder b, Locus q, int delta, SplitMix64 rng) {
+        int slots = q.loci() * 2;
+        int start = rng.nextInt(slots);
+        for (int k = 0; k < slots; k++) {
+            int i = (start + k) % slots;
+            int v = b.get(q, i / 2, i % 2) + delta;
+            if (v >= 0 && v <= 2) {
+                b.set(q, i / 2, i % 2, v);
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Puts {@code sum} allele units on random allele slots (each slot 0..2). */
