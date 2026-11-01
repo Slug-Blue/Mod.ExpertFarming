@@ -6,7 +6,7 @@
 
 Wild Roots (`wildroots`) — Gradle-сборка мода для Minecraft 1.20.1 / Forge 47.4.28 на Java 17. В ней два подпроекта: `:genetics` (чистая Java) и `:mod` (ForgeGradle 6 + Parchment + MixinGradle). Сейчас это **только каркас**: точка входа `@Mod`, пустые mixin-конфиг, AT и lang-файлы, один smoke GameTest, правила ArchUnit, проверки CI и dependency verification.
 
-**Чего пока нет.** Геномов, растений, блоков, предметов, реестров (`DeferredRegister`), конфигов, сети и клиентского кода в репозитории нет. В `:genetics` есть только пустой интерфейс `GeneticsService`, а `WildRoots` пишет в лог одну строку. Состав пакетов, который должен появиться, — это **план**: `docs/05-architecture.md` §3 (пакеты `:genetics` и `:mod`) и задачи волн в `docs/06-tasks.md` (например, операции `GeneticsService` придут с WR-113, как сказано в его javadoc).
+**Чего пока нет.** Геномов, растений, блоков, предметов, реестров (`DeferredRegister`), конфигов, сети и клиентского кода в репозитории нет. Движок `:genetics` реализован (WR-101…113: RNG и хэши, раскладка и кодек генома, фенотип, мейоз, опыление, классификация, популяции, качество, валидация, миграции, модель темпа, фасад `GeneticsService`/`Genetics`), а `WildRoots` пишет в лог одну строку и движок пока не вызывает. Состав пакетов, который должен появиться, — это **план**: `docs/05-architecture.md` §3 (пакеты `:genetics` и `:mod`) и задачи волн в `docs/06-tasks.md` (например, операции `GeneticsService` придут с WR-113, как сказано в его javadoc).
 
 ## За пять минут
 
@@ -14,7 +14,7 @@ Wild Roots (`wildroots`) — Gradle-сборка мода для Minecraft 1.20.
 |---|---|
 | Состав сборки | `settings.gradle`: `include ':genetics', ':mod'`, репозитории плагинов, foojay |
 | Все версии | `gradle.properties` (точные, без диапазонов, SEC-38) |
-| Движок генетики (пока заглушка) | `genetics/src/main/java/io/github/slugblue/wildroots/genetics/api/GeneticsService.java` |
+| Движок генетики | `genetics/src/main/java/io/github/slugblue/wildroots/genetics/` (фасад — `api/GeneticsService.java`, реализация — `api/Genetics.java`, значения по умолчанию — `api/Defaults.java`) |
 | Точка входа мода | `mod/src/main/java/io/github/slugblue/wildroots/WildRoots.java` |
 | Метаданные мода | `mod/src/main/resources/META-INF/mods.toml`, `pack.mcmeta` |
 | Сборка мода, запуски, jar | `mod/build.gradle` |
@@ -51,7 +51,7 @@ Wild Roots (`wildroots`) — Gradle-сборка мода для Minecraft 1.20.
 
 Файл `genetics/build.gradle`: плагин `java-library`, toolchain Java 17. Зависимостей нет, кроме тестовых JUnit 5 (BOM `junit_version`). Единственный репозиторий — Maven Central через `exclusiveContent` с группами `org.junit*`, `org.opentest4j`, `org.apiguardian`.
 
-- `genetics/src/main/java/io/github/slugblue/wildroots/genetics/api/GeneticsService.java` — пустой интерфейс-заглушка фасада.
+- `genetics/src/main/java/io/github/slugblue/wildroots/genetics/` — пакеты `api`, `model`, `random`, `codec`, `phenotype`, `breeding`, `pollination`, `classify`, `population`, `quality`, `validation` (архитектура §3). Тесты — `genetics/src/test/java/…`, эталоны — `genetics/src/test/resources/golden/`; полный прогон модели темпа — `./gradlew :genetics:tempoFull` (не входит в `build`).
 - `genetics/src/test/java/io/github/slugblue/wildroots/genetics/GeneticsIsolationTest.java` — проверяет, что `GeneticsService` — интерфейс и что `net.minecraft.world.level.Level` и `net.minecraftforge.fml.common.Mod` на classpath не находятся (`ClassNotFoundException`).
 
 Класс, который импортирует `net.minecraft.*`, в `:genetics` не скомпилируется: Minecraft на classpath подпроекта нет. Это же проверяют правила ArchUnit `geneticsUsesOnlyJdk` и `geneticsDoesNotDependOnMod` (§4.5).

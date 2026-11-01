@@ -144,9 +144,11 @@ public interface GeneticsService {
   List<FatherPick> chooseFathers(SpeciesDef s, Genome mother, List<Candidate> nearby, List<Donor> donors, long rngKey);
   int grade(Phenotype p, CultivarDef cultivar);                    // класс 1–4 (GDD §6.4)
   ProcessingResult process(List<GradedInput> mains, List<Booster> boosters); // GDD §6.6
-  GenomeRecord encode(Genome g);  Genome decode(GenomeRecord r, SpeciesDef s); // §5
+  GenomeRecord encode(Genome g);  DecodeResult decode(GenomeRecord r, SpeciesDef s); // §5: Valid | Inert, с миграцией
 }
 ```
+
+Реализация — `api.Genetics` (WR-113). Уточнения к наброску: `decode` возвращает `DecodeResult` (`Valid | Inert`, §5.2) и сам проводит миграцию по словарю раскладок (§5.3); у `offspring` есть перегрузка с `SpeciesDef` (вероятности мутаций), а вариант без вида берёт его из снимка определений, переданного при создании; в порт входят `classifyClone` (статус клона, GDD §6.2) и `validate` (§4.4). `PatchPassport` несёт `worldSeed` (WR-108).
 
 `Environment` — запись `(temperature, moisturized, light, compostBonus)`. Её считает `ClimateService` в мод-слое из клетки: температура с поправкой на высоту — одна функция для роста и для worldgen (GDD §3.2). `Candidate` — `(Genome, dx, dy, dz, sAlleles)`. Движок не знает, откуда взялся кандидат (индекс цветения, пчела, кисть).
 
