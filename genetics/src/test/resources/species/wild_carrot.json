@@ -25,6 +25,7 @@
                         "elite_loci": { "yield": 2, "fruit_size": 2, "growth_speed": 1, "flavor": 1,
                                         "cold_tolerance": 1, "heat_tolerance": 1, "drought_tolerance": 1 } },
   "wild_F": 0.1,
+  "starter_freq": { "color_y1": 0.35, "bitterness": 0.45 },
   "qualitative": {
     "dormancy":   { "dominant": "wild", "wild_freq": 0.30 },
     "bitterness": { "dominant": "wild", "wild_freq": 0.40, "toxic": false },

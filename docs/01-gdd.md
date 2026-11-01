@@ -211,6 +211,7 @@
                         "elite_loci": { "yield": 2, "fruit_size": 2, "growth_speed": 1, "flavor": 1,
                                         "cold_tolerance": 1, "heat_tolerance": 1, "drought_tolerance": 1 } },
   "wild_F": 0.1,
+  "starter_freq": { "color_y1": 0.35, "bitterness": 0.45 },
   "qualitative": {
     "dormancy":   { "dominant": "wild", "wild_freq": 0.30 },
     "bitterness": { "dominant": "wild", "wild_freq": 0.40, "toxic": false },
@@ -998,7 +999,7 @@ Id анализатора — `seed_analyser` (британское написа
 ### 11.2 Требования к миру (для Level Designer)
 
 - Стартовый патч дикой моркови в радиусе 128 блоков от спавна, **10–14** зрелых растений (принято из worldgen §15.1 №5), гнездо в 6–16 блоках. В уже игранных мирах патч не ставится (конфиг `starterPatch = force`); спавн на острове — ближайшая суша, даже дальше 128 блоков (ответ на worldgen §15.2 №1–2).
-- Генетика стартового патча щедрее: `y1` = 0.35, `bitterness` dom. = 0.45.
+- Генетика стартового патча щедрее: `y1` = 0.35, `bitterness` dom. = 0.45. Это данные вида: поле `starter_freq` в JSON (§3.9) заменяет `wild_freq` качественных признаков в патче с флагом `starter` (worldgen §6.4; WR-108).
 
 ### 11.3 Хронометраж
 

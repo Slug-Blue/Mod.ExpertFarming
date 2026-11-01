@@ -166,5 +166,9 @@
    "loci": 6
   }
  },
- "rare_allele": "color_y2"
+ "rare_allele": "color_y2",
+ "starter_freq": {
+  "bitterness": 0.45,
+  "color_y1": 0.35
+ }
 }
