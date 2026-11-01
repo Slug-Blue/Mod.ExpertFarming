@@ -322,8 +322,8 @@ public final class DefinitionValidator {
         }
         Map<String, VillageTemplate> tp = new TreeMap<>();
         for (VillageTemplate t : templates) {
-            if (t != null && tp.put("template:" + t.landrace().value(), t) != null) {
-                out.add(Problem.error("template:" + t.landrace().value(), "duplicate template"));
+            if (t != null && tp.putIfAbsent("template:" + t.landrace().value(), t) != null) {
+                out.add(Problem.error("template:" + t.landrace().value(), "duplicate template, the first one kept"));
             }
         }
         limitCount(tp, DataLimits.MAX_VILLAGE_TEMPLATES, "village templates", out);
@@ -350,7 +350,18 @@ public final class DefinitionValidator {
             graph.put(e.getKey(), refs);
         }
         for (Map.Entry<String, VillageTemplate> e : tp.entrySet()) {
-            graph.put(e.getKey(), List.of("cultivar:" + e.getValue().landrace().value()));
+            List<String> refs = new ArrayList<>();
+            refs.add("cultivar:" + e.getValue().landrace().value());
+            CultivarDef landrace = cv.get("cultivar:" + e.getValue().landrace().value());
+            SpeciesDef s = landrace == null ? null : sp.get("species:" + landrace.species());
+            if (s != null) {
+                List<Problem> p = validate(e.getValue(), landrace, s);
+                prefix(e.getKey(), p, out);
+                if (hasErrors(p)) {
+                    refs.add(e.getKey() + "#invalid");
+                }
+            }
+            graph.put(e.getKey(), refs);
         }
         List<Problem> refProblems = ReferenceGraph.check(graph);
         java.util.Set<String> rejected = ReferenceGraph.rejected(refProblems);
@@ -378,6 +389,41 @@ public final class DefinitionValidator {
             }
         });
         return new SetResult(out, okS, okC, okT);
+    }
+
+    /**
+     * A village template (GDD §9.5) against its landrace and the landrace's
+     * species: {@code wildF}, {@code loadFreq}, qualitative frequencies and G
+     * targets in {@code [0, 1]}; targets name quantitative traits and
+     * frequencies biallelic qualitative traits of that species; the landrace
+     * is tier 1.
+     */
+    public static List<Problem> validate(VillageTemplate t, CultivarDef landrace, SpeciesDef species) {
+        List<Problem> out = new ArrayList<>();
+        if (!landrace.species().equals(species.id())) {
+            out.add(Problem.error("landrace", "landrace of " + landrace.species() + ", template for " + species.id()));
+        }
+        if (landrace.tier() != 1) {
+            out.add(Problem.error("landrace", landrace.id() + " is tier " + landrace.tier() + ", not a landrace"));
+        }
+        range(t.wildF(), 0, 1, "wild_F", out);
+        range(t.loadFreq(), 0, 1, "load_freq", out);
+        for (Map.Entry<TraitId, Double> e : t.targets().entrySet()) {
+            String p = "targets." + e.getKey();
+            if (species.quant(e.getKey()) == null) {
+                out.add(Problem.error(p, "undeclared quantitative trait " + e.getKey()));
+            }
+            range(e.getValue(), 0, 1, p, out);
+        }
+        for (Map.Entry<TraitId, Double> e : t.qualFreq().entrySet()) {
+            String p = "qualitative_freq." + e.getKey();
+            QualTrait q = species.qual(e.getKey());
+            if (q == null || q.alleles() != 2) {
+                out.add(Problem.error(p, "not a biallelic qualitative trait of " + species.id()));
+            }
+            range(e.getValue(), 0, 1, p, out);
+        }
+        return out;
     }
 
     private static <T> void limitCount(Map<String, T> byKey, int max, String what, List<Problem> out) {

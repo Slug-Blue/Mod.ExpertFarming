@@ -316,4 +316,37 @@ class DefinitionValidatorTest {
         assertTrue(has(r.problems(), Problem.Severity.ERROR, "species:wildroots:wild_carrot/quantitative.yield.loci"));
         assertTrue(has(r.problems(), Problem.Severity.ERROR, "cultivar:wildroots:carrot"));
     }
+
+    @Test
+    void villageTemplatesAreValidatedAgainstTheirLandrace() {
+        VillageTemplate good = VillageTemplate.fromLandrace(Carrot.SPECIES, Carrot.EASTERN,
+                Map.of(Carrot.Y2, 0.30), Map.of());
+        assertEquals(List.of(), DefinitionValidator.validate(good, Carrot.EASTERN, Carrot.SPECIES));
+        VillageTemplate bad = new VillageTemplate(Carrot.EASTERN.id(),
+                Map.of(Carrot.FRUIT, 1.2, io.github.slugblue.wildroots.genetics.model.TraitId.of("sugar"), 0.5),
+                Map.of(Carrot.Y2, -0.1, Carrot.YIELD, 0.5), Double.NaN, 1.5);
+        List<Problem> p = DefinitionValidator.validate(bad, Carrot.EASTERN, Carrot.SPECIES);
+        for (String path : List.of("wild_F", "load_freq", "targets.fruit_size", "targets.sugar",
+                "qualitative_freq.color_y2", "qualitative_freq.yield")) {
+            assertTrue(has(p, Problem.Severity.ERROR, path), path + ": " + p);
+        }
+        assertTrue(has(DefinitionValidator.validate(good, Carrot.CARROT, Carrot.SPECIES), Problem.Severity.ERROR,
+                "landrace"), "a tier-2 profile is not a landrace");
+        DefinitionValidator.SetResult r = DefinitionValidator.validateSet(List.of(Carrot.SPECIES), Carrot.PROFILES,
+                List.of(bad));
+        assertTrue(r.templates().isEmpty());
+        assertTrue(has(r.problems(), Problem.Severity.ERROR, "template:wildroots:eastern_carrot/wild_F"));
+    }
+
+    @Test
+    void duplicateTemplateKeepsTheFirst() {
+        VillageTemplate first = VillageTemplate.fromLandrace(Carrot.SPECIES, Carrot.EASTERN,
+                Map.of(Carrot.Y2, 0.30), Map.of());
+        VillageTemplate second = VillageTemplate.fromLandrace(Carrot.SPECIES, Carrot.EASTERN,
+                Map.of(Carrot.Y2, 0.10), Map.of());
+        DefinitionValidator.SetResult r = DefinitionValidator.validateSet(List.of(Carrot.SPECIES), Carrot.PROFILES,
+                List.of(first, second));
+        assertEquals(List.of(first), r.templates());
+        assertTrue(has(r.problems(), Problem.Severity.ERROR, "template:wildroots:eastern_carrot"));
+    }
 }

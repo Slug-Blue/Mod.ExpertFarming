@@ -360,4 +360,25 @@ class GenomeMigratorTest {
                 new io.github.slugblue.wildroots.genetics.phenotype.CompiledSpecies(noFlavor), 1);
         assertEquals(old.quantIds().size() - 1, dropped.size());
     }
+
+    @Test
+    void decodeResultCarriesTheStoredLayoutForNoiseMigration() {
+        GenomeLayout cur = GenomeLayout.of(YIELD8);
+        GenomeRecord old = GenomeCodec.encode(RandomGenomes.carrot(new SplitMix64(12)));
+        DecodeResult.Valid migrated = (DecodeResult.Valid) GenomeMigrator.migrate(old, YIELD8, cur,
+                dict(CARROT, YIELD8)).toDecodeResult();
+        assertEquals(Optional.of(Carrot.LAYOUT), migrated.storedLayout());
+        DecodeResult.Valid same = (DecodeResult.Valid) GenomeMigrator.migrate(old, CARROT, Carrot.LAYOUT,
+                dict(CARROT)).toDecodeResult();
+        assertEquals(Optional.of(Carrot.LAYOUT), same.storedLayout());
+        DecodeResult.Valid unknown = (DecodeResult.Valid) GenomeMigrator.migrate(old, YIELD8, cur,
+                new LayoutDictionary()).toDecodeResult();
+        assertTrue(unknown.storedLayout().isEmpty(), "unknown layout: noise is rolled anew by the mod layer");
+        // the stored layout is exactly what migrateNoise needs
+        io.github.slugblue.wildroots.genetics.phenotype.CompiledSpecies cs =
+                new io.github.slugblue.wildroots.genetics.phenotype.CompiledSpecies(YIELD8);
+        io.github.slugblue.wildroots.genetics.phenotype.NoiseVector e =
+                io.github.slugblue.wildroots.genetics.phenotype.NoiseVector.zero(7);
+        assertEquals(cs.quantIds().size(), e.migrate(migrated.storedLayout().orElseThrow(), cs, 1).size());
+    }
 }

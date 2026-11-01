@@ -41,10 +41,16 @@ public final class GenomeMigrator {
         INERT
     }
 
-    public record Result(Status status, Optional<Genome> genome, List<String> warnings) {
+    public record Result(Status status, Optional<Genome> genome, List<String> warnings,
+                         Optional<GenomeLayout> storedLayout) {
 
         public Result {
             warnings = List.copyOf(warnings);
+            storedLayout = storedLayout == null ? Optional.empty() : storedLayout;
+        }
+
+        public Result(Status status, Optional<Genome> genome, List<String> warnings) {
+            this(status, genome, warnings, genome.filter(g -> status == Status.UNCHANGED).map(Genome::layout));
         }
 
         /** As a {@link DecodeResult} for the facade. */
@@ -52,7 +58,7 @@ public final class GenomeMigrator {
             if (genome.isEmpty()) {
                 return new DecodeResult.Inert(String.join("; ", warnings));
             }
-            return new DecodeResult.Valid(genome.get(), status != Status.UNCHANGED, warnings);
+            return new DecodeResult.Valid(genome.get(), status != Status.UNCHANGED, warnings, storedLayout);
         }
     }
 
@@ -121,7 +127,7 @@ public final class GenomeMigrator {
                 return inert("old layout: " + err, warn);
             }
             return new Result(Status.MIGRATED,
-                    Optional.of(reencode(raw, old.get(), species, current, genomeKey, warn)), warn);
+                    Optional.of(reencode(raw, old.get(), species, current, genomeKey, warn)), warn, old);
         } catch (RuntimeException e) {
             return inert("migration failed: " + e, warn);
         }

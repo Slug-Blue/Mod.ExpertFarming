@@ -66,7 +66,7 @@ class GeneticsServiceTest {
         assertEquals(FatherSelector.choose(S, mother, near, List.of(), 7), sel);
         assertEquals(6, sel.compatibleNeighbours());
         double pOut = G.pOut(S, sel, true, Brush.NONE);
-        assertEquals(0.95, pOut, 1e-12);
+        assertEquals(0.60, pOut, 1e-12, "a bee visit without a donor does not raise p_out");
         LotRecord lot = new LotRecord(mother, sel.fathers(), pOut);
         Genome child = G.offspring(lot, 11).orElseThrow();
         assertEquals(io.github.slugblue.wildroots.genetics.breeding.Offspring.of(lot, S.mutation(), 11), child);
@@ -86,6 +86,7 @@ class GeneticsServiceTest {
         assertEquals(c.cultivar(), G.classifyClone(c).cultivar());
         assertEquals(child, G.clone(child));
         assertEquals(child, G.decode(G.encode(child), S).genome());
+        assertEquals(Optional.of(child.layout()), ((DecodeResult.Valid) G.decode(G.encode(child), S)).storedLayout());
         assertEquals(3, G.process(List.of(new GradedInput(3, 2, 1, false)), List.of()).grade());
         VillageTemplate t = VillageTemplate.fromLandrace(S, Carrot.EASTERN, Map.of(Carrot.Y2, 0.3), Map.of());
         Genome village = G.villagePlant(S, t, 5).orElseThrow();

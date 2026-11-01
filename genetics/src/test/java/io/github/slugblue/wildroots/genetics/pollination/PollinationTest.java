@@ -241,4 +241,20 @@ class PollinationTest {
         assertEquals(1, sel.compatibleNeighbours());
         assertTrue(sel.fathers().stream().allMatch(f -> f.genome() == other));
     }
+
+    @Test
+    void selfIncompatibilityWinsOverTheCrossBrush() {
+        SpeciesDef si = selfIncompatible();
+        assertEquals(1.0, Outcrossing.pOut(si, 0, 1, false, Brush.CROSS), 1e-12, "brushed compatible pollen");
+        assertEquals(1.0, Outcrossing.pOut(si, 3, 1, true, Brush.CROSS), 1e-12);
+        assertEquals(0.0, Outcrossing.pOut(si, 0, 0, false, Brush.CROSS), "brushed pollen was incompatible");
+        assertEquals(0.90, Outcrossing.pOut(CARROT, 0, 1, false, Brush.CROSS), 1e-12, "self-compatible: 0.90");
+    }
+
+    @Test
+    void beeVisitCountsOnlyWithACompatibleDonor() {
+        assertEquals(0.60, Outcrossing.pOut(CARROT, 3, 0, true, Brush.NONE), 1e-12, "visit without a donor");
+        assertEquals(0.60 / 3, Outcrossing.pOut(CARROT, 1, 0, true, Brush.NONE), 1e-12);
+        assertEquals(0.95, Outcrossing.pOut(CARROT, 1, 1, true, Brush.NONE), 1e-12);
+    }
 }

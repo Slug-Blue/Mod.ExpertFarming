@@ -243,11 +243,13 @@ class PhenotypeTest {
      * GDD §3.10 success condition (v0.5): no genome has G_eff ≥ 0.75 on size,
      * flavor and yield at once. Exhaustive over the allele sums of yield ×
      * fruit_size × flavor × growth_speed with tolerances at 0 (the sums fix
-     * G; G_eff depends only on G). Every MVP species in the test data.
+     * G; G_eff depends only on G). Runs over the line species in the engine's
+     * data ({@link io.github.slugblue.wildroots.genetics.testutil.Lines#SPECIES}; wave 1: carrot only).
      */
     @Test
-    void noGenomeHasGEffAbove075OnSizeFlavorAndYield() {
-        for (io.github.slugblue.wildroots.genetics.api.SpeciesDef s : java.util.List.of(Carrot.SPECIES)) {
+    void noGenomeOfTheDataSpeciesHasGEffAbove075OnSizeFlavorAndYield() {
+        for (io.github.slugblue.wildroots.genetics.api.SpeciesDef s
+                : io.github.slugblue.wildroots.genetics.testutil.Lines.SPECIES) {
             CompiledSpecies cs = new CompiledSpecies(s);
             int n = cs.quantIds().size();
             int yi = cs.quantIndex(YIELD);
@@ -277,7 +279,7 @@ class PhenotypeTest {
                     }
                 }
             }
-            assertEquals(25L * 25 * 17 * 17, combos);
+            assertEquals((long) (ly + 1) * (lf + 1) * (lv + 1) * (lg + 1), combos);
         }
     }
 }

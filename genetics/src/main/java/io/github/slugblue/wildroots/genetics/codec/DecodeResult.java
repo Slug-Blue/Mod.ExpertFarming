@@ -9,15 +9,24 @@ import io.github.slugblue.wildroots.genetics.model.Genome;
  */
 public sealed interface DecodeResult permits DecodeResult.Valid, DecodeResult.Inert {
 
-    /** Decoded genome; {@code migrated} when the layout was re-encoded (warnings for the log). */
-    record Valid(Genome genome, boolean migrated, java.util.List<String> warnings) implements DecodeResult {
+    /**
+     * Decoded genome; {@code migrated} when the layout was re-encoded (warnings
+     * for the log). {@code storedLayout} is the layout the record was written
+     * with, if known (empty for an unknown, regenerated layout): the mod layer
+     * passes it to {@code GeneticsService.migrateNoise} without looking the
+     * {@code lh} up itself.
+     */
+    record Valid(Genome genome, boolean migrated, java.util.List<String> warnings,
+                 java.util.Optional<io.github.slugblue.wildroots.genetics.model.GenomeLayout> storedLayout)
+            implements DecodeResult {
 
         public Valid {
             warnings = java.util.List.copyOf(warnings);
+            storedLayout = storedLayout == null ? java.util.Optional.empty() : storedLayout;
         }
 
         public Valid(Genome genome) {
-            this(genome, false, java.util.List.of());
+            this(genome, false, java.util.List.of(), java.util.Optional.of(genome.layout()));
         }
     }
 
