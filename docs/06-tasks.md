@@ -279,7 +279,7 @@ Spike · WR-006, WR-007 · DevOps · 1 д
 Вопрос: работают ли `runClient`, `runServer`, `runGameTestServer`, jar с классами движка, Parchment, foojay в двухпроектной сборке ForgeGradle 6; каким regex описать `trusted-artifacts`.
 Подтверждено, если: все задачи зелёные на чистой машине CI; regex `trusted-artifacts` записан в ADR-0016.
 При опровержении: ADR-0001 и архитектура §3 — один проект, пакет `genetics` + ArchUnit-правило «без `net.minecraft` в `..genetics..`» (R6); WR-006 и WR-012 переделываются.
-Итог: **не закрыт** — ждёт зелёного CI в GitHub Actions.
+Итог: **подтверждено** (2026-11-01). На чистой машине GitHub Actions зелёные все 4 job (run 41280044279): сборка, JUnit, ArchUnit, `runGameTestServer`, jar-allowlist, gitleaks, GameTest без сети. Двухпроектная сборка, jar с классами движка, Parchment работают; foojay в CI не используется (`setup-java`, автозагрузка выключена). Regex `trusted-artifacts` (2 правила) записан в ADR-0016. Для зелёного CI потребовались правки: verification-metadata дополнена артефактами, которые разрешаются только на чистом Linux (LWJGL natives, `junit-bom` `.module`, netty epoll, Parchment `.zip`), — перегенерация в `eclipse-temurin:17-jdk`; скан `gametest-offline` пропускает ванильный запрос ключа authlib (SEC-44). Не проверено: `runClient` и строка `Done` у `runServer` (EULA) — ручная проверка владельца.
 
 ### WR-027 · S8: хижина как вариант стартового элемента деревни
 Spike · WR-007 · SD + LD · 1.5 д
