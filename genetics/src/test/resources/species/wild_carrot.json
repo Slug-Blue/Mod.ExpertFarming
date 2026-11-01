@@ -17,7 +17,9 @@
     { "trait": "fruit_size",        "against": "growth_speed", "c": 0.20, "threshold": 0.50 },
     { "trait": "cold_tolerance",    "against": "yield",        "c": 0.25, "threshold": 0.50 },
     { "trait": "heat_tolerance",    "against": "yield",        "c": 0.25, "threshold": 0.50 },
-    { "trait": "drought_tolerance", "against": "yield",        "c": 0.25, "threshold": 0.50 }
+    { "trait": "drought_tolerance", "against": "yield",        "c": 0.25, "threshold": 0.50 },
+    { "trait": "fruit_size",        "against": "yield",        "c": 0.25, "threshold": 0.55 },
+    { "trait": "flavor",            "against": "yield",        "c": 0.50, "threshold": 0.30 }
   ],
   "budget": { "limit": 2.6, "weights": { "yield": 1.0, "fruit_size": 1.0, "growth_speed": 0.75,
               "cold_tolerance": 0.5, "heat_tolerance": 0.5, "drought_tolerance": 0.5 } },

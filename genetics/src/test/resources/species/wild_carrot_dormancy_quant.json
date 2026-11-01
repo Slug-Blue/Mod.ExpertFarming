@@ -81,6 +81,18 @@
    "against": "yield",
    "c": 0.25,
    "threshold": 0.5
+  },
+  {
+   "trait": "fruit_size",
+   "against": "yield",
+   "c": 0.25,
+   "threshold": 0.55
+  },
+  {
+   "trait": "flavor",
+   "against": "yield",
+   "c": 0.5,
+   "threshold": 0.3
   }
  ],
  "budget": {

@@ -225,47 +225,59 @@ class PhenotypeTest {
     }
 
     /**
-     * Why the next test is disabled: the carrot trade-offs of GDD §3.9 do not
-     * tie yield to size or flavor, and with growth_speed and the tolerances at
-     * 0 the budget never binds (S = 2.0 ≤ 2.6). So yield 1, size 1, flavor 1
-     * give G_eff 1 / 1 / 0.91. Question to GD in the WR-104 report.
+     * The old counterexample (GDD v0.4 data): yield 1, size 1, flavor 1. With
+     * {@code flavor ← yield} (0.50 / 0.30) and {@code fruit_size ← yield}
+     * (0.25 / 0.55) of GDD v0.5 flavor drops to G_eff ≈ 0.56.
      */
     @Test
-    void counterexampleToTheThreeAxisInvariantExists() {
+    void formerCounterexampleNowFailsOnFlavor() {
         Genome g = carrot(Map.of(YIELD, 24, FRUIT, 24, FLAVOR, 16), 0);
         Phenotype p = PhenotypeCalculator.compute(CS, g, IDEAL, NoiseVector.zero(7));
         assertEquals(1.0, p.gEff(YIELD), 1e-12);
-        assertEquals(1.0, p.gEff(FRUIT), 1e-12);
-        assertEquals(1.0 - 0.2 * 0.45, p.gEff(FLAVOR), 1e-12);
-        assertTrue(p.p(YIELD) >= 0.75 && p.p(FRUIT) >= 0.75 && p.p(FLAVOR) >= 0.75);
+        assertEquals(1.0 - 0.25 * 0.45, p.gEff(FRUIT), 1e-12);
+        assertEquals(1.0 - 0.2 * 0.45 - 0.5 * 0.7, p.gEff(FLAVOR), 1e-12);
+        assertEquals(0.56, p.gEff(FLAVOR), 1e-9);
     }
 
     /**
-     * GDD §3.10 success condition: on 1 000 000 random carrot genomes no plant
-     * has P ≥ 0.75 on size, flavor and yield at once. Genomes are uniform over
-     * all allele values, ε is rolled per plant, the cell is ideal.
+     * GDD §3.10 success condition (v0.5): no genome has G_eff ≥ 0.75 on size,
+     * flavor and yield at once. Exhaustive over the allele sums of yield ×
+     * fruit_size × flavor × growth_speed with tolerances at 0 (the sums fix
+     * G; G_eff depends only on G). Every MVP species in the test data.
      */
     @Test
-    @org.junit.jupiter.api.Disabled("WR-104: fails with the GDD §3.9 carrot data (5 of 10^6 uniform genomes, seed 104);"
-            + " the invariant needs a GD decision, see counterexampleToTheThreeAxisInvariantExists")
-    void noRandomCarrotIsAbove075OnSizeFlavorAndYield() {
-        SplitMix64 rng = new SplitMix64(104);
-        int fi = CS.quantIndex(FRUIT);
-        int vi = CS.quantIndex(FLAVOR);
-        int yi = CS.quantIndex(YIELD);
-        int hits = 0;
-        String example = null;
-        for (int i = 0; i < 1_000_000; i++) {
-            Genome g = RandomGenomes.carrot(rng);
-            Phenotype p = PhenotypeCalculator.compute(CS, g, IDEAL, PhenotypeCalculator.rollNoise(CS, rng.nextLong()));
-            double[] pp = p.pArray();
-            if (pp[fi] >= 0.75 && pp[vi] >= 0.75 && pp[yi] >= 0.75) {
-                hits++;
-                if (example == null) {
-                    example = p.toString() + " gEff=" + java.util.Arrays.toString(p.gEffArray());
+    void noGenomeHasGEffAbove075OnSizeFlavorAndYield() {
+        for (io.github.slugblue.wildroots.genetics.api.SpeciesDef s : java.util.List.of(Carrot.SPECIES)) {
+            CompiledSpecies cs = new CompiledSpecies(s);
+            int n = cs.quantIds().size();
+            int yi = cs.quantIndex(YIELD);
+            int fi = cs.quantIndex(FRUIT);
+            int vi = cs.quantIndex(FLAVOR);
+            int gi = cs.quantIndex(GROWTH);
+            int ly = 4 * s.quant(YIELD).loci();
+            int lf = 4 * s.quant(FRUIT).loci();
+            int lv = 4 * s.quant(FLAVOR).loci();
+            int lg = 4 * s.quant(GROWTH).loci();
+            long combos = 0;
+            for (int y = 0; y <= ly; y++) {
+                for (int f = 0; f <= lf; f++) {
+                    for (int v = 0; v <= lv; v++) {
+                        for (int gr = 0; gr <= lg; gr++) {
+                            double[] g = new double[n];
+                            g[yi] = y / (double) ly;
+                            g[fi] = f / (double) lf;
+                            g[vi] = v / (double) lv;
+                            g[gi] = gr / (double) lg;
+                            double[] eff = cs.gEffOf(g);
+                            combos++;
+                            assertFalse(eff[yi] >= 0.75 && eff[fi] >= 0.75 && eff[vi] >= 0.75,
+                                    s.id() + " G=" + java.util.Arrays.toString(g) + " G_eff="
+                                            + java.util.Arrays.toString(eff));
+                        }
+                    }
                 }
             }
+            assertEquals(25L * 25 * 17 * 17, combos);
         }
-        assertEquals(0, hits, "first: " + example);
     }
 }

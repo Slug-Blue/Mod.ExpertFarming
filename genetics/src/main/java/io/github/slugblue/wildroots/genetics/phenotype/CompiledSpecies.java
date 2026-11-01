@@ -108,6 +108,12 @@ public final class CompiledSpecies {
         return quantIds.indexOf(t);
     }
 
+    /** {@code G_eff} from genotypic values {@code G} in layout order (layers 1 and 2 of GDD §3.10). */
+    public double[] gEffOf(double[] g) {
+        double[] pair = Pleiotropy.apply(g, pairTarget, pairAgainst, pairC, pairTheta);
+        return ResourceBudget.apply(pair, budgetWeight, budgetLimit);
+    }
+
     public double sigma(int i) {
         return sigma[i];
     }

@@ -73,16 +73,28 @@
  },
  "tradeoffs": [
   {
-   "threshold": 0.5,
+   "trait": "flavor",
+   "against": "yield",
+   "c": 0.5,
+   "threshold": 0.3
+  },
+  {
+   "trait": "fruit_size",
+   "against": "yield",
+   "c": 0.25,
+   "threshold": 0.55
+  },
+  {
    "trait": "drought_tolerance",
    "against": "yield",
-   "c": 0.25
+   "c": 0.25,
+   "threshold": 0.5
   },
   {
    "trait": "heat_tolerance",
-   "threshold": 0.5,
    "against": "yield",
-   "c": 0.25
+   "c": 0.25,
+   "threshold": 0.5
   },
   {
    "trait": "cold_tolerance",
@@ -91,16 +103,16 @@
    "threshold": 0.5
   },
   {
+   "trait": "fruit_size",
    "against": "growth_speed",
-   "threshold": 0.5,
    "c": 0.2,
-   "trait": "fruit_size"
+   "threshold": 0.5
   },
   {
+   "trait": "flavor",
    "against": "fruit_size",
-   "threshold": 0.55,
    "c": 0.2,
-   "trait": "flavor"
+   "threshold": 0.55
   }
  ],
  "load": {
