@@ -86,26 +86,6 @@ public final class GenomeCodec {
      * range, unused tail bits zero. Returns the reason or {@code null}.
      */
     public static String checkBits(long[] a, GenomeLayout layout) {
-        if (a == null) {
-            return "no allele array";
-        }
-        if (a.length != layout.longCount()) {
-            return "allele array of " + a.length + " longs != layout " + layout.longCount();
-        }
-        for (Locus s : layout.sections()) {
-            for (int l = 0; l < s.loci(); l++) {
-                for (int w = 0; w < 2; w++) {
-                    int v = GenomeLayout.get(a, s, l, w);
-                    if (v >= s.alleleCount()) {
-                        return "allele " + v + " out of range in " + s.trait() + " locus " + l;
-                    }
-                }
-            }
-        }
-        int used = layout.totalBits() & 63;
-        if (used != 0 && (a[a.length - 1] >>> used) != 0) {
-            return "non-zero bits after the last allele";
-        }
-        return null;
+        return layout.checkBits(a);
     }
 }

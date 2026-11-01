@@ -33,6 +33,9 @@ import java.util.SortedMap;
  */
 public final class CultivarClassifier {
 
+    /** Rounding tolerance: a value on the bound (e.g. exactly min − hysteresis) passes (GDD §6.2). */
+    public static final double EPS = 1e-9;
+
     private CultivarClassifier() {
     }
 
@@ -90,7 +93,7 @@ public final class CultivarClassifier {
                 return false;
             }
             double v = eff[i];
-            if (v < e.getValue().min() - tol || v > e.getValue().max() + tol) {
+            if (v < e.getValue().min() - tol - EPS || v > e.getValue().max() + tol + EPS) {
                 return false;
             }
         }

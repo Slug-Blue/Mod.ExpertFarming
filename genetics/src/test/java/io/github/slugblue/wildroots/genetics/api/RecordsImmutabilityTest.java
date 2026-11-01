@@ -85,4 +85,16 @@ class RecordsImmutabilityTest {
         assertEquals(1, lot.fathers().size());
         assertThrows(UnsupportedOperationException.class, () -> lot.fathers().clear());
     }
+
+    @Test
+    void genomeConstructorRejectsOutOfRangeBits() {
+        long[] bad = new long[Carrot.LAYOUT.longCount()];
+        bad[0] = 0b11; // quantitative allele 3
+        assertThrows(IllegalArgumentException.class, () -> new Genome(Carrot.SPECIES.id(), Carrot.LAYOUT, bad));
+        long[] tail = new long[Carrot.LAYOUT.longCount()];
+        tail[2] = 1L << 63;
+        assertThrows(IllegalArgumentException.class, () -> new Genome(Carrot.SPECIES.id(), Carrot.LAYOUT, tail));
+        assertThrows(IllegalArgumentException.class,
+                () -> new Genome(Carrot.SPECIES.id(), Carrot.LAYOUT, new long[2]));
+    }
 }

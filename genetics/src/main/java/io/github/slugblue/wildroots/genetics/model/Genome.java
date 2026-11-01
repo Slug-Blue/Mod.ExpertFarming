@@ -14,13 +14,20 @@ public final class Genome {
     private final GenomeLayout layout;
     private final long[] bits;
 
+    /**
+     * Genome from packed bits; throws {@link IllegalArgumentException} unless
+     * {@link GenomeLayout#checkBits} accepts them. Stored data goes through the
+     * codec instead, which returns {@code Inert} and never throws.
+     */
     public Genome(String species, GenomeLayout layout, long[] bits) {
         this.species = Objects.requireNonNull(species, "species");
         this.layout = Objects.requireNonNull(layout, "layout");
-        if (bits.length != layout.longCount()) {
-            throw new IllegalArgumentException("bits length " + bits.length + " != " + layout.longCount());
+        long[] copy = bits.clone();
+        String bad = layout.checkBits(copy);
+        if (bad != null) {
+            throw new IllegalArgumentException("invalid genome bits: " + bad);
         }
-        this.bits = bits.clone();
+        this.bits = copy;
     }
 
     /** Wraps an array the caller promises not to touch again (engine-internal builders). */

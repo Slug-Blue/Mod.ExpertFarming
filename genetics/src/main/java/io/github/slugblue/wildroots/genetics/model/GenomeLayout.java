@@ -214,6 +214,34 @@ public final class GenomeLayout {
         return (totalBits + 63) >>> 6;
     }
 
+    /**
+     * Validates packed bits against this layout: exact length, every allele
+     * in range, unused tail bits zero. Returns the reason, or {@code null}.
+     */
+    public String checkBits(long[] a) {
+        if (a == null) {
+            return "no allele array";
+        }
+        if (a.length != longCount()) {
+            return "allele array of " + a.length + " longs != layout " + longCount();
+        }
+        for (Locus s : sections) {
+            for (int l = 0; l < s.loci(); l++) {
+                for (int w = 0; w < 2; w++) {
+                    int v = get(a, s, l, w);
+                    if (v >= s.alleleCount()) {
+                        return "allele " + v + " out of range in " + s.trait() + " locus " + l;
+                    }
+                }
+            }
+        }
+        int used = totalBits & 63;
+        if (used != 0 && (a[a.length - 1] >>> used) != 0) {
+            return "non-zero bits after the last allele";
+        }
+        return null;
+    }
+
     /** Reads allele {@code which} (0 mother, 1 father) at {@code locus} of section {@code s}. */
     public static int get(long[] bits, Locus s, int locus, int which) {
         int off = s.bitOf(locus, which);

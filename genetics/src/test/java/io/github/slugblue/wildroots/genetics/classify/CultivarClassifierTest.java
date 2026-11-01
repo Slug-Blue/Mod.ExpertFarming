@@ -174,4 +174,15 @@ class CultivarClassifierTest {
         assertEquals(Classification.WILD, classify(plant(0, 0, Map.of()), List.of(other), Optional.empty()));
         assertEquals(QualReq.DOMESTIC, Carrot.CARROT.qualitative().get(Y2));
     }
+
+    @Test
+    void hysteresisBoundIsInclusive() {
+        // fruit G_eff exactly 0.75 = min 0.80 - hysteresis 0.05 (float rounding absorbed by 1e-9)
+        Genome g = plant(18, 0, Map.of());
+        CultivarDef p = profile("t:edge", 2, 0, 0.80, 0.05);
+        assertTrue(classify(g, List.of(p), Optional.of(p.id())).inherited());
+        CultivarDef strict = profile("t:edge2", 2, 0, 0.75, 0.05);
+        assertFalse(classify(g, List.of(strict), Optional.empty()).inherited());
+        assertEquals(Optional.of(strict.id()), classify(g, List.of(strict), Optional.empty()).cultivar());
+    }
 }
