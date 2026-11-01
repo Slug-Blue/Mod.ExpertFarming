@@ -61,6 +61,85 @@ class BreedingTest {
         assertTrue(p > 0.01, "1:2:1 p=" + p + " counts " + java.util.Arrays.toString(genotypes));
     }
 
+    /**
+     * TAE: AA × aa over the whole genome, not one locus: every quantitative,
+     * load and qualitative locus of every child is maternal in slot 0 and
+     * paternal in slot 1 (n = 1000).
+     */
+    @Test
+    void homozygousCrossIsHeterozygousAtEveryLocusOfEverySection() {
+        Genome.Builder hi = Genome.builder(Carrot.SPECIES.id(), Carrot.LAYOUT);
+        for (Locus s : Carrot.LAYOUT.sections()) {
+            for (int l = 0; l < s.loci(); l++) {
+                hi.set(s, l, 0, s.alleleCount() - 1).set(s, l, 1, s.alleleCount() - 1);
+            }
+        }
+        LotRecord lot = cross(hi.build(), Genome.builder(Carrot.SPECIES.id(), Carrot.LAYOUT).build());
+        for (int i = 0; i < 1000; i++) {
+            Genome c = Offspring.of(lot, NONE, Hash64.of(1051, i));
+            for (Locus s : Carrot.LAYOUT.sections()) {
+                for (int l = 0; l < s.loci(); l++) {
+                    assertEquals(s.alleleCount() - 1, c.allele(s, l, 0), s.trait() + " locus " + l + " seed " + i);
+                    assertEquals(0, c.allele(s, l, 1), s.trait() + " locus " + l + " seed " + i);
+                }
+            }
+        }
+    }
+
+    /**
+     * TAE: free recombination (GDD §3.8, no linkage). A parent heterozygous at
+     * all 6 yield loci gives 2⁶ = 64 gamete haplotypes with equal frequency
+     * (χ², n = 100 000 gametes, p &gt; 0.01). One coin per gamete instead of
+     * one per locus (full linkage) passes every single-locus Mendel test but
+     * fails here.
+     */
+    @Test
+    void yieldLociAssortIndependently() {
+        Locus y = Carrot.LAYOUT.section(Carrot.YIELD);
+        Genome.Builder b = Genome.builder(Carrot.SPECIES.id(), Carrot.LAYOUT);
+        for (int l = 0; l < y.loci(); l++) {
+            b.set(y, l, 0, 2).set(y, l, 1, 0);
+        }
+        Genome het = b.build();
+        SplitMix64 rng = new SplitMix64(1052_1);
+        long[] haplotypes = new long[1 << y.loci()];
+        for (int i = 0; i < 100_000; i++) {
+            int[] gamete = Meiosis.gamete(het, y, NONE, rng);
+            int h = 0;
+            for (int l = 0; l < gamete.length; l++) {
+                assertTrue(gamete[l] == 0 || gamete[l] == 2);
+                h |= (gamete[l] == 2 ? 1 : 0) << l;
+            }
+            haplotypes[h]++;
+        }
+        double[] eq = new double[haplotypes.length];
+        java.util.Arrays.fill(eq, 1);
+        double p = ChiSquare.pValue(haplotypes, eq);
+        assertTrue(p > 0.01, "64 haplotypes p=" + p);
+    }
+
+    /**
+     * TAE: the same through {@link Offspring#of}, across sections: yield locus
+     * 0 and bitterness segregate 1:2:1 each and independently, a 3×3 table
+     * of 1:2:1 × 1:2:1 (χ², n = 50 000 children, p &gt; 0.01).
+     */
+    @Test
+    void twoLociAcrossSectionsSegregateIndependently() {
+        Locus y = Carrot.LAYOUT.section(Carrot.YIELD);
+        Genome m = withQual(BITTER, 1, 0).toBuilder().set(y, 0, 0, 2).set(y, 0, 1, 0).build();
+        Genome f = withQual(BITTER, 0, 1).toBuilder().set(y, 0, 0, 0).set(y, 0, 1, 2).build();
+        LotRecord lot = cross(m, f);
+        long[] table = new long[9];
+        for (int i = 0; i < 50_000; i++) {
+            Genome c = Offspring.of(lot, NONE, Hash64.of(1052_2, i));
+            int bit = c.allele(BITTER, 0, 0) + c.allele(BITTER, 0, 1);
+            int yld = (c.allele(y, 0, 0) + c.allele(y, 0, 1)) / 2;
+            table[3 * bit + yld]++;
+        }
+        double p = ChiSquare.pValue(table, new double[] {1, 2, 1, 2, 4, 2, 1, 2, 1});
+        assertTrue(p > 0.01, "3x3 p=" + p + " " + java.util.Arrays.toString(table));
+    }
+
     @Test
     void heterozygousCrossShowsDominantPhenotypeThreeToOne() {
         // bitterness: wild allele dominant → bitter phenotype unless both alleles are domestic
@@ -204,5 +283,27 @@ class BreedingTest {
             counts[c.allele(BITTER, 0, 1) == 0 ? 1 : 0]++;
         }
         assertTrue(ChiSquare.pValue(counts, new double[] {0.4, 0.6}) > 0.01, java.util.Arrays.toString(counts));
+    }
+
+    /**
+     * TAE: an outcrossed seed takes its father by the lot weight (draw counts
+     * of {@code FatherSelector}). Fathers with weights 3 and 1 are told apart
+     * by color_y1 in the paternal slot; p_out 1 (χ² 3:1, n = 10 000).
+     */
+    @Test
+    void outcrossedSeedPicksFatherByWeight() {
+        Locus y1 = Carrot.LAYOUT.section(Carrot.Y1);
+        Genome m = withQual(BITTER, 1, 1);
+        Genome heavy = Genome.builder(Carrot.SPECIES.id(), Carrot.LAYOUT).set(y1, 0, 0, 1).set(y1, 0, 1, 1).build();
+        Genome light = Genome.builder(Carrot.SPECIES.id(), Carrot.LAYOUT).build();
+        LotRecord lot = new LotRecord(m, List.of(new FatherPick(light, 1, false), new FatherPick(heavy, 3, false)), 1.0);
+        long[] counts = new long[2];
+        for (int i = 0; i < 10_000; i++) {
+            Genome c = Offspring.of(lot, NONE, Hash64.of(1059_1, i));
+            assertEquals(0, c.allele(BITTER, 0, 1), "p_out 1: never selfed");
+            counts[c.allele(y1, 0, 1) == 1 ? 0 : 1]++;
+        }
+        double p = ChiSquare.pValue(counts, new double[] {3, 1});
+        assertTrue(p > 0.01, "3:1 by weight p=" + p + " " + java.util.Arrays.toString(counts));
     }
 }

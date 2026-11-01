@@ -96,6 +96,52 @@ class RandomGoldenTest {
         assertTrue(Math.abs(var - 1) < 0.01, "variance " + var);
     }
 
+    /**
+     * TAE: mean and variance alone accept any unit-variance shape (a scaled
+     * uniform passes them). Ten equiprobable bins at the N(0, 1) deciles,
+     * χ² on 10⁶ samples, p &gt; 0.01; both halves of each Box–Muller pair are counted.
+     */
+    @Test
+    void gaussianFollowsNormalDeciles() {
+        double[] deciles = {-1.2815515655446004, -0.8416212335729143, -0.5244005127080407, -0.2533471031357997, 0,
+            0.2533471031357997, 0.5244005127080407, 0.8416212335729143, 1.2815515655446004};
+        Gaussian g = new Gaussian(new SplitMix64(1011));
+        long[] bins = new long[10];
+        long tails = 0;
+        for (int i = 0; i < 1_000_000; i++) {
+            double x = g.next();
+            assertTrue(Double.isFinite(x));
+            int b = 0;
+            while (b < deciles.length && x >= deciles[b]) {
+                b++;
+            }
+            bins[b]++;
+            if (Math.abs(x) > 3) {
+                tails++;
+            }
+        }
+        double[] eq = new double[10];
+        java.util.Arrays.fill(eq, 1);
+        double p = io.github.slugblue.wildroots.genetics.testutil.ChiSquare.pValue(bins, eq);
+        assertTrue(p > 0.01, "deciles p=" + p + " " + java.util.Arrays.toString(bins));
+        // P(|Z| > 3) = 0.0026998: 2700 ± 3σ (σ ≈ 52)
+        assertTrue(Math.abs(tails - 2700) < 160, "tails beyond 3σ: " + tails);
+    }
+
+    @Test
+    void nextDoubleIsInUnitIntervalAndUniform() {
+        SplitMix64 rng = new SplitMix64(1012);
+        long[] bins = new long[20];
+        for (int i = 0; i < 200_000; i++) {
+            double u = rng.nextDouble();
+            assertTrue(u >= 0 && u < 1, "u=" + u);
+            bins[(int) (u * 20)]++;
+        }
+        double[] eq = new double[20];
+        java.util.Arrays.fill(eq, 1);
+        assertTrue(io.github.slugblue.wildroots.genetics.testutil.ChiSquare.pValue(bins, eq) > 0.01);
+    }
+
     @Test
     void nextIntIsInRangeAndRoughlyUniform() {
         SplitMix64 rng = new SplitMix64(1);
