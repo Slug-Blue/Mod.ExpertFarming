@@ -134,6 +134,24 @@ class CultivarClassifierTest {
                 "hysteresis 0 disables inheritance");
     }
 
+    /**
+     * TAE: the tolerance belongs to the parent's own status only. A child of
+     * an X plant within hysteresis of another profile Y is not Y (and not X,
+     * whose thresholds it misses). Removing the "parent status is this
+     * profile" check passed every other test.
+     */
+    @Test
+    void hysteresisAppliesOnlyToTheParentsOwnStatus() {
+        Genome g = plant(18, 0, Map.of()); // fruit G_eff = 0.75
+        CultivarDef y = profile("t:y", 2, 0, 0.79, 0.05); // −0.04: inside Y's hysteresis
+        CultivarDef x = profile("t:x", 2, 0, 0.90, 0.05); // −0.15: outside X's hysteresis
+        assertEquals(Classification.WILD, classify(g, List.of(x, y), Optional.of(x.id())));
+        assertEquals(Classification.WILD, classify(g, List.of(y), Optional.of(CultivarId.of("t:unknown"))));
+        Classification fromY = classify(g, List.of(x, y), Optional.of(y.id()));
+        assertEquals(Optional.of(y.id()), fromY.cultivar());
+        assertTrue(fromY.inherited());
+    }
+
     @Test
     void hysteresisDoesNotRelaxQualitativeRequirements() {
         Genome orange = plant(18, 11, Map.of(BITTER, DOM, Y1, DOM, Y2, DOM, P, WILD));

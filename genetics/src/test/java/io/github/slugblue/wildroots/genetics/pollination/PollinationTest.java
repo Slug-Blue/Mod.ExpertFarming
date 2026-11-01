@@ -100,6 +100,64 @@ class PollinationTest {
         assertTrue(p > 0.01, "p=" + p + " " + java.util.Arrays.toString(counts));
     }
 
+    /**
+     * TAE: the criterion's own setting — 200 candidates at mixed distances, 10⁵
+     * runs. With at most 64 examined the expected frequency of a candidate is
+     * not a closed formula, so the test checks the distance ordering the
+     * weights imply: the 8 nearest (d² = 1) are chosen more often per
+     * candidate than ring d² = 2, ring 2 more than ring 4, and so on, and the
+     * per-candidate ratio of rings d² = 1 and d² = 4 is near (1+4)/(1+1) = 2.5
+     * (the reservoir dilutes it, so the bound is loose: 1.8–3.2).
+     */
+    @Test
+    void twoHundredCandidatesAreChosenByInverseSquareDistance() {
+        SpeciesDef s = carrotRadius(16);
+        List<Candidate> many = new ArrayList<>();
+        Map<Genome, Long> d2 = new IdentityHashMap<>();
+        for (int i = 0; i < 225 && many.size() < 200; i++) {
+            int dx = i % 15 - 7;
+            int dz = i / 15 - 7;
+            if (dx == 0 && dz == 0) {
+                continue;
+            }
+            Genome g = RandomGenomes.carrot(GEN);
+            d2.put(g, (long) (dx * dx + dz * dz));
+            many.add(new Candidate(g, dx, 0, dz));
+        }
+        assertEquals(200, many.size());
+        Map<Long, long[]> byRing = new java.util.TreeMap<>();
+        for (Candidate c : many) {
+            byRing.computeIfAbsent(c.horizontalDistanceSq(), k -> new long[2])[1]++;
+        }
+        for (int run = 0; run < 100_000; run++) {
+            FatherSelector.Selection sel = FatherSelector.choose(s, MOTHER, many, List.of(), Hash64.of(1064, run));
+            assertTrue(sel.examined() <= 64);
+            for (FatherPick f : sel.fathers()) {
+                byRing.get(d2.get(f.genome()))[0] += (long) f.weight();
+            }
+        }
+        double r1 = byRing.get(1L)[0] / (double) byRing.get(1L)[1];
+        double r2 = byRing.get(2L)[0] / (double) byRing.get(2L)[1];
+        double r4 = byRing.get(4L)[0] / (double) byRing.get(4L)[1];
+        double r8 = byRing.get(8L)[0] / (double) byRing.get(8L)[1];
+        double r49 = byRing.get(49L)[0] / (double) byRing.get(49L)[1];
+        assertTrue(r1 > r2 && r2 > r4 && r4 > r8 && r8 > r49, r1 + " " + r2 + " " + r4 + " " + r8 + " " + r49);
+        assertTrue(r1 / r4 > 1.8 && r1 / r4 < 3.2, "ring 1 / ring 4 = " + r1 / r4);
+    }
+
+    @Test
+    void fatherChoiceIsDeterministicPerKey() {
+        SpeciesDef s = carrotRadius(16);
+        List<Candidate> many = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            many.add(new Candidate(RandomGenomes.carrot(GEN), i % 10 - 5, 0, i / 10 - 4));
+        }
+        for (int run = 0; run < 50; run++) {
+            assertEquals(FatherSelector.choose(s, MOTHER, many, List.of(), Hash64.of(1065, run)),
+                    FatherSelector.choose(s, MOTHER, many, List.of(), Hash64.of(1065, run)));
+        }
+    }
+
     @Test
     void neighboursOutsideRadiusOrHeightAreIgnored() {
         List<Candidate> c = List.of(new Candidate(RandomGenomes.carrot(GEN), 2, 0, 1),

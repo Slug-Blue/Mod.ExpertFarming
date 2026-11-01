@@ -106,7 +106,12 @@ class PopulationTest {
         double hExp = 1 - (0.36 + 0.1225 + 0.0025);
         double f = 1 - (het / (double) pairs) / hExp;
         assertEquals(Carrot.SPECIES.wildF(), 0.1);
-        assertEquals(0.1, f, 0.015, "wild_F");
+        // TAE: the tolerance was a flat 0.015 (≈ 7σ, F = 0.085 passed); now 4σ of the
+        // heterozygosity estimate over the counted pairs (σ_F ≈ 0.002 here)
+        double hObsExp = (1 - Carrot.SPECIES.wildF()) * hExp;
+        double sigmaF = Math.sqrt(hObsExp * (1 - hObsExp) / pairs) / hExp;
+        assertTrue(sigmaF < 0.003, "sigma_F " + sigmaF);
+        assertEquals(0.1, f, 4 * sigmaF, "wild_F");
         assertEquals(pairs, hom + het);
     }
 
