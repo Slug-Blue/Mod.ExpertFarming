@@ -38,7 +38,30 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 tasks.named('test', Test).configure {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        // WR-112: the full tempo-model run (500 repeats) is on demand only
+        excludeTags 'tempo-full'
+    }
+    testLogging {
+        showStandardStreams = false
+    }
+}
+
+// WR-112: full run of the canonical tempo model (GDD §12.5), not part of `build`.
+// ./gradlew :genetics:tempoFull
+tasks.register('tempoFull', Test) {
+    description = 'Runs the full tempo model (500 repeats per line, GDD §12.4).'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'tempo-full'
+    }
+    testLogging {
+        showStandardStreams = true
+    }
+    shouldRunAfter tasks.named('test')
+    outputs.upToDateWhen { false }
 }
 
 // SEC-42: reproducible archives (no file timestamps, fixed entry order), so
