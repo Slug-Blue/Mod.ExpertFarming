@@ -1,6 +1,7 @@
 package io.github.slugblue.wildroots.genetics.quality;
 
 import io.github.slugblue.wildroots.genetics.api.Defaults;
+import io.github.slugblue.wildroots.genetics.validation.DataLimits;
 import java.util.List;
 
 /**
@@ -39,7 +40,11 @@ public final class ProcessingQuality {
         int raw = (int) (weighted / count); // floor of a positive mean
         int cap = Defaults.processingCap(minTier);
         int bonus = 0;
+        int seen = 0;
         for (Booster b : boosters) {
+            if (++seen > DataLimits.MAX_BOOSTERS) {
+                break; // SEC-28: at most 8 booster slots; the recipe loader (WR-125) rejects more
+            }
             if (b != null && b.qualifies()) {
                 bonus++;
             }

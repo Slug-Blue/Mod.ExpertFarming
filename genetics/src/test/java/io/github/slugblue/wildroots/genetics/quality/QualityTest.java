@@ -96,19 +96,74 @@ class QualityTest {
         assertEquals(expected, ProcessingQuality.process(in, b).grade());
     }
 
-    /** GDD §6.6 table of technical products: output count by grade 1 / 2 / 3 / 4. */
+    /** {@code output_by_grade} of the GDD §6.6 technical products, as their recipe JSON will carry it. */
+    static final int[] PAPER = {1, 2, 3, 3};
+    static final int[] SUGAR = {0, 1, 1, 2};
+    static final int[] BROWN_DYE = {1, 1, 1, 1};
+
+    static int craft(int[] outputByGrade, int boosters, GradedInput... mains) {
+        List<Booster> b = new ArrayList<>();
+        for (int i = 0; i < boosters; i++) {
+            b.add(new Booster(true));
+        }
+        return ProcessingQuality.process(List.of(mains), b).output(outputByGrade);
+    }
+
+    /**
+     * GDD §6.6 technical products from real ingredient sets: the grade comes
+     * from the formula (mean, tier cap, bitterness) and selects the output.
+     */
     @ParameterizedTest(name = "{0}")
     @CsvSource(delimiter = '|', value = {
-        "paper            | 1,2,3,3",
-        "sugar            | 0,1,1,2",
-        "brown dye        | 1,1,1,1"})
-    void technicalProductOutputs(String product, String byGrade) {
-        int[] table = java.util.Arrays.stream(byGrade.split(",")).mapToInt(Integer::parseInt).toArray();
-        for (int grade = 1; grade <= 4; grade++) {
-            ProcessingResult r = ProcessingQuality.process(List.of(new GradedInput(grade, 2, 1, false)), List.of());
-            assertEquals(grade, r.grade());
-            assertEquals(table[grade - 1], r.output(table), product + " grade " + grade);
+        // paper: 3 cane stalks of any tier; grade 1 → 1 «coarse» paper
+        "paper, 3 wild stalks grade 1            | paper | 1x3@w       | 1",
+        "paper, 3 wild stalks grade 4 (cap 1)    | paper | 4x3@w       | 1",
+        "paper, landrace 3 3 3                   | paper | 3x3@l       | 3",
+        "paper, cultivar 4 4 2 → floor 3.33 = 3  | paper | 4x2@c,2x1@c | 3",
+        "paper, cultivar 4 4 4                   | paper | 4x3@c       | 3",
+        "paper, cultivar 2 2 2                   | paper | 2x3@c       | 2",
+        // sugar: landrace stalk or better; grade 1 gives nothing
+        "sugar, wild beet grade 4 (cap 1)        | sugar | 4x1@w       | 0",
+        "sugar, landrace grade 4 (cap 3)         | sugar | 4x1@l       | 1",
+        "sugar, cultivar grade 4                 | sugar | 4x1@c       | 2",
+        "sugar, bitter cultivar input            | sugar | 4x1@c:b     | 0",
+        "sugar, cultivar grade 2                 | sugar | 2x1@c       | 1",
+        // brown dye: grade does not matter
+        "dye, wild grade 1                       | dye   | 1x1@w       | 1",
+        "dye, cultivar grade 4                   | dye   | 4x1@c       | 1"})
+    void technicalProductOutputs(String name, String product, String mains, int expected) {
+        int[] table = switch (product) {
+            case "paper" -> PAPER;
+            case "sugar" -> SUGAR;
+            default -> BROWN_DYE;
+        };
+        List<GradedInput> in = new ArrayList<>();
+        for (String part : mains.split(",")) {
+            String[] gc = part.trim().split("@");
+            String[] g = gc[0].split("x");
+            String tier = gc[1].split(":")[0];
+            in.add(new GradedInput(Integer.parseInt(g[0]), tier.equals("w") ? 0 : tier.equals("l") ? 1 : 2,
+                    Integer.parseInt(g[1]), gc[1].endsWith(":b")));
         }
+        assertEquals(expected, craft(table, 0, in.toArray(new GradedInput[0])), name);
+    }
+
+    @Test
+    void outputTableIsReadSafely() {
+        ProcessingResult r = ProcessingQuality.process(List.of(new GradedInput(4, 2, 1, false)), List.of());
+        assertEquals(0, r.output(null));
+        assertEquals(0, r.output(new int[] {1, 2}));
+        assertEquals(0, r.output(new int[] {1, 2, 3, -5}), "negative outputs clamp to 0");
+    }
+
+    @Test
+    void atMostEightBoosterSlotsCount() {
+        List<Booster> many = new ArrayList<>();
+        for (int i = 0; i < 8; i++) {
+            many.add(new Booster(false));
+        }
+        many.add(new Booster(true)); // ninth slot: ignored (SEC-28 MAX_BOOSTERS)
+        assertEquals(2, ProcessingQuality.process(List.of(new GradedInput(2, 2, 1, false)), many).grade());
     }
 
     @Test

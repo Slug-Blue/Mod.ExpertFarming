@@ -5,6 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.slugblue.wildroots.genetics.api.CultivarDef;
+import io.github.slugblue.wildroots.genetics.api.CultivarId;
+import io.github.slugblue.wildroots.genetics.population.VillageTemplate;
+import java.util.Optional;
 import io.github.slugblue.wildroots.genetics.api.SpeciesDef;
 import io.github.slugblue.wildroots.genetics.testutil.Carrot;
 import io.github.slugblue.wildroots.genetics.testutil.DefJson;
@@ -252,5 +255,65 @@ class DefinitionValidatorTest {
         back.put("threshold", 0.5);
         t.add(back);
         assertFalse(DefinitionValidator.hasErrors(speciesProblems(json)));
+    }
+
+    // ---------------------------------------------------------------- whole set (SEC-28 counts, SEC-29)
+
+    static SpeciesDef carrotWithId(String id) {
+        SpeciesDef c = Carrot.SPECIES;
+        return new SpeciesDef(id, c.tempMin(), c.tempMax(), c.quantitative(), c.tradeoffs(), c.budget(), c.wild(),
+                c.wildF(), c.qualitative(), c.starterFreq(), c.load(), c.mutation(), c.pollination(), c.timing(),
+                c.qualityAxes());
+    }
+
+    static CultivarDef cultivar(String id, String species, Optional<CultivarId> parent) {
+        CultivarDef c = Carrot.EASTERN;
+        return new CultivarDef(CultivarId.of(id), species, 1, 0, c.quantitative(), c.qualitative(), c.anyOf(), 0.05,
+                c.qualityAxes(), parent);
+    }
+
+    @Test
+    void setRejectsSpeciesBeyond512InIdOrder() {
+        List<SpeciesDef> many = new ArrayList<>();
+        for (int i = 0; i < 514; i++) {
+            many.add(carrotWithId(String.format("t:s%04d", i)));
+        }
+        DefinitionValidator.SetResult r = DefinitionValidator.validateSet(many, List.of(), List.of());
+        assertEquals(512, r.species().size());
+        assertTrue(has(r.problems(), Problem.Severity.ERROR, "species:t:s0512"));
+        assertTrue(has(r.problems(), Problem.Severity.ERROR, "species:t:s0513"));
+    }
+
+    @Test
+    void setLimitsCultivarsPerSpeciesAndReferences() {
+        List<CultivarDef> cvs = new ArrayList<>();
+        for (int i = 0; i < 65; i++) {
+            cvs.add(cultivar(String.format("t:c%02d", i), Carrot.SPECIES.id(), Optional.empty()));
+        }
+        cvs.add(cultivar("t:orphan", "t:missing", Optional.empty()));
+        cvs.add(cultivar("t:child", Carrot.SPECIES.id(), Optional.of(CultivarId.of("t:orphan"))));
+        cvs.add(cultivar("t:loop1", Carrot.SPECIES.id(), Optional.of(CultivarId.of("t:loop2"))));
+        cvs.add(cultivar("t:loop2", Carrot.SPECIES.id(), Optional.of(CultivarId.of("t:loop1"))));
+        VillageTemplate t = VillageTemplate.fromLandrace(Carrot.SPECIES,
+                cultivar("t:orphan", "t:missing", Optional.empty()), Map.of(), Map.of());
+        DefinitionValidator.SetResult r = DefinitionValidator.validateSet(List.of(Carrot.SPECIES), cvs, List.of(t));
+        assertEquals(64, r.cultivars().stream().filter(c -> c.id().value().startsWith("t:c")).count());
+        assertTrue(has(r.problems(), Problem.Severity.ERROR, "cultivar:t:orphan"));
+        assertTrue(has(r.problems(), Problem.Severity.ERROR, "cultivar:t:child"), "dependent of a rejected record");
+        assertTrue(has(r.problems(), Problem.Severity.ERROR, "cultivar:t:loop1"));
+        assertTrue(has(r.problems(), Problem.Severity.ERROR, "template:t:orphan"));
+        assertTrue(r.templates().isEmpty());
+        assertEquals(1, r.species().size());
+    }
+
+    @Test
+    void setDropsCultivarsOfAnInvalidSpecies() {
+        SpeciesDef broken = DefJson.species(MiniJson.resource("/invalid/loci_above_16.json"), new ArrayList<>());
+        DefinitionValidator.SetResult r = DefinitionValidator.validateSet(List.of(broken),
+                List.of(Carrot.CARROT, Carrot.EASTERN), List.of());
+        assertTrue(r.species().isEmpty());
+        assertTrue(r.cultivars().isEmpty());
+        assertTrue(has(r.problems(), Problem.Severity.ERROR, "species:wildroots:wild_carrot/quantitative.yield.loci"));
+        assertTrue(has(r.problems(), Problem.Severity.ERROR, "cultivar:wildroots:carrot"));
     }
 }

@@ -14,9 +14,11 @@ public final class DataLimits {
     private DataLimits() {
     }
 
+    /** Species, cultivars and templates per load: {@code DefinitionValidator#validateSet}. */
     public static final int MAX_SPECIES = 512;
     public static final int MAX_CULTIVARS = 4096;
     public static final int MAX_CULTIVARS_PER_SPECIES = 64;
+    /** Checked by the quality-role loader of {@code :mod} (WR-125): roles are not engine records. */
     public static final int MAX_QUALITY_ROLES = 1024;
     public static final int MAX_VILLAGE_TEMPLATES = 64;
     public static final int MAX_QUANT_TRAITS = 32;
@@ -38,15 +40,19 @@ public final class DataLimits {
     public static final int MAX_CARRY_RANGE = 64;
     public static final double MIN_STAGE_MIN = 0.1;
     public static final double MAX_STAGE_MIN = 1440;
+    /** Dormancy {@code U(a, b)}: not part of {@code SpeciesDef}; checked by the species loader (WR-125). */
     public static final double MAX_DORMANCY_MIN = 60;
     public static final int MAX_REQUIREMENTS = 32;
     public static final int MIN_PRIORITY = -1000;
     public static final int MAX_PRIORITY = 1000;
     public static final double MAX_HYSTERESIS = 0.5;
     public static final int MAX_QUALITY_AXES = 16;
+    /** {@code food_reference}, recipe outputs, colours, display traits, translation keys: item and
+     * client data of {@code :mod}, checked by its loaders (WR-125); the engine never sees them. */
     public static final int MAX_FOOD_NUTRITION = 20;
     public static final double MAX_FOOD_SATURATION = 2;
     public static final int MAX_OUTPUT_PER_GRADE = 64;
+    /** Enforced by {@code ProcessingQuality} (extra slots ignored) and rejected by the recipe loader (WR-125). */
     public static final int MAX_BOOSTERS = 8;
     public static final int MAX_COLOR = 0xFFFFFF;
     public static final int MAX_DISPLAY_TRAITS = 16;

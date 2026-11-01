@@ -13,6 +13,7 @@ import io.github.slugblue.wildroots.genetics.api.SpeciesDef;
 import io.github.slugblue.wildroots.genetics.api.Tradeoff;
 import io.github.slugblue.wildroots.genetics.model.GenomeLayout;
 import io.github.slugblue.wildroots.genetics.model.TraitId;
+import io.github.slugblue.wildroots.genetics.population.VillageTemplate;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.regex.Pattern;
 
 /**
@@ -255,6 +257,144 @@ public final class DefinitionValidator {
         }
         axes(c.qualityAxes(), quantIds, "produce.quality_axes", out);
         return out;
+    }
+
+    // ---------------------------------------------------------- whole definition set
+
+    /** Result of validating one load: problems (path = record key + JSON path) and the records that survive. */
+    public record SetResult(List<Problem> problems, List<SpeciesDef> species, List<CultivarDef> cultivars,
+                            List<VillageTemplate> templates) {
+
+        public SetResult {
+            problems = List.copyOf(problems);
+            species = List.copyOf(species);
+            cultivars = List.copyOf(cultivars);
+            templates = List.copyOf(templates);
+        }
+    }
+
+    /**
+     * Validates a whole load (SEC-28 counts, SEC-29 references): at most 512
+     * species, 4096 cultivars (64 per species) and 64 village templates —
+     * extras by id order are ERROR; duplicate ids are ERROR; every record is
+     * validated; references cultivar → species, cultivar → parent and
+     * template → landrace go through {@link ReferenceGraph}, and a rejected
+     * record takes its dependents with it. Paths are prefixed with
+     * {@code species:<id>}, {@code cultivar:<id>}, {@code template:<landrace>}.
+     */
+    public static SetResult validateSet(List<SpeciesDef> species, List<CultivarDef> cultivars,
+                                        List<VillageTemplate> templates) {
+        List<Problem> out = new ArrayList<>();
+        Map<String, SpeciesDef> sp = new TreeMap<>();
+        for (SpeciesDef s : species) {
+            if (s == null) {
+                continue;
+            }
+            String key = "species:" + s.id();
+            if (sp.containsKey(key)) {
+                out.add(Problem.error(key, "duplicate species id"));
+                continue;
+            }
+            sp.put(key, s);
+        }
+        limitCount(sp, DataLimits.MAX_SPECIES, "species", out);
+        Map<String, CultivarDef> cv = new TreeMap<>();
+        for (CultivarDef c : cultivars) {
+            if (c == null) {
+                continue;
+            }
+            String key = "cultivar:" + c.id().value();
+            if (cv.containsKey(key)) {
+                out.add(Problem.error(key, "duplicate cultivar id"));
+                continue;
+            }
+            cv.put(key, c);
+        }
+        limitCount(cv, DataLimits.MAX_CULTIVARS, "cultivars", out);
+        Map<String, Integer> perSpecies = new TreeMap<>();
+        for (Map.Entry<String, CultivarDef> e : new ArrayList<>(cv.entrySet())) {
+            int n = perSpecies.merge(e.getValue().species(), 1, Integer::sum);
+            if (n > DataLimits.MAX_CULTIVARS_PER_SPECIES) {
+                out.add(Problem.error(e.getKey(), "more than " + DataLimits.MAX_CULTIVARS_PER_SPECIES
+                        + " cultivars of " + e.getValue().species()));
+                cv.remove(e.getKey());
+            }
+        }
+        Map<String, VillageTemplate> tp = new TreeMap<>();
+        for (VillageTemplate t : templates) {
+            if (t != null && tp.put("template:" + t.landrace().value(), t) != null) {
+                out.add(Problem.error("template:" + t.landrace().value(), "duplicate template"));
+            }
+        }
+        limitCount(tp, DataLimits.MAX_VILLAGE_TEMPLATES, "village templates", out);
+
+        Map<String, List<String>> graph = new TreeMap<>();
+        for (Map.Entry<String, SpeciesDef> e : sp.entrySet()) {
+            List<Problem> p = validate(e.getValue());
+            prefix(e.getKey(), p, out);
+            graph.put(e.getKey(), hasErrors(p) ? List.of(e.getKey() + "#invalid") : List.of());
+        }
+        for (Map.Entry<String, CultivarDef> e : cv.entrySet()) {
+            CultivarDef c = e.getValue();
+            List<String> refs = new ArrayList<>();
+            refs.add("species:" + c.species());
+            c.parent().ifPresent(p -> refs.add("cultivar:" + p.value()));
+            SpeciesDef s = sp.get("species:" + c.species());
+            if (s != null) {
+                List<Problem> p = validate(c, s);
+                prefix(e.getKey(), p, out);
+                if (hasErrors(p)) {
+                    refs.add(e.getKey() + "#invalid");
+                }
+            }
+            graph.put(e.getKey(), refs);
+        }
+        for (Map.Entry<String, VillageTemplate> e : tp.entrySet()) {
+            graph.put(e.getKey(), List.of("cultivar:" + e.getValue().landrace().value()));
+        }
+        List<Problem> refProblems = ReferenceGraph.check(graph);
+        java.util.Set<String> rejected = ReferenceGraph.rejected(refProblems);
+        for (Problem p : refProblems) {
+            if (!p.message().startsWith("dangling reference to ") || !p.message().endsWith("#invalid")) {
+                out.add(p);
+            }
+        }
+        List<SpeciesDef> okS = new ArrayList<>();
+        sp.forEach((k, v) -> {
+            if (!rejected.contains(k)) {
+                okS.add(v);
+            }
+        });
+        List<CultivarDef> okC = new ArrayList<>();
+        cv.forEach((k, v) -> {
+            if (!rejected.contains(k)) {
+                okC.add(v);
+            }
+        });
+        List<VillageTemplate> okT = new ArrayList<>();
+        tp.forEach((k, v) -> {
+            if (!rejected.contains(k)) {
+                okT.add(v);
+            }
+        });
+        return new SetResult(out, okS, okC, okT);
+    }
+
+    private static <T> void limitCount(Map<String, T> byKey, int max, String what, List<Problem> out) {
+        if (byKey.size() <= max) {
+            return;
+        }
+        List<String> keys = new ArrayList<>(byKey.keySet());
+        for (String k : keys.subList(max, keys.size())) {
+            out.add(Problem.error(k, "more than " + max + " " + what + " in one load"));
+            byKey.remove(k);
+        }
+    }
+
+    private static void prefix(String key, List<Problem> in, List<Problem> out) {
+        for (Problem p : in) {
+            out.add(new Problem(p.severity(), p.path().isEmpty() ? key : key + "/" + p.path(), p.message()));
+        }
     }
 
     // ------------------------------------------------------------------ helpers
