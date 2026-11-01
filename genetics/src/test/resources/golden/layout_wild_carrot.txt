@@ -1,0 +1,1 @@
+cee0bc2c52916ae3	q:cold_tolerance:3|q:drought_tolerance:3|q:flavor:4|q:fruit_size:6|q:growth_speed:4|q:heat_tolerance:3|q:yield:6|l:8|c:bitterness:1:2|c:color_p:1:2|c:color_y1:1:2|c:color_y2:1:2|c:dormancy:1:2

@@ -1,0 +1,170 @@
+{
+ "temperature_window": [
+  0.2,
+  1.0
+ ],
+ "life_cycle": "biennial",
+ "pollination": {
+  "outcross": 0.6,
+  "bees": {
+   "carry_range": 16,
+   "outcross": 0.95
+  },
+  "radius": 2,
+  "seed_set_no_pollinator": 0.5,
+  "self_compatible": true,
+  "mode": "insect"
+ },
+ "timing": {
+  "seed_stage_min": 5,
+  "to_harvest_min": 11
+ },
+ "wild_allele_freq": {
+  "elite": [
+   0.3,
+   0.4,
+   0.3
+  ],
+  "elite_loci": {
+   "fruit_size": 2,
+   "growth_speed": 1,
+   "heat_tolerance": 1,
+   "yield": 2,
+   "flavor": 1,
+   "drought_tolerance": 1,
+   "cold_tolerance": 1
+  },
+  "background": [
+   0.6,
+   0.35,
+   0.05
+  ]
+ },
+ "qualitative": {
+  "dormancy": {
+   "wild_freq": 0.3,
+   "dominant": "wild"
+  },
+  "color_y1": {
+   "wild_freq": 0.3,
+   "dominant": "wild",
+   "note": "y1y1 = yellow root"
+  },
+  "color_y2": {
+   "dominant": "wild",
+   "wild_freq": 0.12,
+   "note": "y1y1 y2y2 = orange root"
+  },
+  "bitterness": {
+   "wild_freq": 0.4,
+   "dominant": "wild",
+   "toxic": false
+  },
+  "color_p": {
+   "wild_freq": 0.05,
+   "note": "P_ = purple root, epistatic over yellow/orange",
+   "dominant": "domestic"
+  }
+ },
+ "propagation": "seed",
+ "mutation": {
+  "quantitative": 0.004,
+  "qualitative": 0.001
+ },
+ "tradeoffs": [
+  {
+   "threshold": 0.5,
+   "trait": "drought_tolerance",
+   "against": "yield",
+   "c": 0.25
+  },
+  {
+   "trait": "heat_tolerance",
+   "threshold": 0.5,
+   "against": "yield",
+   "c": 0.25
+  },
+  {
+   "trait": "cold_tolerance",
+   "against": "yield",
+   "c": 0.25,
+   "threshold": 0.5
+  },
+  {
+   "against": "growth_speed",
+   "threshold": 0.5,
+   "c": 0.2,
+   "trait": "fruit_size"
+  },
+  {
+   "against": "fruit_size",
+   "threshold": 0.55,
+   "c": 0.2,
+   "trait": "flavor"
+  }
+ ],
+ "load": {
+  "freq": 0.25,
+  "step": 0.9,
+  "loci": 8
+ },
+ "wild_F": 0.1,
+ "display_traits": {
+  "flavor": "sweetness",
+  "fruit_size": "root_size"
+ },
+ "id": "wildroots:wild_carrot",
+ "quality_axes": {
+  "fruit_size": 0.5,
+  "flavor": 0.5
+ },
+ "budget": {
+  "limit": 2.6,
+  "weights": {
+   "fruit_size": 1.0,
+   "yield": 1.0,
+   "heat_tolerance": 0.5,
+   "drought_tolerance": 0.5,
+   "cold_tolerance": 0.5,
+   "growth_speed": 0.75
+  }
+ },
+ "quantitative": {
+  "growth_speed": {
+   "loci": 4,
+   "vigor_affected": true,
+   "sigma_env": 0.05
+  },
+  "drought_tolerance": {
+   "sigma_env": 0.04,
+   "vigor_affected": false,
+   "loci": 3
+  },
+  "heat_tolerance": {
+   "loci": 3,
+   "sigma_env": 0.04,
+   "vigor_affected": false
+  },
+  "fruit_size": {
+   "loci": 6,
+   "vigor_affected": true,
+   "sigma_env": 0.07
+  },
+  "flavor": {
+   "loci": 4,
+   "sigma_env": 0.06,
+   "vigor_affected": false
+  },
+  "cold_tolerance": {
+   "loci": 3,
+   "sigma_env": 0.04,
+   "vigor_affected": false
+  },
+  "yield": {
+   "sigma_env": 0.07,
+   "vigor_affected": true,
+   "loci": 6
+  }
+ },
+ "rare_allele": "color_y2"
+}

@@ -1,0 +1,13 @@
+{
+  "id": "wildroots:eastern_carrot",
+  "species": "wildroots:wild_carrot",
+  "tier": 1,
+  "priority": 0,
+  "requires": {
+    "quantitative": { "fruit_size": { "min": 0.40 }, "flavor": { "min": 0.30 } },
+    "qualitative":  { "bitterness": "domestic" },
+    "any_of": [ { "color_y1": "domestic" }, { "color_p": "domestic" } ]
+  },
+  "hysteresis": 0.05,
+  "produce": { "item": "wildroots:eastern_carrot", "quality_axes": { "fruit_size": 0.5, "flavor": 0.5 } }
+}
