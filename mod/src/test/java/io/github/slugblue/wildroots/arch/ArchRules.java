@@ -84,6 +84,23 @@ public final class ArchRules {
                 .because(":genetics is plain Java (ADR-0001)");
     }
 
+    /**
+     * WR-101: the engine draws randomness only from its own SplitMix64 and
+     * hashes only with Hash64 (ADR-0001, docs/05-architecture.md §4.3): no
+     * {@code java.util.Random} and subclasses, {@code SplittableRandom},
+     * {@code Math.random}, {@code String.hashCode}.
+     */
+    public static ArchRule geneticsDeterministicRandomOnly(String root) {
+        return noClasses()
+                .that().resideInAPackage(root + ".genetics..")
+                .should().dependOnClassesThat(assignableTo(java.util.Random.class)
+                        .or(type(java.util.SplittableRandom.class)))
+                .orShould().callMethodWhere(callTo(Math.class, "random")
+                        .or(callTo(StrictMath.class, "random"))
+                        .or(callTo(String.class, "hashCode")))
+                .because("the engine is deterministic across JVMs (ADR-0001)");
+    }
+
     // ------------------------------------------------- NoNetworkNoExec (SEC-43)
 
     /** SEC-43: one rule per forbidden API, in the order of the SEC-43 list. */

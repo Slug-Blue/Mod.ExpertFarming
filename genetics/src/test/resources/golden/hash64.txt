@@ -1,0 +1,22 @@
+# FNV-1a 64 over UTF-8 and Hash64.of(fnv, index), independent Python reference.
+# Format: <fnv1a64 hex>	<Hash64.of(fnv, index) hex>	<string, JSON-escaped-free, may be empty>
+cbf29ce484222325	6828378c196c24ab	
+af63dc4c8601ec8c	a6317f3936a73258	a
+85944171f73967e8	39c2ec313d950f52	foobar
+a78509050ae81ec6	469db0b1f7a7ca5a	wildroots:wild_carrot
+fbb42caaa5e6e397	1d18c326054b390d	wildroots:carrot
+2924163ad747d0ee	c5d3a529ec9b7880	yield
+5e07dc13310d46d3	318d8d0743c89cc9	fruit_size
+94271167d80f8ae6	7f86810a59db8940	growth_speed
+a4ada20eed333ee9	af9bc73392a2b01c	flavor
+2b37da3b5dd9b26c	133ccff44282f269	bitterness
+bfce997fe64ae0ff	04332335a3bcbf79	color_y1
+6c092771d20768d1	fe5433d9cb082c73	noise
+eb54c6762678b220	9d9dc08805403165	meadow
+b252671ff8993467	10b335afeefde8e7	rich
+409a60da6e2669b9	25328742431880be	морковь
+47dded89306a1ce5	80c77b9366bb067c	Дикая морковь
+fe6efbe4ec8c988c	bb7085aedd001397	ёлка
+ee9ee2b5c854ef87	380ec82be70c3199	日本語
+d7d2b6a99194f487	691f43b5ebd1bde4	q:flavor:4|q:fruit_size:6|l:8
+af639d4c8601817f	464ba10ebe312b42	 

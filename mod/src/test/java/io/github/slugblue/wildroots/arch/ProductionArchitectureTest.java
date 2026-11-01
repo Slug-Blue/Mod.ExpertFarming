@@ -48,6 +48,11 @@ class ProductionArchitectureTest {
         ArchRules.geneticsUsesOnlyJdk(ROOT).check(production);
     }
 
+    @Test
+    void geneticsDeterministicRandomOnly() {
+        ArchRules.geneticsDeterministicRandomOnly(ROOT).check(production);
+    }
+
     /** NoNetworkNoExecTest (SEC-43): one dynamic test per forbidden API. */
     @TestFactory
     Stream<DynamicTest> noNetworkNoExec() {

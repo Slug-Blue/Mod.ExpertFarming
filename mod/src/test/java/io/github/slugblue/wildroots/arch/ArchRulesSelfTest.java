@@ -76,6 +76,16 @@ class ArchRulesSelfTest {
         assertAllows(ArchRules.geneticsUsesOnlyJdk(F), "genetics.PlainJava");
     }
 
+    @Test
+    void geneticsRandomRuleFiresOnJdkRandomness() {
+        ArchRule rule = ArchRules.geneticsDeterministicRandomOnly(F);
+        assertViolates(rule, "genetics.UsesJdkRandom");
+        assertViolates(rule, "genetics.UsesSplittableRandom");
+        assertViolates(rule, "genetics.UsesMathRandom");
+        assertViolates(rule, "genetics.UsesStringHashCode");
+        assertAllows(rule, "genetics.PlainJava");
+    }
+
     // ------------------------------------------------- NoNetworkNoExec (SEC-43)
 
     /** Fixture per rule, in the order of {@link ArchRules#noNetworkNoExec(String)}. */
