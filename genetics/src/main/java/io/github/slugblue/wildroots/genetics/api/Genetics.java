@@ -13,9 +13,12 @@ import io.github.slugblue.wildroots.genetics.model.GenomeLayout;
 import io.github.slugblue.wildroots.genetics.phenotype.CompiledSpecies;
 import io.github.slugblue.wildroots.genetics.phenotype.NoiseVector;
 import io.github.slugblue.wildroots.genetics.phenotype.PhenotypeCalculator;
+import io.github.slugblue.wildroots.genetics.pollination.Brush;
 import io.github.slugblue.wildroots.genetics.pollination.Candidate;
 import io.github.slugblue.wildroots.genetics.pollination.Donor;
 import io.github.slugblue.wildroots.genetics.pollination.FatherSelector;
+import io.github.slugblue.wildroots.genetics.pollination.Outcrossing;
+import io.github.slugblue.wildroots.genetics.pollination.SeedSet;
 import io.github.slugblue.wildroots.genetics.population.VillageTemplate;
 import io.github.slugblue.wildroots.genetics.population.WildPopulation;
 import io.github.slugblue.wildroots.genetics.quality.Booster;
@@ -34,17 +37,20 @@ import java.util.function.Function;
 
 /**
  * Default implementation of {@link GeneticsService}. Holds a species lookup
- * (for {@link #offspring(LotRecord, long)} and lot fathers) and the layout
- * dictionary used to migrate stored genomes. Compiled species are cached by
- * id and rebuilt when a different definition object arrives (after
- * {@code /reload}). Thread-safe for the server thread plus readers: the
- * caches are guarded by the instance lock.
+ * (for {@link #offspring(LotRecord, long)}) and the layout dictionary used to
+ * migrate stored genomes. A species is validated when it first fills the
+ * cache; invalid ones are remembered as such until a new definition object
+ * replaces them. Thread-safe: the cache is guarded by the instance lock.
  */
 public final class Genetics implements GeneticsService {
 
     private final Function<String, SpeciesDef> species;
     private final LayoutDictionary dictionary;
-    private final Map<String, CompiledSpecies> compiled = new HashMap<>();
+    private final Map<String, Entry> compiled = new HashMap<>();
+
+    /** Cache entry: the definition object it was built from and the compiled form, if valid. */
+    private record Entry(SpeciesDef def, Optional<CompiledSpecies> compiled) {
+    }
 
     /**
      * @param species    species by id (the current definitions snapshot); may return {@code null}
@@ -55,53 +61,68 @@ public final class Genetics implements GeneticsService {
         this.dictionary = dictionary;
     }
 
-    /** Engine over a fixed set of species; their current layouts are registered in a fresh dictionary. */
+    /** Engine over a fixed set of species; layouts of the valid ones go into a fresh dictionary. */
     public static Genetics of(List<SpeciesDef> defs) {
         Map<String, SpeciesDef> byId = new HashMap<>();
         LayoutDictionary d = new LayoutDictionary();
         for (SpeciesDef s : defs) {
             byId.put(s.id(), s);
-            d.register(s.id(), GenomeLayout.of(s));
+            if (!DefinitionValidator.hasErrors(DefinitionValidator.validate(s))) {
+                d.register(s.id(), GenomeLayout.of(s));
+            }
         }
         return new Genetics(byId::get, d);
     }
 
-    synchronized CompiledSpecies compiled(SpeciesDef s) {
-        CompiledSpecies c = compiled.get(s.id());
-        if (c == null || c.def() != s) {
-            c = new CompiledSpecies(s);
-            compiled.put(s.id(), c);
+    /** Compiled form of a valid species, empty for null or invalid definitions. */
+    synchronized Optional<CompiledSpecies> compiled(SpeciesDef s) {
+        if (s == null || s.id() == null) {
+            return Optional.empty();
         }
-        return c;
-    }
-
-    @Override
-    public GenomeLayout layout(SpeciesDef s) {
-        return compiled(s).layout();
-    }
-
-    @Override
-    public Genome wildPlant(SpeciesDef s, PatchPassport p, long plantKey) {
-        return WildPopulation.wildPlant(s, layout(s), p, plantKey);
-    }
-
-    @Override
-    public Genome villagePlant(SpeciesDef s, VillageTemplate t, long key) {
-        return t.plant(s, layout(s), key);
-    }
-
-    @Override
-    public Genome offspring(LotRecord lot, long rngKey) {
-        SpeciesDef s = species.apply(lot.species());
-        if (s == null) {
-            throw new IllegalArgumentException("unknown species " + lot.species() + ": the lot is inert");
+        Entry e = compiled.get(s.id());
+        if (e == null || e.def() != s) {
+            Optional<CompiledSpecies> c = Optional.empty();
+            try {
+                if (!DefinitionValidator.hasErrors(DefinitionValidator.validate(s))) {
+                    c = Optional.of(new CompiledSpecies(s));
+                }
+            } catch (RuntimeException ex) {
+                c = Optional.empty();
+            }
+            e = new Entry(s, c);
+            compiled.put(s.id(), e);
         }
-        return offspring(s, lot, rngKey);
+        return e.compiled();
+    }
+
+    /** Compiled species if {@code g} belongs to it in its current layout. */
+    private Optional<CompiledSpecies> forGenome(SpeciesDef s, Genome g) {
+        return compiled(s).filter(c -> g != null && g.species().equals(s.id()) && g.layout().equals(c.layout()));
     }
 
     @Override
-    public Genome offspring(SpeciesDef s, LotRecord lot, long rngKey) {
-        return Offspring.of(lot, s.mutation(), rngKey);
+    public Optional<GenomeLayout> layout(SpeciesDef s) {
+        return compiled(s).map(CompiledSpecies::layout);
+    }
+
+    @Override
+    public Optional<Genome> wildPlant(SpeciesDef s, PatchPassport p, long plantKey) {
+        return compiled(s).map(c -> WildPopulation.wildPlant(s, c.layout(), p, plantKey));
+    }
+
+    @Override
+    public Optional<Genome> villagePlant(SpeciesDef s, VillageTemplate t, long key) {
+        return compiled(s).map(c -> t.plant(c, key));
+    }
+
+    @Override
+    public Optional<Genome> offspring(LotRecord lot, long rngKey) {
+        return offspring(species.apply(lot.species()), lot, rngKey);
+    }
+
+    @Override
+    public Optional<Genome> offspring(SpeciesDef s, LotRecord lot, long rngKey) {
+        return forGenome(s, lot.mother()).map(c -> Offspring.of(lot, s.mutation(), rngKey));
     }
 
     @Override
@@ -110,19 +131,24 @@ public final class Genetics implements GeneticsService {
     }
 
     @Override
-    public NoiseVector rollNoise(SpeciesDef s, long rngKey) {
-        return PhenotypeCalculator.rollNoise(compiled(s), rngKey);
+    public Optional<NoiseVector> rollNoise(SpeciesDef s, long rngKey) {
+        return compiled(s).map(c -> PhenotypeCalculator.rollNoise(c, rngKey));
     }
 
     @Override
-    public Phenotype phenotype(Genome g, SpeciesDef s, Environment e, NoiseVector n) {
-        return PhenotypeCalculator.compute(compiled(s), g, e, n);
+    public Optional<NoiseVector> migrateNoise(NoiseVector stored, GenomeLayout oldLayout, SpeciesDef s, long rngKey) {
+        return compiled(s).map(c -> stored.migrate(oldLayout, c, rngKey));
     }
 
     @Override
-    public Classification classify(Genome g, SpeciesDef s, List<CultivarDef> profiles,
-                                   Optional<CultivarId> parentStatus) {
-        return CultivarClassifier.classify(compiled(s), g, profiles, parentStatus);
+    public Optional<Phenotype> phenotype(Genome g, SpeciesDef s, Environment e, NoiseVector n) {
+        return forGenome(s, g).map(c -> PhenotypeCalculator.compute(c, g, e, n));
+    }
+
+    @Override
+    public Optional<Classification> classify(Genome g, SpeciesDef s, List<CultivarDef> profiles,
+                                             Optional<CultivarId> parentStatus) {
+        return forGenome(s, g).map(c -> CultivarClassifier.classify(c, g, profiles, parentStatus));
     }
 
     @Override
@@ -131,14 +157,35 @@ public final class Genetics implements GeneticsService {
     }
 
     @Override
-    public List<FatherPick> chooseFathers(SpeciesDef s, Genome mother, List<Candidate> nearby, List<Donor> donors,
-                                          long rngKey) {
-        return FatherSelector.choose(s, mother, nearby, donors, rngKey).fathers();
+    public Optional<FatherSelector.Selection> chooseFathers(SpeciesDef s, Genome mother, List<Candidate> nearby,
+                                                            List<Donor> donors, long rngKey) {
+        return forGenome(s, mother).map(c -> FatherSelector.choose(s, mother, nearby, donors, rngKey));
+    }
+
+    @Override
+    public double pOut(SpeciesDef s, FatherSelector.Selection sel, boolean beeVisited, Brush brush) {
+        return compiled(s).map(c -> Outcrossing.pOut(s, sel.compatibleNeighbours(), sel.compatibleDonors(),
+                beeVisited, brush)).orElse(0.0);
+    }
+
+    @Override
+    public double expectedSeeds(SpeciesDef s, Phenotype mother, FatherSelector.Selection sel, boolean pollinator,
+                                Brush brush) {
+        return compiled(s).map(c -> {
+            boolean shatters = c.def().qual(Traits.SHATTERING) != null && !mother.domestic(Traits.SHATTERING);
+            return SeedSet.expected(s, mother.pOr(Traits.YIELD, 0), pollinator, sel.compatiblePollen(), brush,
+                    shatters);
+        }).orElse(0.0);
     }
 
     @Override
     public int grade(Phenotype p, CultivarDef cultivar) {
         return Grade.of(QualityIndex.of(p, cultivar.qualityAxes()), p.bitter());
+    }
+
+    @Override
+    public int grade(Phenotype p, SpeciesDef s) {
+        return Grade.of(QualityIndex.of(p, s.qualityAxes()), p.bitter());
     }
 
     @Override
@@ -153,10 +200,11 @@ public final class Genetics implements GeneticsService {
 
     @Override
     public DecodeResult decode(GenomeRecord r, SpeciesDef s) {
-        if (s == null) {
-            return new DecodeResult.Inert("unknown species");
+        Optional<CompiledSpecies> c = compiled(s);
+        if (c.isEmpty()) {
+            return new DecodeResult.Inert(s == null ? "unknown species" : "invalid species " + s.id());
         }
-        return GenomeMigrator.migrate(r, s, layout(s), dictionary).toDecodeResult();
+        return GenomeMigrator.migrate(r, s, c.get().layout(), dictionary).toDecodeResult();
     }
 
     @Override

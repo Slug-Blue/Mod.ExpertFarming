@@ -12,7 +12,9 @@ import io.github.slugblue.wildroots.genetics.codec.LayoutDictionary;
 import io.github.slugblue.wildroots.genetics.model.Genome;
 import io.github.slugblue.wildroots.genetics.model.GenomeLayout;
 import io.github.slugblue.wildroots.genetics.phenotype.NoiseVector;
+import io.github.slugblue.wildroots.genetics.pollination.Brush;
 import io.github.slugblue.wildroots.genetics.pollination.Candidate;
+import io.github.slugblue.wildroots.genetics.pollination.FatherSelector;
 import io.github.slugblue.wildroots.genetics.population.VillageTemplate;
 import io.github.slugblue.wildroots.genetics.quality.GradedInput;
 import io.github.slugblue.wildroots.genetics.random.Hash64;
@@ -48,45 +50,84 @@ class GeneticsServiceTest {
     static final GeneticsService G = Genetics.of(List.of(S));
 
     @Test
-    void interfaceCoversArchitectureSection41() {
-        Set<String> names = Arrays.stream(GeneticsService.class.getMethods()).map(Method::getName)
-                .collect(Collectors.toCollection(TreeSet::new));
-        for (String m : List.of("layout", "wildPlant", "villagePlant", "offspring", "clone", "rollNoise", "phenotype",
-                "classify", "chooseFathers", "grade", "process", "encode", "decode")) {
-            assertTrue(names.contains(m), "missing " + m);
-        }
-        assertTrue(GeneticsService.class.isAssignableFrom(Genetics.class));
-    }
-
-    @Test
-    void carrotThroughTheFacade() {
+    void facadeGivesTheSameResultsAsTheEngine() {
         long seed = 99;
         PatchPassport patch = new PatchPassport(S.id(), "meadow", false, 1L, true, seed);
-        Genome mother = G.wildPlant(S, patch, Hash64.of(seed, 1L, 2L));
-        assertEquals(G.layout(S), mother.layout());
-        assertEquals(142, G.layout(S).totalBits());
+        GenomeLayout l = G.layout(S).orElseThrow();
+        assertEquals(142, l.totalBits());
+        Genome mother = G.wildPlant(S, patch, Hash64.of(seed, 1L, 2L)).orElseThrow();
+        assertEquals(io.github.slugblue.wildroots.genetics.population.WildPopulation.wildPlant(S, l, patch,
+                Hash64.of(seed, 1L, 2L)), mother);
         List<Candidate> near = new ArrayList<>();
         for (int i = 0; i < 6; i++) {
-            near.add(new Candidate(G.wildPlant(S, patch, Hash64.of(seed, 1L, 10L + i)), i % 3 - 1, 0, 1));
+            near.add(new Candidate(G.wildPlant(S, patch, Hash64.of(seed, 1L, 10L + i)).orElseThrow(), i % 3 - 1, 0, 1));
         }
-        List<FatherPick> fathers = G.chooseFathers(S, mother, near, List.of(), 7);
-        assertTrue(!fathers.isEmpty() && fathers.size() <= 4);
-        Genome child = G.offspring(new LotRecord(mother, fathers, 0.6), 11);
-        assertEquals(child, G.offspring(S, new LotRecord(mother, fathers, 0.6), 11));
-        NoiseVector eps = G.rollNoise(S, 12);
-        Phenotype p = G.phenotype(child, S, Environment.neutral(0.6), eps);
+        FatherSelector.Selection sel = G.chooseFathers(S, mother, near, List.of(), 7).orElseThrow();
+        assertEquals(FatherSelector.choose(S, mother, near, List.of(), 7), sel);
+        assertEquals(6, sel.compatibleNeighbours());
+        double pOut = G.pOut(S, sel, true, Brush.NONE);
+        assertEquals(0.95, pOut, 1e-12);
+        LotRecord lot = new LotRecord(mother, sel.fathers(), pOut);
+        Genome child = G.offspring(lot, 11).orElseThrow();
+        assertEquals(io.github.slugblue.wildroots.genetics.breeding.Offspring.of(lot, S.mutation(), 11), child);
+        NoiseVector eps = G.rollNoise(S, 12).orElseThrow();
+        Phenotype p = G.phenotype(child, S, Environment.neutral(0.6), eps).orElseThrow();
+        assertEquals(io.github.slugblue.wildroots.genetics.phenotype.PhenotypeCalculator.compute(
+                new io.github.slugblue.wildroots.genetics.phenotype.CompiledSpecies(S), child,
+                Environment.neutral(0.6), eps), p);
+        double seeds = G.expectedSeeds(S, p, sel, true, Brush.NONE);
+        assertEquals(3 + 9 * p.p(Carrot.YIELD), seeds, 1e-12);
+        assertEquals((3 + 9 * p.p(Carrot.YIELD)) * 0.5, G.expectedSeeds(S, p, sel, false, Brush.NONE), 1e-12);
         int grade = G.grade(p, Carrot.CARROT);
-        assertTrue(grade >= 1 && grade <= (p.bitter() ? 2 : 4));
-        Classification c = G.classify(child, S, Carrot.PROFILES, Optional.empty());
+        assertEquals(io.github.slugblue.wildroots.genetics.quality.Grade.of(
+                0.5 * p.p(Carrot.FRUIT) + 0.5 * p.p(Carrot.FLAVOR), p.bitter()), grade);
+        assertEquals(grade, G.grade(p, S), "wild harvest uses the line's axes, here the same as the cultivar's");
+        Classification c = G.classify(child, S, Carrot.PROFILES, Optional.empty()).orElseThrow();
         assertEquals(c.cultivar(), G.classifyClone(c).cultivar());
         assertEquals(child, G.clone(child));
         assertEquals(child, G.decode(G.encode(child), S).genome());
         assertEquals(3, G.process(List.of(new GradedInput(3, 2, 1, false)), List.of()).grade());
         VillageTemplate t = VillageTemplate.fromLandrace(S, Carrot.EASTERN, Map.of(Carrot.Y2, 0.3), Map.of());
+        Genome village = G.villagePlant(S, t, 5).orElseThrow();
         assertEquals(Optional.of(Carrot.EASTERN.id()),
-                G.classify(G.villagePlant(S, t, 5), S, Carrot.PROFILES, Optional.empty()).cultivar());
+                G.classify(village, S, Carrot.PROFILES, Optional.empty()).orElseThrow().cultivar());
         assertEquals(List.of(), G.validate(S));
         assertEquals(List.of(), G.validate(Carrot.CARROT, S));
+    }
+
+    @Test
+    void invalidOrUnknownSpeciesAndForeignGenomesGiveEmptyResultsNotExceptions() {
+        SpeciesDef broken = DefJson.species(MiniJson.resource("/invalid/loci_above_16.json"), new ArrayList<>());
+        Genetics g = Genetics.of(List.of(S, broken));
+        PatchPassport patch = new PatchPassport(broken.id(), "meadow", false, 1L, false, 1);
+        assertTrue(g.layout(broken).isEmpty());
+        assertTrue(g.wildPlant(broken, patch, 1).isEmpty());
+        assertTrue(g.rollNoise(broken, 1).isEmpty());
+        Genome carrot = RandomGenomes.carrot(new SplitMix64(1));
+        assertTrue(g.phenotype(carrot, broken, Environment.neutral(0.5), NoiseVector.zero(7)).isEmpty());
+        assertTrue(g.classify(carrot, broken, Carrot.PROFILES, Optional.empty()).isEmpty());
+        assertTrue(g.chooseFathers(broken, carrot, List.of(), List.of(), 1).isEmpty());
+        assertInstanceOf(DecodeResult.Inert.class, g.decode(g.encode(carrot), broken));
+        assertInstanceOf(DecodeResult.Inert.class, g.decode(g.encode(carrot), null));
+        assertEquals(0.0, g.pOut(broken, new FatherSelector.Selection(List.of(), 0, 1, 0), false, Brush.NONE));
+        // unknown species of a lot
+        Genetics none = new Genetics(id -> null, new LayoutDictionary());
+        assertTrue(none.offspring(new LotRecord(carrot, List.of(), 0), 1).isEmpty());
+        // a genome in another layout of the right species: empty instead of AIOOBE
+        SpeciesDef y8 = DefJson.species("/species/wild_carrot_yield8.json");
+        assertTrue(g.phenotype(carrot, y8, Environment.neutral(0.5), NoiseVector.zero(7)).isEmpty());
+        assertTrue(g.offspring(y8, new LotRecord(carrot, List.of(), 0), 1).isEmpty());
+    }
+
+    @Test
+    void cacheRevalidatesANewDefinitionObject() {
+        Map<String, SpeciesDef> snapshot = new java.util.HashMap<>(Map.of(S.id(), S));
+        Genetics g = new Genetics(snapshot::get, new LayoutDictionary());
+        assertTrue(g.layout(S).isPresent());
+        SpeciesDef broken = DefJson.species(MiniJson.resource("/invalid/loci_above_16.json"), new ArrayList<>());
+        assertEquals(S.id(), broken.id());
+        assertTrue(g.layout(broken).isEmpty(), "same id, new object after /reload: validated again");
+        assertTrue(g.layout(S).isPresent());
     }
 
     @Test

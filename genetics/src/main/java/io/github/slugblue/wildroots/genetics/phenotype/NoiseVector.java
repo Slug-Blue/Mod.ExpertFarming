@@ -1,7 +1,14 @@
 package io.github.slugblue.wildroots.genetics.phenotype;
 
 import io.github.slugblue.wildroots.genetics.api.Defaults;
+import io.github.slugblue.wildroots.genetics.model.GenomeLayout;
+import io.github.slugblue.wildroots.genetics.model.Locus;
+import io.github.slugblue.wildroots.genetics.model.TraitId;
+import io.github.slugblue.wildroots.genetics.random.Gaussian;
+import io.github.slugblue.wildroots.genetics.random.Hash64;
+import io.github.slugblue.wildroots.genetics.random.SplitMix64;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * Planting noise ε of one plant (GDD §3.1): one value per quantitative trait
@@ -26,6 +33,34 @@ public final class NoiseVector {
         double c = Math.max(-Defaults.NOISE_CLIP, Math.min(Defaults.NOISE_CLIP, eps));
         long r = Math.round(c * 256);
         return (byte) Math.max(-128, Math.min(127, r));
+    }
+
+    /**
+     * ε after a layout change (WR-111): values follow the trait id from the
+     * old layout's quantitative order to the new one; a trait new to the
+     * species gets a fresh ε from {@code Hash64(rngKey, traitId)} with its
+     * σ_env (deterministic); removed traits are dropped.
+     */
+    public NoiseVector migrate(GenomeLayout oldLayout, CompiledSpecies current, long rngKey) {
+        List<Locus> oldQuant = oldLayout.quantitative();
+        List<TraitId> ids = current.quantIds();
+        byte[] out = new byte[ids.size()];
+        for (int i = 0; i < out.length; i++) {
+            int j = -1;
+            for (int k = 0; k < oldQuant.size(); k++) {
+                if (oldQuant.get(k).trait().equals(ids.get(i))) {
+                    j = k;
+                    break;
+                }
+            }
+            if (j >= 0 && j < q.length) {
+                out[i] = q[j];
+            } else {
+                Gaussian g = new Gaussian(new SplitMix64(Hash64.of(rngKey, Hash64.str(ids.get(i).value()))));
+                out[i] = quantise(g.next(0, current.sigma(i)));
+            }
+        }
+        return new NoiseVector(out);
     }
 
     public int size() {

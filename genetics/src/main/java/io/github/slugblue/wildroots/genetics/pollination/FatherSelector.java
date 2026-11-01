@@ -12,6 +12,8 @@ import java.util.List;
  * Fathers of a seed lot, collected once at seed set (GDD §4.1, ADR-0008).
  *
  * <ol>
+ *   <li>The mother itself (offset 0, 0, 0) is never a neighbour: selfing is
+ *   {@code 1 − p_out}, not a pick.</li>
  *   <li>Neighbours within {@code radius} (horizontal Euclidean) and ±2 in Y are
  *   reservoir-sampled: at most 64 are examined, whatever the input size.</li>
  *   <li>Neighbours sharing an S-allele with the mother are rejected.</li>
@@ -24,7 +26,12 @@ import java.util.List;
 public final class FatherSelector {
 
     /** Fathers and the numbers the lot needs for {@code p_out}. */
-    public record Selection(List<FatherPick> fathers, int examined, int compatibleNeighbours) {
+    public record Selection(List<FatherPick> fathers, int examined, int compatibleNeighbours, int compatibleDonors) {
+
+        /** Whether any compatible pollen reached the plant (seed set of self-incompatible species). */
+        public boolean compatiblePollen() {
+            return compatibleNeighbours + compatibleDonors > 0;
+        }
 
         public Selection {
             fathers = List.copyOf(fathers);
@@ -42,7 +49,8 @@ public final class FatherSelector {
         Candidate[] reservoir = new Candidate[Defaults.MAX_CANDIDATES];
         int seen = 0;
         for (Candidate c : nearby) {
-            if (c == null || c.horizontalDistanceSq() > r2 || Math.abs(c.dy()) > Defaults.POLLINATION_DY
+            if (c == null || (c.dx() == 0 && c.dy() == 0 && c.dz() == 0) || c.genome() == mother
+                    || c.horizontalDistanceSq() > r2 || Math.abs(c.dy()) > Defaults.POLLINATION_DY
                     || !c.genome().layout().equals(mother.layout())) {
                 continue;
             }
@@ -88,6 +96,6 @@ public final class FatherSelector {
                 donorCount++;
             }
         }
-        return new Selection(fathers, examined, ok.size());
+        return new Selection(fathers, examined, ok.size(), donorCount);
     }
 }

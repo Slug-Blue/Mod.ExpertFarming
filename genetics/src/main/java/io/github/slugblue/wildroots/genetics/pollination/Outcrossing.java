@@ -5,30 +5,44 @@ import io.github.slugblue.wildroots.genetics.api.Defaults;
 import io.github.slugblue.wildroots.genetics.api.SpeciesDef;
 
 /**
- * Effective outcrossing share {@code p_out} of a lot (GDD §4.1, §4.3, §4.4):
- * brush 0.90; a bee visit with matching pollen {@code bees.outcross}; else
- * {@code base_outcross · min(1, n / 3)} with {@code n} compatible flowering
- * neighbours. A lone plant (no neighbours, no donors) selfs 100 %.
+ * Effective outcrossing share {@code p_out} of a lot (GDD §4.1–4.4):
+ * <ul>
+ *   <li>brush on itself: {@code 1 − 0.90} (forced selfing);</li>
+ *   <li>brush with other pollen: 0.90;</li>
+ *   <li>no compatible pollen at all (neighbours + donors = 0): 0, the plant selfs
+ *   (for a self-incompatible species only the leaky {@code seed_set} 0.10 of
+ *   {@link SeedSet} is left);</li>
+ *   <li>self-incompatible species with compatible pollen: 1.0 ("1.0 среди совместимых", §4.2);</li>
+ *   <li>bee visit with matching pollen: {@code bees.outcross};</li>
+ *   <li>otherwise {@code base_outcross · min(1, n / 3)}, {@code n} = compatible
+ *   flowering neighbours plus compatible donors.</li>
+ * </ul>
  */
 public final class Outcrossing {
 
     private Outcrossing() {
     }
 
-    public static double pOut(SpeciesDef s, int compatibleNeighbours, boolean beeVisited, boolean brushed,
-                              boolean hasDonors) {
-        if (brushed) {
+    public static double pOut(SpeciesDef s, int compatibleNeighbours, int compatibleDonors, boolean beeVisited,
+                              Brush brush) {
+        int n = Math.max(0, compatibleNeighbours) + Math.max(0, compatibleDonors);
+        if (brush == Brush.SELF) {
+            return n > 0 ? 1 - Defaults.BRUSH_OUTCROSS : 0;
+        }
+        if (brush == Brush.CROSS) {
             return Defaults.BRUSH_OUTCROSS;
+        }
+        if (n == 0) {
+            return 0;
+        }
+        if (!s.pollination().selfCompatible()) {
+            return 1.0;
         }
         if (beeVisited && s.pollination().bees().isPresent()) {
             Bees b = s.pollination().bees().get();
             return clamp01(b.outcross());
         }
-        if (compatibleNeighbours <= 0 && !hasDonors) {
-            return 0;
-        }
-        double n = Math.max(0, compatibleNeighbours);
-        return clamp01(s.pollination().outcross() * Math.min(1.0, n / Defaults.OUTCROSS_FULL_AT));
+        return clamp01(s.pollination().outcross() * Math.min(1.0, n / (double) Defaults.OUTCROSS_FULL_AT));
     }
 
     private static double clamp01(double x) {

@@ -114,6 +114,10 @@ public final class Defaults {
     public static final int OUTCROSS_FULL_AT = 3;
     /** Weight of a bee donor in the lot (GDD §4.3) {@code [PLACEHOLDER]}. */
     public static final double BEE_DONOR_WEIGHT = 2.0;
+    /** Seed set of a self-incompatible species without compatible pollen (GDD §4.2, cabbage). */
+    public static final double SI_SEED_SET_NO_COMPATIBLE = 0.10;
+    /** Seed set of brush selfing of a self-incompatible species, bud pollination (GDD §4.4). */
+    public static final double BUD_POLLINATION_SEED_SET = 0.5;
     /** Brush outcrossing (GDD §4.4). */
     public static final double BRUSH_OUTCROSS = 0.90;
     /** Vertical reach of neighbour pollination, ±2 blocks (GDD §4.1). */

@@ -329,4 +329,35 @@ class GenomeMigratorTest {
         assertEquals(100_000, migrations);
         assertTrue(checked > 1_000_000, "alleles checked " + checked);
     }
+
+    @Test
+    void noiseFollowsTraitIdsAcrossALayoutChange() {
+        SpeciesDef sugar = MigrationGoldens.species("wild_carrot_sugar");
+        io.github.slugblue.wildroots.genetics.phenotype.CompiledSpecies cur =
+                new io.github.slugblue.wildroots.genetics.phenotype.CompiledSpecies(sugar);
+        io.github.slugblue.wildroots.genetics.phenotype.CompiledSpecies old =
+                new io.github.slugblue.wildroots.genetics.phenotype.CompiledSpecies(CARROT);
+        byte[] e = new byte[old.quantIds().size()];
+        for (int i = 0; i < e.length; i++) {
+            e[i] = (byte) (10 * (i + 1));
+        }
+        io.github.slugblue.wildroots.genetics.phenotype.NoiseVector stored =
+                new io.github.slugblue.wildroots.genetics.phenotype.NoiseVector(e);
+        io.github.slugblue.wildroots.genetics.phenotype.NoiseVector m = stored.migrate(Carrot.LAYOUT, cur, 77);
+        assertEquals(cur.quantIds().size(), m.size());
+        for (TraitId t : old.quantIds()) {
+            assertEquals(stored.eps(old.quantIndex(t)), m.eps(cur.quantIndex(t)), t.value());
+        }
+        int si = cur.quantIndex(TraitId.of("sugar"));
+        assertEquals(m.eps(si), stored.migrate(Carrot.LAYOUT, cur, 77).eps(si), "new trait rolled deterministically");
+        int differ = 0;
+        for (long k = 0; k < 50; k++) {
+            differ += stored.migrate(Carrot.LAYOUT, cur, k).eps(si) != m.eps(si) ? 1 : 0;
+        }
+        assertTrue(differ > 30, "the key matters");
+        SpeciesDef noFlavor = MigrationGoldens.species("wild_carrot_noflavor");
+        io.github.slugblue.wildroots.genetics.phenotype.NoiseVector dropped = stored.migrate(Carrot.LAYOUT,
+                new io.github.slugblue.wildroots.genetics.phenotype.CompiledSpecies(noFlavor), 1);
+        assertEquals(old.quantIds().size() - 1, dropped.size());
+    }
 }
