@@ -82,8 +82,8 @@ class ProductionArchitectureTest {
                 ROOT + ".core.safety.LoadedLevelAccess")).check(production);
     }
 
+    /** SEC-07, switched on by WR-122. */
     @Test
-    @Disabled("WR-122 switches it on together with core.safety.PlayerText")
     void noComponentSerializerFromJson() {
         ArchRules.noComponentSerializerFromJson(ROOT).check(production);
     }
