@@ -75,8 +75,8 @@ class ProductionArchitectureTest {
         ArchRules.worldSecretHidden(ROOT, ROOT + ".core.safety.WorldSecret").check(production);
     }
 
+    /** SEC-32, switched on by WR-121. */
     @Test
-    @Disabled("WR-121 switches it on together with core.safety.LoadedLevelAccess")
     void levelReadsThroughLoadedLevelAccess() {
         ArchRules.levelReadsThroughLoadedLevelAccess(ROOT, Set.of(
                 ROOT + ".core.safety.LoadedLevelAccess")).check(production);

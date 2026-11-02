@@ -53,6 +53,8 @@ minecraft {
             workingDirectory project.file('run')
             property 'forge.logging.markers', 'REGISTRIES'
             property 'forge.logging.console.level', 'debug'
+            // SEC-34: dev and GameTest runs rethrow exceptions isolated by Guarded.run
+            property 'wildroots.strictErrors', 'true'
             // Refmap remapping for dev runs (MixinGradle + ForgeGradle 6)
             property 'mixin.env.remapRefMap', 'true'
             property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
