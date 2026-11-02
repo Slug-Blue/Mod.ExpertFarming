@@ -14,14 +14,15 @@ import org.junit.jupiter.api.Test;
  * WR-112: the canonical tempo model (GDD §12.5) on the real engine. Carrot,
  * N 24, k 6, 3 patches: the median generation of the first landrace and of
  * the first cultivar must lie within the GDD §12.4 corridor ± 1 generation
- * (landrace 3, cultivar 10). The fast run (50 repeats) is part of
+ * (landrace 3, cultivar 11, GD acceptance 2026-11-01; the hour checks keep
+ * the line at 5.0 h or more). The fast run (50 repeats) is part of
  * {@code :genetics:test}; the full run (500) is {@code ./gradlew :genetics:tempoFull}.
  */
 class TempoModelTest {
 
-    /** GDD §12.4, carrot row «Морковь (порт WR-112, v0.5)»: landrace 3, cultivar median 10. */
+    /** GD acceptance (2026-11-01): cultivar median 11 +- 1 together with line >= 5.0 h, p75 <= 8 h, failures <= 5 %. */
     static final double LANDRACE_MEDIAN = 3;
-    static final double CULTIVAR_MEDIAN = 10;
+    static final double CULTIVAR_MEDIAN = 11;
 
     static TempoModel.Params carrot() {
         return carrot(Carrot.SPECIES.pollination().bees().orElseThrow().outcross());
