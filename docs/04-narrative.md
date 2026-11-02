@@ -1420,8 +1420,11 @@ root (Дикие корни)
 | `player_text.too_long` | журнал, наковальня | The name is too long | Имя слишком длинное |
 | `player_text.forbidden_character` | журнал, наковальня | The name has characters that can't be used | В имени есть недопустимые знаки |
 | `load_problems` | чат, только операторам | Wild Roots: data pack errors: %1$s; species skipped: %2$s, cultivars skipped: %3$s. See the server log. | Wild Roots: ошибок в датапаках: %1$s; пропущено видов: %2$s, сортов: %3$s. Подробности — в логе сервера. |
+| `sync_too_large` | чат, только операторам | Wild Roots: data pack species left out of the client sync: %s. See the server log. | Wild Roots: видов из датапаков не отправлено клиентам: %s. Подробности — в логе сервера. |
+| `sync_failed` | экран отключения | Wild Roots could not read the server's plant data. Check that the client and the server run the same version of the mod. | Wild Roots не смог прочитать данные о растениях с сервера. Проверьте, что у клиента и сервера одна версия мода. |
+| `packet_flood` | экран отключения | Disconnected: too many requests to Wild Roots | Соединение разорвано: слишком много запросов к Wild Roots |
 
-Строки `player_text.*` (отказ санитайзера, SEC-07) и `load_problems` (сводка загрузки для операторов, SEC-27) добавлены в фазе 5 (WR-122, WR-126) `[ПРЕДЛОЖЕНИЕ]`, ждут ревью ND. Служебные ключи вне таблиц: `itemGroup.wildroots` (креативная вкладка) и `wildroots.pack.line.<линия>` (название встроенного пакета линии в `/datapack list`).
+Строки `player_text.*` (отказ санитайзера, SEC-07), `load_problems` (сводка загрузки для операторов, SEC-27), `packet_flood` (SEC-02), `sync_too_large` и `sync_failed` (SEC-31) добавлены в фазе 5 (WR-122, WR-126…WR-128) `[ПРЕДЛОЖЕНИЕ]`, ждут ревью ND. Служебные ключи вне таблиц: `itemGroup.wildroots` (креативная вкладка) и `wildroots.pack.line.<линия>` (название встроенного пакета линии в `/datapack list`).
 
 `lens.header` — первая строка осмотра растения: «Дикая морковь · Цветение» или «Восточная морковь (жёлтая) · Урожайная зрелость». Остальные строки осмотра — те же, что тир 1 тултипа (§7.2).
 

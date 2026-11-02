@@ -34,7 +34,8 @@ public final class WrNetwork {
 
     /** Creates the channel and registers the packets; called from the mod constructor. */
     public static void register() {
-        // S→C packets are added here by the tasks that introduce them (DefinitionsSync: WR-128).
+        // S→C packets; C→S ones are registered by their features through ServerPacketGuard.
+        io.github.slugblue.wildroots.data.sync.DefinitionsSync.register();
     }
 
     /** Index for the next message of the channel. */

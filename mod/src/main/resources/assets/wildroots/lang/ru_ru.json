@@ -5,5 +5,7 @@
   "wildroots.message.player_text.forbidden_character": "В имени есть недопустимые знаки",
   "wildroots.pack.line.carrot": "Wild Roots: линия моркови",
   "wildroots.message.load_problems": "Wild Roots: ошибок в датапаках: %1$s; пропущено видов: %2$s, сортов: %3$s. Подробности — в логе сервера.",
-  "wildroots.message.packet_flood": "Соединение разорвано: слишком много запросов к Wild Roots"
+  "wildroots.message.packet_flood": "Соединение разорвано: слишком много запросов к Wild Roots",
+  "wildroots.message.sync_too_large": "Wild Roots: видов из датапаков не отправлено клиентам: %s. Подробности — в логе сервера.",
+  "wildroots.message.sync_failed": "Wild Roots не смог прочитать данные о растениях с сервера. Проверьте, что у клиента и сервера одна версия мода."
 }

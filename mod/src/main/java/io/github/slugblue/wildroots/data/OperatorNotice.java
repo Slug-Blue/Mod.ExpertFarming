@@ -58,4 +58,13 @@ public final class OperatorNotice {
             }
         }
     }
+
+    /** Sends {@code message} to every operator in {@code online}. */
+    public static void toOperators(List<ServerPlayer> online, Component message) {
+        for (ServerPlayer p : online) {
+            if (p.hasPermissions(OPERATOR)) {
+                sink.accept(p, message);
+            }
+        }
+    }
 }

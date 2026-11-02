@@ -5,5 +5,7 @@
   "wildroots.message.player_text.forbidden_character": "The name has characters that can't be used",
   "wildroots.pack.line.carrot": "Wild Roots: carrot line",
   "wildroots.message.load_problems": "Wild Roots: data pack errors: %1$s; species skipped: %2$s, cultivars skipped: %3$s. See the server log.",
-  "wildroots.message.packet_flood": "Disconnected: too many requests to Wild Roots"
+  "wildroots.message.packet_flood": "Disconnected: too many requests to Wild Roots",
+  "wildroots.message.sync_too_large": "Wild Roots: data pack species left out of the client sync: %s. See the server log.",
+  "wildroots.message.sync_failed": "Wild Roots could not read the server's plant data. Check that the client and the server run the same version of the mod."
 }

@@ -10,6 +10,7 @@ import io.github.slugblue.wildroots.core.registry.ModRegistries;
 import io.github.slugblue.wildroots.core.safety.WorldSecret;
 import io.github.slugblue.wildroots.data.CultivarManager;
 import io.github.slugblue.wildroots.data.OperatorNotice;
+import io.github.slugblue.wildroots.data.sync.DefinitionsSync;
 import io.github.slugblue.wildroots.network.ServerPacketGuard;
 import io.github.slugblue.wildroots.network.WrNetwork;
 import net.minecraftforge.common.MinecraftForge;
@@ -45,6 +46,7 @@ public final class WildRoots {
         MinecraftForge.EVENT_BUS.addListener(WorldSecret::onLevelLoad);
         MinecraftForge.EVENT_BUS.addListener(CultivarManager::onAddReloadListeners);
         MinecraftForge.EVENT_BUS.addListener(OperatorNotice::onDatapackSync);
+        MinecraftForge.EVENT_BUS.addListener(DefinitionsSync::onDatapackSync);
         WrNetwork.register();
         MinecraftForge.EVENT_BUS.addListener(ServerPacketGuard::onLogout);
         LOGGER.debug("Wild Roots constructed");
