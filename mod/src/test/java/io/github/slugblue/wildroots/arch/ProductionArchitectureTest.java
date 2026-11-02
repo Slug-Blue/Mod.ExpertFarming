@@ -69,8 +69,8 @@ class ProductionArchitectureTest {
                 ROOT + ".network.ServerPacketGuard", ROOT + ".network.WrNetwork")).check(production);
     }
 
+    /** SEC-25, switched on by WR-123. */
     @Test
-    @Disabled("WR-123 switches it on together with core.safety.WorldSecret")
     void worldSecretHidden() {
         ArchRules.worldSecretHidden(ROOT, ROOT + ".core.safety.WorldSecret").check(production);
     }
