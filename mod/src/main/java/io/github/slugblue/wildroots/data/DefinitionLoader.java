@@ -42,7 +42,10 @@ import net.minecraft.server.packs.resources.IoSupplier;
  * </ol>
  *
  * <p>Every file is read inside {@code try/catch (Exception | StackOverflowError)}:
- * one bad file never stops the others.
+ * one bad file never stops the others (SEC-27, WR-126). Before the codec a
+ * file over {@value #MAX_FILE_BYTES} bytes, an empty file and JSON nested
+ * deeper than {@value #MAX_JSON_DEPTH} are errors; a UTF-8 byte order mark is
+ * dropped.
  */
 public final class DefinitionLoader {
 
@@ -67,7 +70,51 @@ public final class DefinitionLoader {
         }
     }
 
+    /** Largest definition file (SEC-27). */
+    public static final int MAX_FILE_BYTES = 256 * 1024;
+    /** Deepest JSON nesting of a definition file (SEC-27). */
+    public static final int MAX_JSON_DEPTH = 32;
+    /** U+FEFF, the byte order mark some editors write at the start of UTF-8 files. */
+    private static final char BOM = (char) 0xFEFF;
+
     private DefinitionLoader() {
+    }
+
+    /**
+     * Nesting depth of objects and arrays in {@code text}, counted without a
+     * parser (no recursion, strings and escapes skipped); stops counting once
+     * {@code limit} is passed. Gson parses recursively, so this runs first.
+     */
+    static int jsonDepth(String text, int limit) {
+        int depth = 0;
+        int max = 0;
+        boolean inString = false;
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if (inString) {
+                if (c == '\\') {
+                    i++;
+                } else if (c == '"') {
+                    inString = false;
+                }
+                continue;
+            }
+            switch (c) {
+                case '"' -> inString = true;
+                case '{', '[' -> {
+                    depth++;
+                    if (depth > max) {
+                        max = depth;
+                        if (max > limit) {
+                            return max;
+                        }
+                    }
+                }
+                case '}', ']' -> depth = Math.max(0, depth - 1);
+                default -> { }
+            }
+        }
+        return max;
     }
 
     // ------------------------------------------------------------------ parsing
@@ -94,9 +141,26 @@ public final class DefinitionLoader {
         List<Problem> problems = new ArrayList<>();
         Optional<String> declaredId = Optional.empty();
         try {
-            String text;
+            byte[] bytes;
             try (InputStream in = source.get()) {
-                text = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+                bytes = in.readNBytes(MAX_FILE_BYTES + 1);
+            }
+            if (bytes.length > MAX_FILE_BYTES) {
+                problems.add(Problem.error("", "file larger than " + MAX_FILE_BYTES / 1024 + " KiB"));
+                return new Parsed<>(file, declaredId, Optional.empty(), problems);
+            }
+            String text = new String(bytes, StandardCharsets.UTF_8);
+            if (!text.isEmpty() && text.charAt(0) == BOM) {
+                text = text.substring(1); // UTF-8 byte order mark
+            }
+            if (text.isBlank()) {
+                problems.add(Problem.error("", "empty file"));
+                return new Parsed<>(file, declaredId, Optional.empty(), problems);
+            }
+            int depth = jsonDepth(text, MAX_JSON_DEPTH);
+            if (depth > MAX_JSON_DEPTH) {
+                problems.add(Problem.error("", "JSON nesting deeper than " + MAX_JSON_DEPTH));
+                return new Parsed<>(file, declaredId, Optional.empty(), problems);
             }
             JsonElement json = JsonParser.parseString(text);
             JsonElement id = json.isJsonObject() ? json.getAsJsonObject().get("id") : null;

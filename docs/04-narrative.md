@@ -1416,6 +1416,12 @@ root (Дикие корни)
 | `seedling.name_prompt` | журнал | Name this variety | Назовите этот сорт |
 | `seedling.named` | action bar | The variety is now called "%s" | Теперь этот сорт зовётся «%s» |
 | `pouch.full`, `pouch.not_seeds` | action bar | §7.3 | §7.3 |
+| `player_text.empty` | журнал, наковальня | The name is empty | Имя пустое |
+| `player_text.too_long` | журнал, наковальня | The name is too long | Имя слишком длинное |
+| `player_text.forbidden_character` | журнал, наковальня | The name has characters that can't be used | В имени есть недопустимые знаки |
+| `load_problems` | чат, только операторам | Wild Roots: data pack errors: %1$s; species skipped: %2$s, cultivars skipped: %3$s. See the server log. | Wild Roots: ошибок в датапаках: %1$s; пропущено видов: %2$s, сортов: %3$s. Подробности — в логе сервера. |
+
+Строки `player_text.*` (отказ санитайзера, SEC-07) и `load_problems` (сводка загрузки для операторов, SEC-27) добавлены в фазе 5 (WR-122, WR-126) `[ПРЕДЛОЖЕНИЕ]`, ждут ревью ND. Служебные ключи вне таблиц: `itemGroup.wildroots` (креативная вкладка) и `wildroots.pack.line.<линия>` (название встроенного пакета линии в `/datapack list`).
 
 `lens.header` — первая строка осмотра растения: «Дикая морковь · Цветение» или «Восточная морковь (жёлтая) · Урожайная зрелость». Остальные строки осмотра — те же, что тир 1 тултипа (§7.2).
 

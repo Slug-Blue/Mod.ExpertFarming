@@ -52,9 +52,23 @@ public final class CultivarManager extends SimplePreparableReloadListener<List<D
         log(result, LOGGER);
     }
 
-    /** Writes the problem lines and the summary. */
+    /** At most this many problem lines per load go to the log (SEC-27). */
+    public static final int MAX_LOGGED_PROBLEMS = 200;
+
+    /** The first {@value #MAX_LOGGED_PROBLEMS} lines, then one line {@code … and N more problems}. */
+    public static List<DefinitionLoader.LogLine> limited(List<DefinitionLoader.LogLine> lines) {
+        if (lines.size() <= MAX_LOGGED_PROBLEMS) {
+            return lines;
+        }
+        List<DefinitionLoader.LogLine> out = new java.util.ArrayList<>(lines.subList(0, MAX_LOGGED_PROBLEMS));
+        out.add(new DefinitionLoader.LogLine(true,
+                "Wild Roots: ... and " + (lines.size() - MAX_LOGGED_PROBLEMS) + " more problems"));
+        return out;
+    }
+
+    /** Writes at most {@value #MAX_LOGGED_PROBLEMS} problem lines and the summary. */
     public static void log(DefinitionLoader.LoadResult result, Logger logger) {
-        for (DefinitionLoader.LogLine line : result.lines()) {
+        for (DefinitionLoader.LogLine line : limited(result.lines())) {
             if (line.error()) {
                 logger.error(line.text());
             } else {
