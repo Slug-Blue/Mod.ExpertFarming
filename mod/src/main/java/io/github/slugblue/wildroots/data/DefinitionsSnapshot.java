@@ -1,0 +1,105 @@
+package io.github.slugblue.wildroots.data;
+
+import io.github.slugblue.wildroots.genetics.api.CultivarDef;
+import io.github.slugblue.wildroots.genetics.api.Genetics;
+import io.github.slugblue.wildroots.genetics.api.GeneticsService;
+import io.github.slugblue.wildroots.genetics.api.SpeciesDef;
+import io.github.slugblue.wildroots.genetics.codec.LayoutDictionary;
+import io.github.slugblue.wildroots.genetics.model.GenomeLayout;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import net.minecraft.resources.ResourceLocation;
+
+/**
+ * Immutable result of one data load (docs/05-architecture.md §8.2 item 6;
+ * ADR-0005): valid species and cultivars with their mod data, the counts of
+ * the load and an engine facade over exactly these definitions. Server logic
+ * reads one whole snapshot; {@link Definitions} swaps it atomically at the
+ * end of {@code apply}, so there is never a half-loaded state.
+ */
+public final class DefinitionsSnapshot {
+
+    /** A loaded species: engine definition, mod data, source file. */
+    public record SpeciesEntry(SpeciesDef def, SpeciesInfo info, ResourceLocation file) {
+    }
+
+    /** A loaded cultivar: engine definition, mod data, source file. */
+    public record CultivarEntry(CultivarDef def, CultivarInfo info, ResourceLocation file) {
+    }
+
+    /** Counts of the load (for the summary line and the operator message). */
+    public record Stats(int speciesFiles, int speciesSkipped, int cultivarFiles, int cultivarsSkipped,
+                        int errors, int warnings) {
+
+        public static final Stats NONE = new Stats(0, 0, 0, 0, 0, 0);
+
+        /** {@code Wild Roots: species N (k skipped), cultivars M (j skipped)}. */
+        public String summary() {
+            return "Wild Roots: species " + (speciesFiles - speciesSkipped) + " (" + speciesSkipped
+                    + " skipped), cultivars " + (cultivarFiles - cultivarsSkipped) + " (" + cultivarsSkipped
+                    + " skipped)";
+        }
+
+        public boolean hadProblems() {
+            return errors > 0 || warnings > 0;
+        }
+    }
+
+    public static final DefinitionsSnapshot EMPTY = new DefinitionsSnapshot(Map.of(), Map.of(), Stats.NONE);
+
+    private final Map<String, SpeciesEntry> species;
+    private final Map<String, CultivarEntry> cultivars;
+    private final Map<String, List<CultivarDef>> profiles;
+    private final Stats stats;
+    private final Genetics genetics;
+
+    public DefinitionsSnapshot(Map<String, SpeciesEntry> species, Map<String, CultivarEntry> cultivars, Stats stats) {
+        this.species = Collections.unmodifiableMap(new LinkedHashMap<>(species));
+        this.cultivars = Collections.unmodifiableMap(new LinkedHashMap<>(cultivars));
+        Map<String, List<CultivarDef>> byS = new LinkedHashMap<>();
+        cultivars.values().forEach(c -> byS.computeIfAbsent(c.def().species(), k -> new java.util.ArrayList<>())
+                .add(c.def()));
+        byS.replaceAll((k, v) -> List.copyOf(v));
+        this.profiles = Collections.unmodifiableMap(byS);
+        this.stats = stats;
+        LayoutDictionary dictionary = new LayoutDictionary();
+        species.values().forEach(s -> dictionary.register(s.def().id(), GenomeLayout.of(s.def())));
+        this.genetics = new Genetics(id -> {
+            SpeciesEntry e = this.species.get(id);
+            return e == null ? null : e.def();
+        }, dictionary);
+    }
+
+    public Map<String, SpeciesEntry> species() {
+        return species;
+    }
+
+    public Map<String, CultivarEntry> cultivars() {
+        return cultivars;
+    }
+
+    public Optional<SpeciesEntry> species(String id) {
+        return Optional.ofNullable(species.get(id));
+    }
+
+    public Optional<CultivarEntry> cultivar(String id) {
+        return Optional.ofNullable(cultivars.get(id));
+    }
+
+    /** Cultivar and landrace profiles of a species, for classification. */
+    public List<CultivarDef> profiles(String speciesId) {
+        return profiles.getOrDefault(speciesId, List.of());
+    }
+
+    public Stats stats() {
+        return stats;
+    }
+
+    /** Engine facade over the definitions of this snapshot. */
+    public GeneticsService genetics() {
+        return genetics;
+    }
+}

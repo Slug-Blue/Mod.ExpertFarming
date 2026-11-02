@@ -1,0 +1,8 @@
+{
+  "id": "wildroots:gt_dependent",
+  "species": "wildroots:gt_bad",
+  "tier": 1,
+  "requires": { "quantitative": { "fruit_size": { "min": 0.40 } } },
+  "hysteresis": 0.05,
+  "produce": { "quality_axes": { "fruit_size": 0.5, "flavor": 0.5 } }
+}

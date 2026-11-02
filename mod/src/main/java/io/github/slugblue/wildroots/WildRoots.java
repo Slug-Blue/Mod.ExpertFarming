@@ -8,6 +8,7 @@ import io.github.slugblue.wildroots.core.line.LineRegistry;
 import io.github.slugblue.wildroots.core.registry.ModConditions;
 import io.github.slugblue.wildroots.core.registry.ModRegistries;
 import io.github.slugblue.wildroots.core.safety.WorldSecret;
+import io.github.slugblue.wildroots.data.CultivarManager;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -39,6 +40,7 @@ public final class WildRoots {
         modBus.addListener(EventPriority.NORMAL, false, FMLCommonSetupEvent.class, e -> LineRegistry.freeze());
         modBus.addListener(LinePackFinder::onAddPackFinders);
         MinecraftForge.EVENT_BUS.addListener(WorldSecret::onLevelLoad);
+        MinecraftForge.EVENT_BUS.addListener(CultivarManager::onAddReloadListeners);
         LOGGER.debug("Wild Roots constructed");
     }
 }

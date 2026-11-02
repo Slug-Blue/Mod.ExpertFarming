@@ -136,6 +136,9 @@ dependencies {
     testImplementation platform("org.junit:junit-bom:${junit_version}")
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation "com.tngtech.archunit:archunit-junit5:${archunit_version}"
+    // WR-125: the production Codec loader runs on the engine's JSON fixtures and is compared with
+    // the engine's test mapping DefJson (same files, same results); test classes only, no new artifact
+    testImplementation project(':genetics').sourceSets.test.output
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
