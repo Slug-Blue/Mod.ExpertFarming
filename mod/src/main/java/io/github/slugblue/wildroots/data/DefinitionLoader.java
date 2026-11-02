@@ -8,6 +8,8 @@ import com.mojang.serialization.JsonOps;
 import io.github.slugblue.wildroots.data.codec.PathCodecs;
 import io.github.slugblue.wildroots.genetics.api.CultivarDef;
 import io.github.slugblue.wildroots.genetics.api.SpeciesDef;
+import io.github.slugblue.wildroots.genetics.codec.LayoutDictionary;
+import io.github.slugblue.wildroots.genetics.model.GenomeLayout;
 import io.github.slugblue.wildroots.genetics.validation.DefinitionValidator;
 import io.github.slugblue.wildroots.genetics.validation.Problem;
 import java.io.InputStream;
@@ -123,6 +125,11 @@ public final class DefinitionLoader {
         return parse(files, SpeciesSchema.CODEC, SpeciesSchema::toDefinition, SpeciesSchema.Mapped::problems);
     }
 
+    public static List<Parsed<LayoutHistorySchema.Mapped>> parseLayouts(Map<ResourceLocation, IoSupplier<InputStream>> files) {
+        return parse(files, LayoutHistorySchema.CODEC, LayoutHistorySchema::toDescriptors,
+                LayoutHistorySchema.Mapped::problems);
+    }
+
     public static List<Parsed<CultivarSchema.Mapped>> parseCultivars(Map<ResourceLocation, IoSupplier<InputStream>> files) {
         return parse(files, CultivarSchema.CODEC, CultivarSchema::toDefinition, CultivarSchema.Mapped::problems);
     }
@@ -190,10 +197,29 @@ public final class DefinitionLoader {
         return assemble(parseSpecies(species), parseCultivars(cultivars));
     }
 
-    /** Validates the set, resolves references and builds the snapshot and its log. */
+    /** {@link #assemble(List, List, List)} without layout history. */
     public static LoadResult assemble(List<Parsed<SpeciesSchema.Mapped>> species,
                                       List<Parsed<CultivarSchema.Mapped>> cultivars) {
+        return assemble(species, List.of(), cultivars);
+    }
+
+    /**
+     * Validates the set, resolves references, fills the layout dictionary
+     * (history first, then the current layouts: a current layout whose hash
+     * matches another canonical string of the same species rejects the
+     * species, architecture §5.1) and builds the snapshot and its log.
+     */
+    public static LoadResult assemble(List<Parsed<SpeciesSchema.Mapped>> species,
+                                      List<Parsed<LayoutHistorySchema.Mapped>> layouts,
+                                      List<Parsed<CultivarSchema.Mapped>> cultivars) {
         Map<ResourceLocation, List<Problem>> byFile = new LinkedHashMap<>();
+        LayoutDictionary dictionary = new LayoutDictionary();
+        for (Parsed<LayoutHistorySchema.Mapped> p : layouts) {
+            List<Problem> problems = byFile.computeIfAbsent(p.file(), k -> new ArrayList<>());
+            problems.addAll(p.problems());
+            p.mapped().ifPresent(m -> m.layouts().forEach(d -> dictionary.register(d)
+                    .ifPresent(problem -> problems.add(Problem.error("history", problem.message())))));
+        }
         List<String> dependents = new ArrayList<>();
         Map<String, Parsed<SpeciesSchema.Mapped>> speciesById = new TreeMap<>();
         Set<String> rejectedSpecies = new HashSet<>();
@@ -250,10 +276,21 @@ public final class DefinitionLoader {
         Map<String, DefinitionsSnapshot.SpeciesEntry> okS = new LinkedHashMap<>();
         for (SpeciesDef d : set.species()) {
             Parsed<SpeciesSchema.Mapped> p = speciesById.get(d.id());
+            Optional<Problem> collision = dictionary.register(d.id(), GenomeLayout.of(d));
+            if (collision.isPresent()) {
+                byFile.computeIfAbsent(p.file(), k -> new ArrayList<>())
+                        .add(Problem.error("layout", collision.get().message()));
+                continue;
+            }
             okS.put(d.id(), new DefinitionsSnapshot.SpeciesEntry(d, p.mapped().get().info(), p.file()));
         }
         Map<String, DefinitionsSnapshot.CultivarEntry> okC = new LinkedHashMap<>();
         for (CultivarDef d : set.cultivars()) {
+            if (!okS.containsKey(d.species())) {
+                Parsed<CultivarSchema.Mapped> p = cultivarsById.get(d.id().value());
+                dependents.add(p.file() + ": skipped: depends on rejected species " + d.species());
+                continue;
+            }
             Parsed<CultivarSchema.Mapped> p = cultivarsById.get(d.id().value());
             okC.put(d.id().value(), new DefinitionsSnapshot.CultivarEntry(d, p.mapped().get().info(), p.file()));
         }
@@ -278,7 +315,7 @@ public final class DefinitionLoader {
         }
         DefinitionsSnapshot.Stats stats = new DefinitionsSnapshot.Stats(species.size(), species.size() - okS.size(),
                 cultivars.size(), cultivars.size() - okC.size(), errors, warnings);
-        return new LoadResult(new DefinitionsSnapshot(okS, okC, stats), lines);
+        return new LoadResult(new DefinitionsSnapshot(okS, okC, stats, dictionary), lines);
     }
 
     private static ResourceLocation fileOf(String record, Map<String, Parsed<SpeciesSchema.Mapped>> s,

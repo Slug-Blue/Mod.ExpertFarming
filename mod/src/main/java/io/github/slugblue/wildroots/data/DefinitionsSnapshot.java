@@ -50,13 +50,30 @@ public final class DefinitionsSnapshot {
 
     public static final DefinitionsSnapshot EMPTY = new DefinitionsSnapshot(Map.of(), Map.of(), Stats.NONE);
 
+    /** Snapshot whose layout dictionary holds just the current layouts. */
+    public DefinitionsSnapshot(Map<String, SpeciesEntry> species, Map<String, CultivarEntry> cultivars, Stats stats) {
+        this(species, cultivars, stats, currentLayouts(species));
+    }
+
+    private static LayoutDictionary currentLayouts(Map<String, SpeciesEntry> species) {
+        LayoutDictionary d = new LayoutDictionary();
+        species.values().forEach(s -> d.register(s.def().id(), GenomeLayout.of(s.def())));
+        return d;
+    }
+
     private final Map<String, SpeciesEntry> species;
     private final Map<String, CultivarEntry> cultivars;
     private final Map<String, List<CultivarDef>> profiles;
     private final Stats stats;
     private final Genetics genetics;
+    private final LayoutDictionary dictionary;
 
-    public DefinitionsSnapshot(Map<String, SpeciesEntry> species, Map<String, CultivarEntry> cultivars, Stats stats) {
+    /**
+     * @param dictionary layout dictionary of the engine: jar and data-pack history plus the current layouts
+     *                   (the layouts saved in the world join it with the mod part of WR-111)
+     */
+    public DefinitionsSnapshot(Map<String, SpeciesEntry> species, Map<String, CultivarEntry> cultivars, Stats stats,
+                               LayoutDictionary dictionary) {
         this.species = Collections.unmodifiableMap(new LinkedHashMap<>(species));
         this.cultivars = Collections.unmodifiableMap(new LinkedHashMap<>(cultivars));
         Map<String, List<CultivarDef>> byS = new LinkedHashMap<>();
@@ -65,8 +82,7 @@ public final class DefinitionsSnapshot {
         byS.replaceAll((k, v) -> List.copyOf(v));
         this.profiles = Collections.unmodifiableMap(byS);
         this.stats = stats;
-        LayoutDictionary dictionary = new LayoutDictionary();
-        species.values().forEach(s -> dictionary.register(s.def().id(), GenomeLayout.of(s.def())));
+        this.dictionary = dictionary;
         this.genetics = new Genetics(id -> {
             SpeciesEntry e = this.species.get(id);
             return e == null ? null : e.def();
@@ -96,6 +112,11 @@ public final class DefinitionsSnapshot {
 
     public Stats stats() {
         return stats;
+    }
+
+    /** Layouts known to this snapshot. */
+    public LayoutDictionary layouts() {
+        return dictionary;
     }
 
     /** Engine facade over the definitions of this snapshot. */

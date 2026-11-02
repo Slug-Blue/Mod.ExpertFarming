@@ -546,7 +546,7 @@ Spike · WR-007 · AppSec + SD · 1 д
 - `cultivars/eastern_carrot.json`, `cultivars/carrot.json` — пороги GDD §7.3 (0.40/0.30 и 0.75/0.60), `food_reference` и `quality_axes` из economy §2.
 - `data/wildroots/genome_layouts/wild_carrot.json` — первая запись истории раскладок.
 - GameTest: определения загружаются без `Problem`.
-- Пакет `lines/carrot` снимает `minecraft:carrot` с `#minecraft:villager_plantable_seeds` записью Forge `"remove"` `[ПРОВЕРИТЬ]` (не `replace: true`); GameTest: после загрузки тег не содержит моркови, записи других модов в теге сохранены. Если `remove` не поддерживается — запись не добавляется, вопрос SA (архитектура §11.2; `00-vision.md` п. 20).
+- Пакет `lines/carrot` снимает `minecraft:carrot` с `#minecraft:villager_plantable_seeds` записью Forge `"remove"` (не `replace: true`; поддержка `remove` в Forge 47.4.28 подтверждена WR-129); GameTest: после загрузки тег не содержит моркови, записи других модов в теге сохранены. Если `remove` не поддерживается — запись не добавляется, вопрос SA (архитектура §11.2; `00-vision.md` п. 20).
 
 ### 5.3 Растение, предметы, посадочный материал (M1a)
 

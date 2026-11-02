@@ -47,7 +47,8 @@ public final class CultivarManager extends SimplePreparableReloadListener<List<D
     @Override
     protected void apply(List<DefinitionLoader.Parsed<CultivarSchema.Mapped>> parsed, ResourceManager rm,
                          ProfilerFiller profiler) {
-        DefinitionLoader.LoadResult result = DefinitionLoader.assemble(species.staged(), parsed);
+        SpeciesManager.Prepared staged = species.staged();
+        DefinitionLoader.LoadResult result = DefinitionLoader.assemble(staged.species(), staged.layouts(), parsed);
         Definitions.publish(result.snapshot());
         log(result, LOGGER);
     }

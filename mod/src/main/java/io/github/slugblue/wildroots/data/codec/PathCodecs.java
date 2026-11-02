@@ -161,10 +161,15 @@ public final class PathCodecs {
     public static final Codec<Boolean> BOOL = strict(Codec.BOOL, JsonPrimitive::isBoolean, "boolean");
 
     /** A string of at most {@value #MAX_STRING} characters (SEC-27). */
-    public static final Codec<String> STR = strict(Codec.STRING, JsonPrimitive::isString, "string")
-            .flatXmap(s -> s.length() <= MAX_STRING ? DataResult.success(s)
-                    : DataResult.error(() -> at("", "string of " + s.length() + " chars > " + MAX_STRING)),
-                    DataResult::success);
+    public static final Codec<String> STR = string(MAX_STRING);
+
+    /** A string of at most {@code max} characters (longer limits only where a field needs them). */
+    public static Codec<String> string(int max) {
+        return strict(Codec.STRING, JsonPrimitive::isString, "string")
+                .flatXmap(s -> s.length() <= max ? DataResult.success(s)
+                        : DataResult.error(() -> at("", "string of " + s.length() + " chars > " + max)),
+                        DataResult::success);
+    }
 
     /** A valid {@code namespace:path} id of at most {@value #MAX_ID} characters. */
     public static final Codec<ResourceLocation> ID = STR.flatXmap(s -> {

@@ -17,12 +17,21 @@ import net.minecraft.util.profiling.ProfilerFiller;
  * {@link CultivarManager}, registered right after it, validates both sets
  * together and publishes the snapshot.
  */
-public final class SpeciesManager extends SimplePreparableReloadListener<List<DefinitionLoader.Parsed<SpeciesSchema.Mapped>>> {
+public final class SpeciesManager extends SimplePreparableReloadListener<SpeciesManager.Prepared> {
+
+    /** Species files and layout history files of one load. */
+    public record Prepared(List<DefinitionLoader.Parsed<SpeciesSchema.Mapped>> species,
+                           List<DefinitionLoader.Parsed<LayoutHistorySchema.Mapped>> layouts) {
+        static final Prepared NONE = new Prepared(List.of(), List.of());
+    }
+
+    /** Folder of the layout history (architecture §5.3). */
+    public static final String LAYOUT_FOLDER = "genome_layouts";
 
     /** Folder under {@code data/<ns>/}. */
     public static final String FOLDER = "crop_species";
 
-    private volatile List<DefinitionLoader.Parsed<SpeciesSchema.Mapped>> staged = List.of();
+    private volatile Prepared staged = Prepared.NONE;
 
     SpeciesManager() {
     }
@@ -39,19 +48,23 @@ public final class SpeciesManager extends SimplePreparableReloadListener<List<De
         return DefinitionLoader.parseSpecies(files(rm, FOLDER));
     }
 
-    @Override
-    protected List<DefinitionLoader.Parsed<SpeciesSchema.Mapped>> prepare(ResourceManager rm, ProfilerFiller profiler) {
-        return read(rm);
+    /** Parsed layout history of {@code rm}. */
+    public List<DefinitionLoader.Parsed<LayoutHistorySchema.Mapped>> readLayouts(ResourceManager rm) {
+        return DefinitionLoader.parseLayouts(files(rm, LAYOUT_FOLDER));
     }
 
     @Override
-    protected void apply(List<DefinitionLoader.Parsed<SpeciesSchema.Mapped>> parsed, ResourceManager rm,
-                         ProfilerFiller profiler) {
+    protected Prepared prepare(ResourceManager rm, ProfilerFiller profiler) {
+        return new Prepared(read(rm), readLayouts(rm));
+    }
+
+    @Override
+    protected void apply(Prepared parsed, ResourceManager rm, ProfilerFiller profiler) {
         staged = parsed;
     }
 
     /** Result of the last {@code apply}. */
-    List<DefinitionLoader.Parsed<SpeciesSchema.Mapped>> staged() {
+    Prepared staged() {
         return staged;
     }
 
