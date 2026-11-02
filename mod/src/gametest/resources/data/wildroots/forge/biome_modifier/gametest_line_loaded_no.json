@@ -1,0 +1,4 @@
+{
+  "type": "forge:none",
+  "forge:conditions": [ { "type": "wildroots:line_loaded", "line": "nope" } ]
+}

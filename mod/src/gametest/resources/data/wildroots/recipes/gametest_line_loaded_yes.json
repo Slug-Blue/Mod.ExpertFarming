@@ -1,0 +1,6 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "conditions": [ { "type": "wildroots:line_loaded", "line": "carrot" } ],
+  "ingredients": [ { "item": "minecraft:structure_void" }, { "item": "minecraft:barrier" } ],
+  "result": { "item": "minecraft:stick" }
+}

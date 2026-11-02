@@ -498,7 +498,7 @@ Spike · WR-007 · AppSec + SD · 1 д
 Волна 1 (M1a) · WR-020 (S1), WR-120 · SD · 1.5 д
 Ссылки: архитектура §9; ADR-0006; worldgen §16.
 Приёмка:
-- Манифест `wildroots/lines.json` (id, волна, ванильные культуры, FD-аналог); в волне 1 — только `carrot`.
+- Манифест `resourcepacks/lines/lines.json` (id, волна, ванильные культуры, FD-аналог; путь — по allowlist jar, WR-124); в волне 1 — только `carrot`.
 - GameTest: при `disabledLines = []` пакет `lines/carrot` активен и стоит выше всех `mod:*` (`/datapack list` показывает его, игрок не может выключить — S1 это не проверял); при `disabledLines = ["carrot"]` пакета нет, а блоки и предметы моркови зарегистрированы, но инертны и скрыты из креативной вкладки.
 - JUnit: условие `wildroots:line_loaded` возвращает `true`/`false` по `LineRegistry`. Регистрация — `CraftingHelper.register` в `FMLCommonSetupEvent#enqueueWork` (как в S1); работает и в рецептах (`"conditions"`), и в datapack-реестрах (`"forge:conditions"`).
 - GameTest «существующий мир» по образцу S1 `s1ExistingWorldGetsRequiredPack`: `ServerPacksSource.createPackRepository` + `MinecraftServer.configurePackRepository` со старым `DataPackConfig` (пакета нет; пакет в `Disabled`) → пакет линии выбран, перекрытие `minecraft:golden_carrot` из пакета линии. Порядок пакетов из `level.dat` не меняется: мод, установленный позже, стоит выше (известное ограничение, архитектура §9.2).

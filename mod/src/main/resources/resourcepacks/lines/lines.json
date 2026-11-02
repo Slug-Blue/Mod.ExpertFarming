@@ -1,0 +1,5 @@
+{
+  "lines": [
+    { "id": "carrot", "wave": 1, "vanilla_crops": ["minecraft:carrot"] }
+  ]
+}

@@ -1,5 +1,7 @@
 package io.github.slugblue.wildroots.core.registry;
 
+import io.github.slugblue.wildroots.core.line.LineContent;
+import io.github.slugblue.wildroots.core.line.LineRegistry;
 import java.util.List;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.registries.RegistryObject;
@@ -19,8 +21,8 @@ public final class CreativeTabContents {
                 .toList();
     }
 
-    /** Whether the tab shows {@code item}. */
+    /** Whether the tab shows {@code item}: items of a disabled line are hidden (§9.1). */
     public static boolean isVisible(Item item) {
-        return true;
+        return LineContent.visible(LineContent.lineOf(item), LineRegistry.get());
     }
 }

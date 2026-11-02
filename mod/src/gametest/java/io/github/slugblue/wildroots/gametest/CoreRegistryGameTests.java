@@ -1,5 +1,6 @@
 package io.github.slugblue.wildroots.gametest;
 
+import io.github.slugblue.wildroots.core.Ids;
 import io.github.slugblue.wildroots.WildRoots;
 import io.github.slugblue.wildroots.core.config.ServerConfig;
 import io.github.slugblue.wildroots.core.registry.ModCreativeTabs;
@@ -21,7 +22,7 @@ public final class CoreRegistryGameTests {
 
     @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
     public static void creativeTabIsRegistered(GameTestHelper helper) {
-        CreativeModeTab tab = BuiltInRegistries.CREATIVE_MODE_TAB.get(new ResourceLocation(WildRoots.MOD_ID, WildRoots.MOD_ID));
+        CreativeModeTab tab = BuiltInRegistries.CREATIVE_MODE_TAB.get(Ids.mod(WildRoots.MOD_ID));
         helper.assertTrue(tab != null && tab == ModCreativeTabs.WILDROOTS.get(), "creative tab wildroots:wildroots missing");
         helper.succeed();
     }

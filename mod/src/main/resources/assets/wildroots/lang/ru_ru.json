@@ -2,5 +2,6 @@
   "itemGroup.wildroots": "Wild Roots",
   "wildroots.message.player_text.empty": "Имя пустое",
   "wildroots.message.player_text.too_long": "Имя слишком длинное",
-  "wildroots.message.player_text.forbidden_character": "В имени есть недопустимые знаки"
+  "wildroots.message.player_text.forbidden_character": "В имени есть недопустимые знаки",
+  "wildroots.pack.line.carrot": "Wild Roots: линия моркови"
 }
