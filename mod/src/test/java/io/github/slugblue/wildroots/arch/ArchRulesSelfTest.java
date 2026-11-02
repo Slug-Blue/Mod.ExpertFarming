@@ -121,6 +121,13 @@ class ArchRulesSelfTest {
     }
 
     @Test
+    void c2sFieldRuleFiresOnNonIntentFields() {
+        ArchRule rule = ArchRules.c2sPacketsCarryOnlyIntents(F);
+        assertViolates(rule, "network.c2s.CarriesGenome");
+        assertAllows(rule, "network.c2s.CarriesIntent");
+    }
+
+    @Test
     void worldSecretRuleFiresInNetworkPackage() {
         ArchRule rule = ArchRules.worldSecretHidden(F, F + ".core.safety.FakeWorldSecret");
         assertViolates(rule, "network.UsesWorldSecret");

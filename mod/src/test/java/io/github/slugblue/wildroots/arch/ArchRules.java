@@ -149,6 +149,26 @@ public final class ArchRules {
                 .because("C→S handlers are registered only through ServerPacketGuard (SEC-01)");
     }
 
+    /** Field types a C→S packet may carry: identifiers and strings only (SEC-04, WR-127). */
+    public static final Set<String> C2S_FIELD_TYPES = Set.of("long", "int", "boolean", "java.lang.String",
+            "net.minecraft.resources.ResourceLocation");
+
+    /**
+     * SEC-04 (WR-127): instance fields of C→S packets ({@code ..network.c2s..})
+     * are only {@code long}, {@code int}, {@code boolean}, {@code String},
+     * {@code ResourceLocation}: the client sends an intent, never genomes,
+     * stacks, amounts or flags.
+     */
+    public static ArchRule c2sPacketsCarryOnlyIntents(String root) {
+        return com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields()
+                .that().areDeclaredInClassesThat().resideInAPackage(root + "..network.c2s..")
+                .and().areNotStatic()
+                .should().haveRawType(DescribedPredicate.describe("one of " + C2S_FIELD_TYPES,
+                        (JavaClass c) -> C2S_FIELD_TYPES.contains(c.getName())))
+                .allowEmptyShould(true)
+                .because("C→S packets carry only the player's intent (SEC-04)");
+    }
+
     /** SEC-25 (switched on by WR-123): the world secret is not reachable from network, client or compat. */
     public static ArchRule worldSecretHidden(String root, String worldSecretClass) {
         return noClasses()

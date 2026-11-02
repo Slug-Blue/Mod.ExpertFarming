@@ -4,5 +4,6 @@
   "wildroots.message.player_text.too_long": "The name is too long",
   "wildroots.message.player_text.forbidden_character": "The name has characters that can't be used",
   "wildroots.pack.line.carrot": "Wild Roots: carrot line",
-  "wildroots.message.load_problems": "Wild Roots: data pack errors: %1$s; species skipped: %2$s, cultivars skipped: %3$s. See the server log."
+  "wildroots.message.load_problems": "Wild Roots: data pack errors: %1$s; species skipped: %2$s, cultivars skipped: %3$s. See the server log.",
+  "wildroots.message.packet_flood": "Disconnected: too many requests to Wild Roots"
 }

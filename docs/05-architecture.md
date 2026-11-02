@@ -710,6 +710,8 @@ BloomIndex (на ServerLevel, только в памяти)
 | `NameSelection` | C→S | Имя нового сорта-сеянца в журнале | `selectionId`, строка |
 | `JournalAction` | C→S | Отметить прочитанным, закрепить | id записи |
 
+**Реализация (WR-127):** `network.WrNetwork` (канал, S→C-регистратор), `network.ServerPacketGuard` (C→S: декодер-обёртка возвращает экземпляр-маркер `MALFORMED` пакета вместо исключения и при лишних байтах, потому что Forge не вызывает обработчик для `null`; маркер считается отброшенным пакетом), `network.PacketRateLimiter`, `network.BoundedReader`. Кодеки C→S пакетов `NameSelection` и `JournalAction` лежат в `network.c2s`, а регистрируются задачами журнала (WR-18x): без обработчика пакет не регистрируется. ArchUnit `c2sPacketsCarryOnlyIntents`: поля экземпляра в `..network.c2s..` — только `long`, `int`, `boolean`, `String`, `ResourceLocation`.
+
 **Правила для пакетов C→S** (`09-security.md` §1.6.1):
 1. **Общий guard.** Все C→S обработчики регистрируются только через `ServerPacketGuard.register(type, handler)` (SEC-01). Guard проверяет, что `ctx.getSender() != null` и игрок не отключён, выполняет работу в `ctx.enqueueWork(...)`, перехватывает `RuntimeException` при декодировании и обработке (пакет отбрасывается, в лог идёт одна строка) и всегда ставит `setPacketHandled(true)`. Регистрировать в обход guard запрещено, это проверяет ArchUnit.
 2. **Клиент передаёт только намерение** (SEC-04): в C→S пакетах — только идентификаторы и строки (`long`, `int`, `boolean`, `String`, `ResourceLocation`). Никаких геномов, классов, флагов, `ItemStack`, количеств и координат для изменения мира.

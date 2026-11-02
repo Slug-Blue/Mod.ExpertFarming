@@ -8,7 +8,6 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
@@ -62,11 +61,17 @@ class ProductionArchitectureTest {
 
     // Templates: switched on by the tasks that add the guarded classes.
 
+    /** SEC-01, switched on by WR-127. */
     @Test
-    @Disabled("WR-127 switches it on together with ServerPacketGuard and the S→C registrar")
     void packetConsumersOnlyFromGuard() {
         ArchRules.packetConsumersOnlyFrom(ROOT, Set.of(
                 ROOT + ".network.ServerPacketGuard", ROOT + ".network.WrNetwork")).check(production);
+    }
+
+    /** SEC-04, WR-127. */
+    @Test
+    void c2sPacketsCarryOnlyIntents() {
+        ArchRules.c2sPacketsCarryOnlyIntents(ROOT).check(production);
     }
 
     /** SEC-25, switched on by WR-123. */
