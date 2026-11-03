@@ -62,7 +62,8 @@ public final class MotherNbt {
                 return Optional.empty();
             }
             String ln = root.getString("ln");
-            if (ln.codePointCount(0, ln.length()) > LotNbt.MAX_LINE_NAME) {
+            if ((root.contains("ln") && !root.contains("ln", Tag.TAG_STRING))
+                    || ln.codePointCount(0, ln.length()) > LotNbt.MAX_LINE_NAME) {
                 return Optional.empty();
             }
             return Optional.of(new Mother(new GenomeRecord(g.getInt("v"), g.getString("sp"), g.getLong("lh"), a), e,
