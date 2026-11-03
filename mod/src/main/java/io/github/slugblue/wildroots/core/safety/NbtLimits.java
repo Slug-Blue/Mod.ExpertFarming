@@ -1,6 +1,7 @@
 package io.github.slugblue.wildroots.core.safety;
 
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 
 /**
@@ -59,10 +60,13 @@ public final class NbtLimits {
     /** Pouch budget plus the entry count of its {@code e} list, both before the entries are decoded. */
     public static NbtBudget.Result pouch(Tag pouch) {
         NbtBudget.Result r = NbtBudget.measure(pouch, POUCH_MAX_BYTES, POUCH_MAX_DEPTH);
-        if (r.ok() && pouch instanceof CompoundTag c && c.contains("e", Tag.TAG_LIST)) {
-            int n = c.getList("e", Tag.TAG_COMPOUND).size();
-            if (n > POUCH_MAX_ENTRIES) {
-                return new NbtBudget.Result(false, r.bytes(), r.depth(), "entries " + n + " > " + POUCH_MAX_ENTRIES);
+        if (r.ok() && pouch instanceof CompoundTag c && c.contains("e")) {
+            if (!(c.get("e") instanceof ListTag e) || (!e.isEmpty() && e.getElementType() != Tag.TAG_COMPOUND)) {
+                return new NbtBudget.Result(false, r.bytes(), r.depth(), "entries are not a list of compounds");
+            }
+            if (e.size() > POUCH_MAX_ENTRIES) {
+                return new NbtBudget.Result(false, r.bytes(), r.depth(),
+                        "entries " + e.size() + " > " + POUCH_MAX_ENTRIES);
             }
         }
         return r;

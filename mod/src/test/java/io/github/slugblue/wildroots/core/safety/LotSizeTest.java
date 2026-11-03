@@ -8,6 +8,8 @@ import java.util.List;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.LongArrayTag;
+import io.github.slugblue.wildroots.genetics.codec.FatherRecord;
+import io.github.slugblue.wildroots.item.LotFathersNbt;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -28,33 +30,19 @@ class LotSizeTest {
         return g;
     }
 
-    /** Lot: mother, {@code fathers} fathers {@code {lh, a, w}}, the given {@code disp}. */
+    /** Lot: mother, {@code fathers} fathers of the mother's layout (format of {@link LotFathersNbt}), the given {@code disp}. */
     static CompoundTag lot(int fathers, List<DispCodec.Line> disp, long seed) {
-        return lot(fathers, disp, seed, false);
-    }
-
-    /**
-     * Lot of the S10 shape. With {@code fatherLhImplied} a father's {@code lh}
-     * is left out because it equals the mother's (proposal for WR-135).
-     */
-    static CompoundTag lot(int fathers, List<DispCodec.Line> disp, long seed, boolean fatherLhImplied) {
         long lh = 0x9E3779B97F4A7C15L ^ seed;
         CompoundTag lot = new CompoundTag();
         lot.putInt("v", 1);
         lot.putLong("id", seed * 0x2545F4914F6CDD1DL);
         lot.putString("var", "wildroots:eastern_carrot");
         lot.put("g", genome(lh, seed));
-        ListTag f = new ListTag();
+        List<LotFathersNbt.Father> f = new ArrayList<>();
         for (int i = 0; i < fathers; i++) {
-            CompoundTag father = new CompoundTag();
-            if (!fatherLhImplied) {
-                father.putLong("lh", lh);
-            }
-            father.put("a", new LongArrayTag(new long[] {seed + i, seed ^ i, seed - i}));
-            father.putFloat("w", 1.0f + i);
-            f.add(father);
+            f.add(new LotFathersNbt.Father(new FatherRecord(lh, new long[] {seed + i, seed ^ i, seed - i}), 1.0f + i, false));
         }
-        lot.put("f", f);
+        lot.put("f", LotFathersNbt.encode(f, lh));
         lot.putFloat("po", 0.35f);
         lot.putShort("gen", (short) 12);
         lot.putString("ln", "Golden Line");
@@ -72,25 +60,17 @@ class LotSizeTest {
     }
 
     /**
-     * Typical lot exactly as WR-122 lists it (mother {@code {v, sp, lh, a}}, 4
-     * fathers {@code {lh, a, w}}, 6 {@code disp} lines in the compact
-     * {@link DispCodec} form): 553 B. It is within the hard limit, but over
-     * the 512 B target by 41 B; the open question goes to WR-135.
+     * WR-122 criterion: a typical lot (mother {@code {v, sp, lh, a}}, 4 fathers
+     * {@code {lh, a}} of the mother's layout, 6 {@code disp} lines) is at most
+     * 512 B. Decision of review 1: a father's {@code lh} is written only when
+     * it differs from the mother's ({@link LotFathersNbt}); measured 501 B.
      */
     @Test
-    void typicalLotOfTheTaskShapeIsWithinTheHardLimit() {
+    void typicalLotIsAtMost512Bytes() {
         NbtBudget.Result r = NbtLimits.lot(lot(4, typicalDisp(), 7));
         assertTrue(r.ok(), r::toString);
-        assertEquals(553, r.bytes(), "size of the S10-shaped lot changed");
-        assertTrue(r.depth() <= NbtLimits.LOT_MAX_DEPTH, () -> "depth " + r.depth());
-    }
-
-    /** The same lot reaches the 512 B target once a father's {@code lh} defaults to the mother's. */
-    @Test
-    void typicalLotWithImpliedFatherLayoutIsAtMost512Bytes() {
-        NbtBudget.Result r = NbtLimits.lot(lot(4, typicalDisp(), 7, true));
-        assertTrue(r.ok(), r::toString);
         assertTrue(r.bytes() <= NbtLimits.LOT_TARGET_BYTES, () -> "typical lot is " + r.bytes() + " B");
+        assertTrue(r.depth() <= NbtLimits.LOT_MAX_DEPTH, () -> "depth " + r.depth());
     }
 
     /** A lot whose {@code disp} is padded until the next line would pass 1 KiB. */

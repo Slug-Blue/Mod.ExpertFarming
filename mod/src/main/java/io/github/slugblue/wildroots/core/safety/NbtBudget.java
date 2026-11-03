@@ -59,8 +59,11 @@ public final class NbtBudget {
                 }
                 bytes += 1; // TAG_End
                 for (String key : c.getAllKeys()) {
-                    Tag v = c.get(key);
                     bytes += 1 + 2 + modifiedUtf8Length(key);
+                    if (bytes > maxBytes) {
+                        return new Result(false, bytes, maxSeen, "size " + bytes + " B > " + maxBytes + " B");
+                    }
+                    Tag v = c.get(key);
                     if (v != null) {
                         stack.push(new Frame(v, f.depth() + 1));
                     }
@@ -71,6 +74,9 @@ public final class NbtBudget {
                     return new Result(false, bytes, maxSeen, "depth " + maxSeen + " > " + maxDepth);
                 }
                 bytes += 1 + 4;
+                if (bytes > maxBytes) {
+                    return new Result(false, bytes, maxSeen, "size " + bytes + " B > " + maxBytes + " B");
+                }
                 for (int i = l.size() - 1; i >= 0; i--) {
                     stack.push(new Frame(l.get(i), f.depth() + 1));
                 }

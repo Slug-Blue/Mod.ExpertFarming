@@ -85,4 +85,18 @@ class LineRegistryTest {
         assertThrows(RuntimeException.class, () -> LineManifest.parse(new StringReader(
                 "{\"lines\": [{\"id\": \"carrot\"}]}")));
     }
+
+    @Test
+    void configNotLoadedIsNotCachedAndThrowsInStrictMode() {
+        List<String> warnings = new ArrayList<>();
+        LineRegistry.Lookup early = LineRegistry.lookup(TWO_LINES, Optional.empty(), false, warnings::add);
+        assertFalse(early.cacheable(), "an all-enabled guess must not stick for the whole run");
+        assertTrue(early.registry().isEnabled("carrot") && early.registry().isEnabled("tomato"));
+        assertEquals(1, warnings.size());
+        assertThrows(IllegalStateException.class,
+                () -> LineRegistry.lookup(TWO_LINES, Optional.empty(), true, s -> { }));
+        LineRegistry.Lookup loaded = LineRegistry.lookup(TWO_LINES, Optional.of(List.of("tomato")), true, s -> { });
+        assertTrue(loaded.cacheable());
+        assertFalse(loaded.registry().isEnabled("tomato"));
+    }
 }
