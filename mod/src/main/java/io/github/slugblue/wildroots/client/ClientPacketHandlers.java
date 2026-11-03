@@ -37,6 +37,11 @@ public final class ClientPacketHandlers {
         }
     }
 
+    /** Drops a partial sync; called when the player leaves the server. */
+    static void resetAssembler() {
+        ASSEMBLER.reset();
+    }
+
     /** Current client view, for code that runs only on the client. */
     public static SyncedDefinitions definitions() {
         return ClientDefinitions.get();

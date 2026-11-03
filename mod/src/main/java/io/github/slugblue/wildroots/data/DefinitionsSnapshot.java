@@ -114,9 +114,11 @@ public final class DefinitionsSnapshot {
         return stats;
     }
 
-    /** Layouts known to this snapshot. */
+    /** Layouts known to this snapshot, as a copy: the snapshot itself never changes. */
     public LayoutDictionary layouts() {
-        return dictionary;
+        LayoutDictionary copy = new LayoutDictionary();
+        dictionary.entries().forEach(copy::register);
+        return copy;
     }
 
     /** Engine facade over the definitions of this snapshot. */

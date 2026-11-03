@@ -33,5 +33,6 @@ public final class ClientDefinitions {
     @SubscribeEvent
     public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
         current = EMPTY;
+        ClientPacketHandlers.resetAssembler();
     }
 }

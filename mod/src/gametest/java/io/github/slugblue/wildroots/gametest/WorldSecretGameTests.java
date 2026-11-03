@@ -49,11 +49,13 @@ public final class WorldSecretGameTests {
         long secret = WorldSecret.get(helper.getLevel().getServer());
         List<String> needles = List.of(Long.toString(secret), Long.toUnsignedString(secret),
                 Long.toHexString(secret), Long.toHexString(secret).toUpperCase());
+        int read = 0;
         for (String file : List.of("logs/latest.log", "logs/debug.log")) {
             Path p = Path.of(file);
             if (!Files.isRegularFile(p)) {
                 continue;
             }
+            read++;
             String log;
             try {
                 log = Files.readString(p, StandardCharsets.ISO_8859_1);
@@ -66,6 +68,7 @@ public final class WorldSecretGameTests {
                 helper.assertTrue(!log.contains(n), "the world secret appears in " + file);
             }
         }
+        helper.assertTrue(read > 0, "no server log was found, the check proved nothing");
         helper.succeed();
     }
 }

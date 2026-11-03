@@ -90,19 +90,19 @@ public final class DefinitionLoader {
     static int jsonDepth(String text, int limit) {
         int depth = 0;
         int max = 0;
-        boolean inString = false;
+        char quote = 0; // the lenient Gson reader also takes single-quoted strings
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
-            if (inString) {
+            if (quote != 0) {
                 if (c == '\\') {
                     i++;
-                } else if (c == '"') {
-                    inString = false;
+                } else if (c == quote) {
+                    quote = 0;
                 }
                 continue;
             }
             switch (c) {
-                case '"' -> inString = true;
+                case '"', '\'' -> quote = c;
                 case '{', '[' -> {
                     depth++;
                     if (depth > max) {

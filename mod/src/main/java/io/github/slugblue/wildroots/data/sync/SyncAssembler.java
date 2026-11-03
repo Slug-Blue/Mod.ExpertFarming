@@ -62,7 +62,8 @@ public final class SyncAssembler {
         return defs.<Step>map(Done::new).orElseGet(() -> new Failed("payload does not decode"));
     }
 
-    private void reset() {
+    /** Forgets a partial sync (the player left the server). */
+    public void reset() {
         syncId = -1;
         total = 0;
         next = 0;
