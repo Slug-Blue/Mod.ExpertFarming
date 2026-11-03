@@ -1,0 +1,3 @@
+# Known false positives (gitleaks fingerprints: commit:file:rule:line).
+# Fixed test constant for RNG key tests, not a credential (WR-123).
+88d841b590903ae88ee4b7ad49122a6f096c379a:mod/src/test/java/io/github/slugblue/wildroots/core/rng/RngKeysTest.java:generic-api-key:15
