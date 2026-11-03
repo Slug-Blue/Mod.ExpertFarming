@@ -12,8 +12,8 @@ import net.minecraft.world.level.biome.Biome;
  *
  * <p>It is {@code Biome#getHeightAdjustedTemperature} (SRG {@code m_47528_},
  * opened by the access transformer): the value vanilla caches in
- * {@code Biome#getTemperature} and uses for snow and ice. Above Y = 80 it is
- * {@code base − 0.00125·(y − 80)} plus noise of ±0.01; frozen biomes also
+ * {@code Biome#getTemperature} and uses for snow and ice:
+ * {@code base − 0.00125·max(0, y − 80)}, plus noise of ±0.01 above Y = 80; frozen biomes also
  * take noise into the base. No reflection anywhere (SEC-43).
  */
 public final class ClimateService {

@@ -4,6 +4,8 @@ import com.mojang.logging.LogUtils;
 import io.github.slugblue.wildroots.core.registry.ModBlockEntities;
 import io.github.slugblue.wildroots.core.rng.RngKeys;
 import io.github.slugblue.wildroots.core.safety.AuditLog;
+import io.github.slugblue.wildroots.core.safety.EntryPoint;
+import io.github.slugblue.wildroots.core.safety.Guarded;
 import io.github.slugblue.wildroots.core.safety.LogThrottle;
 import io.github.slugblue.wildroots.data.Definitions;
 import io.github.slugblue.wildroots.data.DefinitionsSnapshot;
@@ -15,7 +17,6 @@ import io.github.slugblue.wildroots.genetics.api.SpeciesDef;
 import io.github.slugblue.wildroots.genetics.codec.DecodeResult;
 import io.github.slugblue.wildroots.genetics.model.Genome;
 import io.github.slugblue.wildroots.genetics.phenotype.NoiseVector;
-import io.github.slugblue.wildroots.genetics.random.Hash64;
 import io.github.slugblue.wildroots.item.LotFathersNbt;
 import io.github.slugblue.wildroots.item.LotFlags;
 import io.github.slugblue.wildroots.item.LotStacks;
@@ -101,9 +102,12 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
     // ------------------------------------------------------------------ persistence
 
     @Override
+    @EntryPoint
     public void load(CompoundTag tag) {
         super.load(tag);
-        readRoot(tag.get(PlantNbt.ROOT));
+        Tag root = tag.get(PlantNbt.ROOT);
+        Guarded.run("plant load", worldPosition, () -> readRoot(root),
+                () -> makeInert("load failed", root instanceof CompoundTag c ? c.copy() : null));
     }
 
     private void readRoot(Tag root) {
@@ -142,13 +146,29 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
     }
 
     @Override
+    @EntryPoint
     protected void saveAdditional(CompoundTag tag) {
         super.saveAdditional(tag);
-        if (status != Status.OK && raw != null) {
-            tag.put(PlantNbt.ROOT, raw.copy());
-        } else if (state != null) {
-            tag.put(PlantNbt.ROOT, PlantNbt.write(state));
+        Guarded.run("plant save", worldPosition, () -> {
+            if (status != Status.OK && raw != null) {
+                tag.put(PlantNbt.ROOT, raw.copy());
+            } else if (state != null) {
+                tag.put(PlantNbt.ROOT, PlantNbt.write(state));
+            }
+        });
+    }
+
+    /** SEC-34: the logic of this plant threw; it becomes inert and keeps its data as it was. */
+    public void markFailed(String reason) {
+        if (status == Status.INERT) {
+            return;
         }
+        makeInert(reason, state == null ? raw : PlantNbt.write(state));
+    }
+
+    /** Whether the {@code mutation} rare flag is still to be given (looked at, not consumed). */
+    public boolean rareAvailable() {
+        return state != null && state.has(PlantState.MUTANT) && !state.has(PlantState.RARE_CLAIMED);
     }
 
     /** Empty for a built-in species (render by {@code BlockState}), species id otherwise (§6.2). */
@@ -238,7 +258,7 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
                 NoiseVector n = new NoiseVector(state.noise);
                 if (v.storedLayout().isPresent()) {
                     n = gs.migrateNoise(n, v.storedLayout().get(), def,
-                            Hash64.of(worldPosition.asLong(), Hash64.str(state.species))).orElse(n);
+                            PlantService.noiseMigrationKey(worldPosition, state.species)).orElse(n);
                 }
                 int storedV = state.genome.v();
                 state.genome = gs.encode(genome);
@@ -373,7 +393,7 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
      */
     @Override
     public boolean claimRare() {
-        if (state == null || !state.has(PlantState.MUTANT) || state.has(PlantState.RARE_CLAIMED)) {
+        if (!rareAvailable()) {
             return false;
         }
         setPlantFlag(PlantState.RARE_CLAIMED, true);

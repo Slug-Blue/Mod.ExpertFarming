@@ -54,6 +54,27 @@ public final class PlantService {
         return b == null ? Optional.empty() : Optional.of(b.get());
     }
 
+    /** Key of a noise migration at {@code pos}: the same as the block entity uses (§5.3). */
+    public static long noiseMigrationKey(BlockPos pos, String species) {
+        return io.github.slugblue.wildroots.genetics.random.Hash64.of(pos.asLong(),
+                io.github.slugblue.wildroots.genetics.random.Hash64.str(species));
+    }
+
+    /**
+     * Noise stored next to {@code genome} (seedling lot, mother root), in the
+     * trait order of the current layout: migrated like the genome when the
+     * layout changed (§5.3), unchanged otherwise.
+     */
+    static NoiseVector storedNoise(GeneticsService gs, io.github.slugblue.wildroots.genetics.codec.GenomeRecord genome,
+                                   SpeciesDef def, byte[] noise, BlockPos pos) {
+        NoiseVector n = new NoiseVector(noise);
+        if (gs.decode(genome, def) instanceof io.github.slugblue.wildroots.genetics.codec.DecodeResult.Valid v
+                && v.migrated() && v.storedLayout().isPresent()) {
+            return gs.migrateNoise(n, v.storedLayout().get(), def, noiseMigrationKey(pos, def.id())).orElse(n);
+        }
+        return n;
+    }
+
     /** Whether {@code pos} is free air above farmland (both read only in loaded chunks). */
     public static boolean canPlantAt(ServerLevel level, BlockPos pos) {
         Optional<BlockState> at = LoadedLevelAccess.blockState(level, pos);
@@ -79,7 +100,7 @@ public final class PlantService {
         Optional<NoiseVector> n;
         if (lot.seedling()) {
             g = Optional.of(rec.get().mother());
-            n = Optional.of(new NoiseVector(lot.seedlingNoise().get()));
+            n = Optional.of(storedNoise(gs, lot.mother(), e.get().def(), lot.seedlingNoise().get(), pos));
         } else {
             long secret = WorldSecret.get(level.getServer());
             g = gs.offspring(def, rec.get(), RngKeys.offspring(secret, lot.lotId(), remainingCount, pos.asLong()));
@@ -159,9 +180,9 @@ public final class PlantService {
                 instanceof io.github.slugblue.wildroots.genetics.codec.DecodeResult.Valid v)) {
             return false;
         }
-        Classification status = new Classification(m.cultivar().map(CultivarId::of), m.tier(), false);
+        Classification status = new Classification(m.cultivar().map(CultivarId::of), m.tier(), m.inherited());
         return place(level, pos, block.get(), new PlantBlockEntity.Init(m.species(), v.genome(),
-                new NoiseVector(m.noise()), Passport.PLAYER, planter, status, m.lineName().orElse(null),
+                storedNoise(snap.genetics(), m.genome(), e.get().def(), m.noise(), pos), Passport.PLAYER, planter, status, m.lineName().orElse(null),
                 m.generation(), m.flags(), PlantState.MOTHER), FieldPlantBlock.HARVEST_STAGE);
     }
 

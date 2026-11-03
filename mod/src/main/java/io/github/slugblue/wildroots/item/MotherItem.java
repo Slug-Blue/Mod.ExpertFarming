@@ -47,7 +47,7 @@ public class MotherItem extends Item {
     public static ItemStack of(PlantBlockEntity.Live live, int grade, boolean bitter) {
         PlantState d = live.data();
         MotherNbt.Mother m = new MotherNbt.Mother(live.genetics().encode(live.genome()), live.noise().bytes(),
-                Optional.ofNullable(d.cultivar()), d.tier(), Optional.ofNullable(d.lineName()), d.generation(),
+                Optional.ofNullable(d.cultivar()), d.tier(), d.inherited(), Optional.ofNullable(d.lineName()), d.generation(),
                 d.lotFlags() & LotFlags.INHERITED, grade, bitter);
         ItemStack s = new ItemStack(ModItems.MOTHER_ROOT.get());
         s.getOrCreateTag().put(MotherNbt.KEY, MotherNbt.write(m));

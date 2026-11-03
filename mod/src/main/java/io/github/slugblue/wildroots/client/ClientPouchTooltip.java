@@ -44,7 +44,12 @@ public final class ClientPouchTooltip implements ClientTooltipComponent {
     }
 
     @Override
+    @EntryPoint
     public void renderImage(Font font, int x, int y, GuiGraphics g) {
+        Guarded.run("pouch tooltip render", "client", () -> render(font, x, y, g));
+    }
+
+    private void render(Font font, int x, int y, GuiGraphics g) {
         for (int i = 0; i < data.items().size(); i++) {
             ItemStack s = data.items().get(i);
             int cx = x + 1 + (i % COLUMNS) * CELL;

@@ -113,39 +113,56 @@ public class SeedPouchItem extends Item {
     @Override
     @EntryPoint
     public boolean overrideStackedOnOther(ItemStack pouch, Slot slot, ClickAction action, Player player) {
+        return Guarded.call("pouch click", player.getUUID(),
+                () -> stackedOnOther(pouch, slot, action, player, player.level().isClientSide), false);
+    }
+
+    /**
+     * Logic of {@link #overrideStackedOnOther}. On the client it only claims
+     * the click and changes nothing: the server decides and the menu sync
+     * shows the result (SEC-17). The creative inventory screen handles its
+     * clicks on the client only, so there the pouch does nothing (known
+     * limitation, UX only).
+     */
+    public static boolean stackedOnOther(ItemStack pouch, Slot slot, ClickAction action, Player player,
+                                         boolean clientSide) {
         if (action != ClickAction.SECONDARY || pouch.getCount() != 1) {
             return false;
         }
-        if (player.level().isClientSide) {
-            return true; // the server decides, the menu sync shows the result (SEC-17)
+        if (clientSide) {
+            return true;
         }
-        Guarded.run("pouch click", player.getUUID(), () -> {
-            ItemStack inSlot = slot.getItem();
-            if (inSlot.isEmpty()) {
-                ItemStack out = extract(pouch);
-                if (!out.isEmpty()) {
-                    ItemStack rest = slot.safeInsert(out);
-                    if (!rest.isEmpty()) {
-                        // the slot refused it: put the seed back, nothing changes
-                        insert(pouch, rest);
-                    } else {
-                        player.playSound(SoundEvents.BUNDLE_REMOVE_ONE, 0.8F, 0.8F + player.level().getRandom().nextFloat() * 0.4F);
-                    }
-                }
-            } else if (accepts(inSlot) && slot.mayPickup(player)) {
-                ItemStack probe = pouch.copy();
-                int n = insert(probe, inSlot);
-                if (n > 0) {
-                    ItemStack taken = slot.safeTake(inSlot.getCount(), n, player);
-                    if (taken.getCount() == n) {
-                        pouch.setTag(probe.getTag());
-                        player.playSound(SoundEvents.BUNDLE_INSERT, 0.8F, 0.8F + player.level().getRandom().nextFloat() * 0.4F);
-                    } else {
-                        slot.safeInsert(taken); // could not take exactly n: undo
-                    }
+        ItemStack inSlot = slot.getItem();
+        if (inSlot.isEmpty()) {
+            Optional<PouchContents.Extracted> peek = contents(pouch).flatMap(PouchContents::removeLast);
+            if (peek.isEmpty()) {
+                return true;
+            }
+            ItemStack out = LotStacks.stack(peek.get().lot(), 1);
+            if (!slot.mayPlace(out) || slot.getMaxStackSize(out) < 1) {
+                return true; // the slot would refuse it: nothing changes
+            }
+            CompoundTag snapshot = pouch.getTag() == null ? null : pouch.getTag().copy();
+            store(pouch, peek.get().pouch());
+            ItemStack rest = slot.safeInsert(out);
+            if (!rest.isEmpty()) {
+                pouch.setTag(snapshot); // restore exactly, never through accepts()
+            } else {
+                player.playSound(SoundEvents.BUNDLE_REMOVE_ONE, 0.8F, 0.8F + player.level().getRandom().nextFloat() * 0.4F);
+            }
+        } else if (accepts(inSlot) && slot.mayPickup(player)) {
+            ItemStack probe = pouch.copy();
+            int n = insert(probe, inSlot);
+            if (n > 0) {
+                ItemStack taken = slot.safeTake(inSlot.getCount(), n, player);
+                if (taken.getCount() == n) {
+                    pouch.setTag(probe.getTag());
+                    player.playSound(SoundEvents.BUNDLE_INSERT, 0.8F, 0.8F + player.level().getRandom().nextFloat() * 0.4F);
+                } else {
+                    slot.safeInsert(taken); // could not take exactly n: undo
                 }
             }
-        });
+        }
         return true;
     }
 
@@ -154,38 +171,46 @@ public class SeedPouchItem extends Item {
     @EntryPoint
     public boolean overrideOtherStackedOnMe(ItemStack pouch, ItemStack other, Slot slot, ClickAction action,
                                             Player player, SlotAccess access) {
+        return Guarded.call("pouch click", player.getUUID(),
+                () -> otherStackedOnMe(pouch, other, slot, action, player, access, player.level().isClientSide), false);
+    }
+
+    /** Logic of {@link #overrideOtherStackedOnMe}; on the client it changes nothing (SEC-17). */
+    public static boolean otherStackedOnMe(ItemStack pouch, ItemStack other, Slot slot, ClickAction action,
+                                           Player player, SlotAccess access, boolean clientSide) {
         if (action != ClickAction.SECONDARY || !slot.allowModification(player) || pouch.getCount() != 1) {
             return false;
         }
-        if (player.level().isClientSide) {
+        if (clientSide) {
             return true;
         }
-        Guarded.run("pouch click", player.getUUID(), () -> {
-            if (other.isEmpty()) {
-                ItemStack out = extract(pouch);
-                if (!out.isEmpty()) {
-                    access.set(out);
-                    player.playSound(SoundEvents.BUNDLE_REMOVE_ONE, 0.8F, 0.8F + player.level().getRandom().nextFloat() * 0.4F);
-                }
-            } else {
-                int n = insert(pouch, other);
-                if (n > 0) {
-                    other.shrink(n);
-                    player.playSound(SoundEvents.BUNDLE_INSERT, 0.8F, 0.8F + player.level().getRandom().nextFloat() * 0.4F);
-                }
+        if (other.isEmpty()) {
+            ItemStack out = extract(pouch);
+            if (!out.isEmpty()) {
+                access.set(out);
+                player.playSound(SoundEvents.BUNDLE_REMOVE_ONE, 0.8F, 0.8F + player.level().getRandom().nextFloat() * 0.4F);
             }
-        });
+        } else {
+            int n = insert(pouch, other);
+            if (n > 0) {
+                other.shrink(n);
+                player.playSound(SoundEvents.BUNDLE_INSERT, 0.8F, 0.8F + player.level().getRandom().nextFloat() * 0.4F);
+            }
+        }
         return true;
     }
 
     @Override
+    @EntryPoint
     public boolean isBarVisible(ItemStack stack) {
-        return contents(stack).map(PouchContents::used).orElse(0) > 0;
+        return Guarded.call("pouch bar", "pouch", () -> contents(stack).map(PouchContents::used).orElse(0) > 0, false);
     }
 
     @Override
+    @EntryPoint
     public int getBarWidth(ItemStack stack) {
-        return Math.min(1 + 12 * contents(stack).map(PouchContents::used).orElse(0) / PouchContents.CAPACITY, 13);
+        return Guarded.call("pouch bar", "pouch", () -> Math.min(1 + 12 * contents(stack).map(PouchContents::used)
+                .orElse(0) / PouchContents.CAPACITY, 13), 0);
     }
 
     @Override
@@ -195,7 +220,12 @@ public class SeedPouchItem extends Item {
 
     /** Tooltip image: the lots inside, last one first (client component in {@code client}). */
     @Override
+    @EntryPoint
     public Optional<TooltipComponent> getTooltipImage(ItemStack stack) {
+        return Guarded.call("pouch tooltip image", "pouch", () -> tooltipImage(stack), Optional.empty());
+    }
+
+    private static Optional<TooltipComponent> tooltipImage(ItemStack stack) {
         return contents(stack).map(c -> {
             List<ItemStack> items = new ArrayList<>(c.used());
             List<CompoundTag> e = c.entries();

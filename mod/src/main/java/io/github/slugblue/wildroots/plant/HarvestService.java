@@ -60,6 +60,15 @@ public final class HarvestService {
 
     /** {@code getDrops} of a plant block. */
     public static List<ItemStack> drops(BlockState state, LootParams.Builder params) {
+        return drops(state, params, params.getLevel().random);
+    }
+
+    /**
+     * Drops with a given RNG (tests compare harvests). No side effects: the
+     * {@code mutation} claim is only looked at here and consumed when the
+     * block is really removed ({@code FieldPlantBlock#onRemove}).
+     */
+    public static List<ItemStack> drops(BlockState state, LootParams.Builder params, RandomSource random) {
         BlockEntity raw = params.getOptionalParameter(LootContextParams.BLOCK_ENTITY);
         ServerLevel level = params.getLevel();
         if (!(raw instanceof PlantBlockEntity be)) {
@@ -77,14 +86,16 @@ public final class HarvestService {
         }
         int stage = FieldPlantBlock.stage(state);
         Entity breaker = params.getOptionalParameter(LootContextParams.THIS_ENTITY);
-        boolean player = breaker instanceof Player && !(breaker instanceof FakePlayer);
+        // an explosion carries its source as THIS_ENTITY: with a player source it is still automation
+        boolean player = breaker instanceof Player && !(breaker instanceof FakePlayer)
+                && params.getOptionalParameter(LootContextParams.EXPLOSION_RADIUS) == null;
         List<ItemStack> out = new ArrayList<>(3);
         if (stage >= FieldPlantBlock.SEED_STAGE) {
-            seeds(level, be, live.get(), p.get(), level.random, player).ifPresent(out::add);
+            seeds(level, be, live.get(), p.get(), random, player).ifPresent(out::add);
         } else if (stage >= FieldPlantBlock.HARVEST_STAGE) {
             int grade = grade(live.get(), p.get());
             if (stage == FieldPlantBlock.HARVEST_STAGE && !live.get().data().has(PlantState.MOTHER)) {
-                food(live.get(), p.get(), grade, level.random).ifPresent(out::add);
+                food(live.get(), p.get(), grade, random).ifPresent(out::add);
             }
             out.add(MotherItem.of(live.get(), grade, p.get().bitter()));
         } else {
@@ -153,10 +164,10 @@ public final class HarvestService {
             return Optional.empty();
         }
         if (!withFathers) {
-            return Optional.of(LotStacks.seeds(level, live, List.of(), 0, 0, be, count));
+            return Optional.of(LotStacks.seeds(level, live, List.of(), 0, 0, be::rareAvailable, count));
         }
         int flags = (bees ? LotFlags.BEES : 0) | (brush != Brush.NONE ? LotFlags.BRUSH : 0);
-        return Optional.of(LotStacks.seeds(level, live, fathers, pending == null ? 0 : pending.pOut(), flags, be,
+        return Optional.of(LotStacks.seeds(level, live, fathers, pending == null ? 0 : pending.pOut(), flags, be::rareAvailable,
                 count));
     }
 }

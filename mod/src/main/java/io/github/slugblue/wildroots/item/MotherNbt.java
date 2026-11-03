@@ -17,7 +17,7 @@ import net.minecraft.resources.ResourceLocation;
  * {@value #KEY}; at most 512 B, depth 4.
  *
  * <pre>
- * wildroots:mother: { v: 1, g: {v, sp, lh, a}, e: [B; ...], var?, ct, ln?, gen, fl, gr, bt? }
+ * wildroots:mother: { v: 1, g: {v, sp, lh, a}, e: [B; ...], var?, ct, ci?, ln?, gen, fl, gr, bt? }
  * </pre>
  */
 public final class MotherNbt {
@@ -26,7 +26,7 @@ public final class MotherNbt {
     public static final int CURRENT = 1;
 
     /** A decoded mother root. */
-    public record Mother(GenomeRecord genome, byte[] noise, Optional<String> cultivar, int tier,
+    public record Mother(GenomeRecord genome, byte[] noise, Optional<String> cultivar, int tier, boolean inherited,
                          Optional<String> lineName, int generation, int flags, int grade, boolean bitter) {
 
         public String species() {
@@ -67,7 +67,7 @@ public final class MotherNbt {
             }
             return Optional.of(new Mother(new GenomeRecord(g.getInt("v"), g.getString("sp"), g.getLong("lh"), a), e,
                     root.contains("var") ? Optional.of(root.getString("var")) : Optional.empty(), tier,
-                    root.contains("ln") ? Optional.of(ln) : Optional.empty(), gen, root.getByte("fl"), gr,
+                    root.getByte("ci") == 1, root.contains("ln") ? Optional.of(ln) : Optional.empty(), gen, root.getByte("fl"), gr,
                     root.getByte("bt") == 1));
         } catch (RuntimeException ex) {
             return Optional.empty();
@@ -92,6 +92,9 @@ public final class MotherNbt {
         m.cultivar().ifPresent(c -> root.putString("var", c));
         if (m.tier() != 0) {
             root.putByte("ct", (byte) m.tier());
+        }
+        if (m.inherited()) {
+            root.putByte("ci", (byte) 1);
         }
         m.lineName().ifPresent(n -> root.putString("ln", n));
         if (m.generation() != 0) {

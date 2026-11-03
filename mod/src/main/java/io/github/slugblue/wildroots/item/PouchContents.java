@@ -18,6 +18,9 @@ import net.minecraft.nbt.Tag;
  * all. The NBT form is {@code {v: 1, e: [{l: <lot root>, c: 1b}, ...]}};
  * other keys of the stored compound are kept as they are.
  *
+ * <p>A pouch from a future version ({@code v > 1}) or with a damaged
+ * version is inert: it accepts and gives nothing, and its tag stays as it is.
+ *
  * <p>The protective 17 KiB / depth 7 limit (SEC-09) is checked on the
  * result of an insertion: with valid lots it never trips, otherwise the
  * insertion is refused and the pouch stays usable.
@@ -26,6 +29,7 @@ public final class PouchContents {
 
     public static final String KEY = "wildroots:pouch";
     public static final int CAPACITY = NbtLimits.POUCH_MAX_ENTRIES;
+    public static final int CURRENT = 1;
 
     private final CompoundTag base;
     private final List<CompoundTag> entries;
@@ -44,6 +48,9 @@ public final class PouchContents {
         }
         if (!(tag instanceof CompoundTag c) || !NbtLimits.pouch(c).ok()) {
             return Optional.empty();
+        }
+        if (c.contains("v") && (!c.contains("v", Tag.TAG_INT) || c.getInt("v") < 1 || c.getInt("v") > CURRENT)) {
+            return Optional.empty(); // future or damaged version: inert, the stored tag is never rewritten
         }
         List<CompoundTag> out = new ArrayList<>();
         ListTag e = c.getList("e", Tag.TAG_COMPOUND);
@@ -112,7 +119,7 @@ public final class PouchContents {
     /** NBT form; unknown keys of the stored compound are kept. */
     public CompoundTag write() {
         CompoundTag c = base.copy();
-        c.putInt("v", 1);
+        c.putInt("v", CURRENT);
         ListTag e = new ListTag();
         for (CompoundTag lot : entries) {
             CompoundTag entry = new CompoundTag();

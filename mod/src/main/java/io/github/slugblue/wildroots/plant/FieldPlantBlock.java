@@ -2,6 +2,7 @@ package io.github.slugblue.wildroots.plant;
 
 import io.github.slugblue.wildroots.core.safety.EntryPoint;
 import io.github.slugblue.wildroots.core.safety.Guarded;
+import io.github.slugblue.wildroots.core.safety.LoadedLevelAccess;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
@@ -127,7 +128,8 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
     @Override
     @EntryPoint
     public void randomTick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
-        Guarded.run("plant random tick", pos, () -> GrowthLogic.randomTick(state, level, pos, random));
+        Guarded.run("plant random tick", pos, () -> GrowthLogic.randomTick(state, level, pos, random),
+                () -> fail(level, pos, "random tick failed"));
     }
 
     /** One stage without a roll (other mods); never past the final stage, keeps every property. */
@@ -135,7 +137,8 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
     @EntryPoint
     public void growCrops(Level level, BlockPos pos, BlockState state) {
         if (level instanceof ServerLevel server) {
-            Guarded.run("plant grow", pos, () -> GrowthLogic.grow(server, pos, state));
+            Guarded.run("plant grow", pos, () -> GrowthLogic.grow(server, pos, state),
+                    () -> fail(server, pos, "growth failed"));
         }
     }
 
@@ -148,10 +151,36 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
     @Override
     @EntryPoint
     public void performBonemeal(ServerLevel level, RandomSource random, BlockPos pos, BlockState state) {
-        Guarded.run("plant bone meal", pos, () -> GrowthLogic.bonemeal(level, random, pos, state));
+        Guarded.run("plant bone meal", pos, () -> GrowthLogic.bonemeal(level, random, pos, state),
+                () -> fail(level, pos, "bone meal failed"));
     }
 
-    /** Bone meal works on stages 1–3 (and on a non-final stage 5), never on flowering (GDD §5.1). */
+    /** SEC-34: a plant whose logic threw becomes inert, so it does not throw on every tick. */
+    private static void fail(ServerLevel level, BlockPos pos, String reason) {
+        LoadedLevelAccess.blockEntity(level, pos, PlantBlockEntity.class).ifPresent(be -> be.markFailed(reason));
+    }
+
+    /**
+     * The real break path: once the plant block is really replaced, the
+     * {@code mutation} rare flag that its drops carried is consumed (SEC-21).
+     * {@code getDrops} itself has no side effects, so a preview or a second
+     * call does not use the claim up.
+     */
+    @Override
+    @EntryPoint
+    @SuppressWarnings("deprecation")
+    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean moved) {
+        if (!state.is(newState.getBlock()) && level instanceof ServerLevel server) {
+            Guarded.run("plant removed", pos, () -> LoadedLevelAccess.blockEntity(server, pos, PlantBlockEntity.class)
+                    .ifPresent(PlantBlockEntity::claimRare));
+        }
+        super.onRemove(state, level, pos, newState, moved);
+    }
+
+    /**
+     * Bone meal works on stages 1–3, never on flowering (GDD §5.1); stage 5 is
+     * final for the field archetype, so it is refused there too (GD question).
+     */
     @Override
     public boolean isValidBonemealTarget(LevelReader level, BlockPos pos, BlockState state, boolean isClient) {
         return bonemealStage(stage(state));
