@@ -35,6 +35,11 @@ public final class RngKeys {
         return Hash64.of(worldSeed, patchOrigin, plantPos);
     }
 
+    /** ε of a wild plant: {@code Hash64(worldSeed, patchOrigin, plantPos, "noise")} (deterministic like its genome). */
+    public static long wildNoise(long worldSeed, long patchOrigin, long plantPos) {
+        return Hash64.of(worldSeed, patchOrigin, plantPos, NOISE);
+    }
+
     /** Village plant: {@code Hash64(worldSeed, villagePos, landraceId, harvestCount)} (GDD §9.5). */
     public static long villagePlant(long worldSeed, long villagePos, String landraceId, int harvestCount) {
         return Hash64.of(worldSeed, villagePos, Hash64.str(landraceId), harvestCount);

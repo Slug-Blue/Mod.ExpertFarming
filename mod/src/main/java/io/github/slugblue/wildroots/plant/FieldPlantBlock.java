@@ -157,7 +157,7 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
 
     @Override
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
-        return null; // the plant block entity arrives with WR-131
+        return new PlantBlockEntity(pos, state);
     }
 
     /** No ticker (ADR-0003): the plant works only in random ticks, interaction and saving. */
