@@ -113,8 +113,22 @@ public class SeedPouchItem extends Item {
     @Override
     @EntryPoint
     public boolean overrideStackedOnOther(ItemStack pouch, Slot slot, ClickAction action, Player player) {
-        return Guarded.call("pouch click", player.getUUID(),
-                () -> stackedOnOther(pouch, slot, action, player, player.level().isClientSide), false);
+        boolean client = player.level().isClientSide;
+        if (client) {
+            return stackedOnOther(pouch, slot, action, player, true);
+        }
+        // a failure restores both stacks and still claims the click, so vanilla never acts on a half state
+        CompoundTag pouchTag = pouch.getTag() == null ? null : pouch.getTag().copy();
+        ItemStack slotBefore = slot.getItem().copy();
+        boolean[] handled = {true};
+        Guarded.run("pouch click", player.getUUID(),
+                () -> handled[0] = stackedOnOther(pouch, slot, action, player, false),
+                () -> {
+                    pouch.setTag(pouchTag == null ? null : pouchTag.copy());
+                    slot.set(slotBefore.copy());
+                    handled[0] = true;
+                });
+        return handled[0];
     }
 
     /**
@@ -142,11 +156,13 @@ public class SeedPouchItem extends Item {
             if (!slot.mayPlace(out) || slot.getMaxStackSize(out) < 1) {
                 return true; // the slot would refuse it: nothing changes
             }
-            CompoundTag snapshot = pouch.getTag() == null ? null : pouch.getTag().copy();
+            // work on a copy; a refusal puts the untouched original tag object back (byte for byte)
+            CompoundTag original = pouch.getTag();
+            pouch.setTag(original == null ? null : original.copy());
             store(pouch, peek.get().pouch());
             ItemStack rest = slot.safeInsert(out);
             if (!rest.isEmpty()) {
-                pouch.setTag(snapshot); // restore exactly, never through accepts()
+                pouch.setTag(original); // restore exactly, never through accepts()
             } else {
                 player.playSound(SoundEvents.BUNDLE_REMOVE_ONE, 0.8F, 0.8F + player.level().getRandom().nextFloat() * 0.4F);
             }
@@ -171,8 +187,21 @@ public class SeedPouchItem extends Item {
     @EntryPoint
     public boolean overrideOtherStackedOnMe(ItemStack pouch, ItemStack other, Slot slot, ClickAction action,
                                             Player player, SlotAccess access) {
-        return Guarded.call("pouch click", player.getUUID(),
-                () -> otherStackedOnMe(pouch, other, slot, action, player, access, player.level().isClientSide), false);
+        boolean client = player.level().isClientSide;
+        if (client) {
+            return otherStackedOnMe(pouch, other, slot, action, player, access, true);
+        }
+        CompoundTag pouchTag = pouch.getTag() == null ? null : pouch.getTag().copy();
+        ItemStack cursorBefore = other.copy();
+        boolean[] handled = {true};
+        Guarded.run("pouch click", player.getUUID(),
+                () -> handled[0] = otherStackedOnMe(pouch, other, slot, action, player, access, false),
+                () -> {
+                    pouch.setTag(pouchTag == null ? null : pouchTag.copy());
+                    access.set(cursorBefore.copy());
+                    handled[0] = true;
+                });
+        return handled[0];
     }
 
     /** Logic of {@link #overrideOtherStackedOnMe}; on the client it changes nothing (SEC-17). */

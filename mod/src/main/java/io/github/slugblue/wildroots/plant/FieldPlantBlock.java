@@ -161,10 +161,15 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
     }
 
     /**
-     * The real break path: once the plant block is really replaced, the
-     * {@code mutation} rare flag that its drops carried is consumed (SEC-21).
-     * {@code getDrops} itself has no side effects, so a preview or a second
-     * call does not use the claim up.
+     * The real break path: once the plant block is really replaced by
+     * another block, the {@code mutation} rare flag is consumed (SEC-21).
+     * Vanilla calls this before the drops on a survival player's break
+     * ({@code ServerPlayerGameMode#destroyBlock}: {@code removeBlock}, then
+     * {@code playerDestroy}) and after them in {@code Level#destroyBlock},
+     * explosions, pistons and fluids; the block entity remembers a claim
+     * made here ({@code claimedByRemoval}) so the drops get the flag exactly
+     * once in both orders. {@code getDrops} has no side effects. A stage
+     * change ({@code setBlock} with the same block) claims nothing.
      */
     @Override
     @EntryPoint
@@ -172,7 +177,7 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean moved) {
         if (!state.is(newState.getBlock()) && level instanceof ServerLevel server) {
             Guarded.run("plant removed", pos, () -> LoadedLevelAccess.blockEntity(server, pos, PlantBlockEntity.class)
-                    .ifPresent(PlantBlockEntity::claimRare));
+                    .ifPresent(PlantBlockEntity::claimForRemoval));
         }
         super.onRemove(state, level, pos, newState, moved);
     }

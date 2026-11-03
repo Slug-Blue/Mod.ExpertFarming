@@ -88,6 +88,8 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
     /** Decoded genome and the species definition it was decoded for. */
     private Genome genome;
     private SpeciesDef decodedFor;
+    /** Transient: the rare flag was claimed by the removal of the block (SEC-21, see {@link #claimForRemoval}). */
+    private boolean claimedByRemoval;
     /** Cached chance of the next stage per random tick (§10.1); NaN = not computed. */
     private float growthChance = Float.NaN;
 
@@ -155,7 +157,45 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
             } else if (state != null) {
                 tag.put(PlantNbt.ROOT, PlantNbt.write(state));
             }
+        }, () -> {
+            // never lose the plant on a failed save: the raw root if kept, else its essential data
+            CompoundTag keep = raw != null ? raw.copy() : essentialRoot();
+            if (keep != null) {
+                tag.put(PlantNbt.ROOT, keep);
+            }
         });
+    }
+
+    /**
+     * Version, species, genome, noise and passport written field by field,
+     * each guarded: the data a plant cannot be rebuilt without. Used only
+     * when the full write failed; no extra copy of the root is kept in memory.
+     */
+    private CompoundTag essentialRoot() {
+        if (state == null) {
+            return null;
+        }
+        CompoundTag root = new CompoundTag();
+        root.putInt("v", PlantNbt.CURRENT);
+        if (state.species != null) {
+            root.putString("sp", state.species);
+        }
+        try {
+            PlantState s = new PlantState();
+            s.species = state.species;
+            s.genome = state.genome;
+            s.noise = state.noise;
+            s.passport = state.passport;
+            s.planterMost = state.planterMost;
+            s.planterLeast = state.planterLeast;
+            CompoundTag full = PlantNbt.write(s);
+            for (String k : full.getAllKeys()) {
+                root.put(k, full.get(k));
+            }
+        } catch (RuntimeException ignored) {
+            // the version and species are kept; the rest could not be written
+        }
+        return root;
     }
 
     /** SEC-34: the logic of this plant threw; it becomes inert and keeps its data as it was. */
@@ -164,6 +204,23 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
             return;
         }
         makeInert(reason, state == null ? raw : PlantNbt.write(state));
+    }
+
+    /**
+     * The block is being removed (SEC-21): the flag is claimed now, without
+     * {@code setChanged()} because the block entity goes away, and the drops
+     * computed after this (survival break) still get it once.
+     */
+    public void claimForRemoval() {
+        if (rareAvailable()) {
+            state.plantFlags = (byte) (state.plantFlags | PlantState.RARE_CLAIMED);
+            claimedByRemoval = true;
+        }
+    }
+
+    /** Whether the drops of this plant carry the {@code mutation} flag (claim not consumed here). */
+    public boolean rareForDrops() {
+        return rareAvailable() || claimedByRemoval;
     }
 
     /** Whether the {@code mutation} rare flag is still to be given (looked at, not consumed). */

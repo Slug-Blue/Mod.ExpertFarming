@@ -86,7 +86,12 @@ public final class HarvestService {
         }
         int stage = FieldPlantBlock.stage(state);
         Entity breaker = params.getOptionalParameter(LootContextParams.THIS_ENTITY);
-        // an explosion carries its source as THIS_ENTITY: with a player source it is still automation
+        // An explosion carries its source as THIS_ENTITY: with a player source it is still automation.
+        // Residual risk (review 2, item 7): vanilla adds EXPLOSION_RADIUS only for
+        // BlockInteraction.DESTROY_WITH_DECAY; with the game rules tntExplosionDropDecay /
+        // mobExplosionDropDecay / blockExplosionDropDecay set to false an explosion by a player
+        // looks like a player harvest here and keeps the fathers. Not handled (no explosion
+        // marker in the loot params); accepted as a low risk.
         boolean player = breaker instanceof Player && !(breaker instanceof FakePlayer)
                 && params.getOptionalParameter(LootContextParams.EXPLOSION_RADIUS) == null;
         List<ItemStack> out = new ArrayList<>(3);
@@ -164,10 +169,10 @@ public final class HarvestService {
             return Optional.empty();
         }
         if (!withFathers) {
-            return Optional.of(LotStacks.seeds(level, live, List.of(), 0, 0, be::rareAvailable, count));
+            return Optional.of(LotStacks.seeds(level, live, List.of(), 0, 0, be::rareForDrops, count));
         }
         int flags = (bees ? LotFlags.BEES : 0) | (brush != Brush.NONE ? LotFlags.BRUSH : 0);
-        return Optional.of(LotStacks.seeds(level, live, fathers, pending == null ? 0 : pending.pOut(), flags, be::rareAvailable,
+        return Optional.of(LotStacks.seeds(level, live, fathers, pending == null ? 0 : pending.pOut(), flags, be::rareForDrops,
                 count));
     }
 }
