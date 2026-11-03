@@ -508,4 +508,76 @@ public final class SeedPouchGameTests {
         helper.assertTrue(ItemStack.matches(cursor[0], cursorBefore), "client changed the cursor");
         helper.succeed();
     }
+
+    /** mayPlace says yes, but the insert itself refuses (review 2, item 4): the restore branch. */
+    static final class RefusingInsertSlot extends net.minecraft.world.inventory.Slot {
+        RefusingInsertSlot(Container c) {
+            super(c, 0, 0, 0);
+        }
+
+        @Override
+        public ItemStack safeInsert(ItemStack stack) {
+            return stack;
+        }
+    }
+
+    static byte[] bytes(CompoundTag t) throws java.io.IOException {
+        java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+        net.minecraft.nbt.NbtIo.write(t, new java.io.DataOutputStream(out));
+        return out.toByteArray();
+    }
+
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
+    public static void refusedInsertRestoresThePouchByteForByte(GameTestHelper helper) throws java.io.IOException {
+        ServerLevel level = helper.getLevel();
+        Player player = helper.makeMockSurvivalPlayer();
+        SimpleContainer c = new SimpleContainer(27);
+        ChestMenu menu = menu(player, c);
+        menu.setCarried(pouch());
+        c.setItem(0, PlantingGameTests.lot(level, 2));
+        menu.clicked(0, 1, ClickType.PICKUP, player);
+        ItemStack p = menu.getCarried();
+        byte[] before = bytes(p.getTag());
+        SimpleContainer one = new SimpleContainer(1);
+        RefusingInsertSlot slot = new RefusingInsertSlot(one);
+        SeedPouchItem.stackedOnOther(p, slot, net.minecraft.world.inventory.ClickAction.SECONDARY, player, false);
+        helper.assertTrue(java.util.Arrays.equals(before, bytes(p.getTag())), "pouch tag not restored byte for byte");
+        helper.assertTrue(one.getItem(0).isEmpty(), "slot changed");
+        helper.assertTrue(used(p) == 2, "entries " + used(p));
+        helper.succeed();
+    }
+
+    /** A slot whose take throws in the middle of an insertion. */
+    static final class ThrowingTakeSlot extends net.minecraft.world.inventory.Slot {
+        ThrowingTakeSlot(Container c) {
+            super(c, 0, 0, 0);
+        }
+
+        @Override
+        public ItemStack safeTake(int count, int decrement, Player player) {
+            throw new IllegalStateException("test failure in the middle of a pouch click");
+        }
+    }
+
+    /** Review 2, item 2: a failing click restores the pouch and the slot (and claims the click). */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
+    public static void failingClickRestoresPouchAndSlot(GameTestHelper helper) throws java.io.IOException {
+        ServerLevel level = helper.getLevel();
+        Player player = helper.makeMockSurvivalPlayer();
+        ItemStack p = pouch();
+        SimpleContainer one = new SimpleContainer(1);
+        one.setItem(0, PlantingGameTests.lot(level, 3));
+        ItemStack slotBefore = one.getItem(0).copy();
+        ThrowingTakeSlot slot = new ThrowingTakeSlot(one);
+        boolean handled = false;
+        try {
+            handled = p.getItem().overrideStackedOnOther(p, slot, net.minecraft.world.inventory.ClickAction.SECONDARY, player);
+        } catch (RuntimeException e) {
+            handled = true; // strict mode rethrows after onFailure; the server fallback is true
+        }
+        helper.assertTrue(handled, "the click was given back to vanilla");
+        helper.assertTrue(used(p) == 0 && p.getTag() == null, "pouch not restored: " + p.getTag());
+        helper.assertTrue(ItemStack.matches(one.getItem(0), slotBefore), "slot not restored");
+        helper.succeed();
+    }
 }

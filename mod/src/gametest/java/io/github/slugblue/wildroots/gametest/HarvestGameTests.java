@@ -43,6 +43,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.piston.PistonBaseBlock;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.loot.LootParams;
@@ -270,8 +271,9 @@ public final class HarvestGameTests {
         helper.assertTrue(level.destroyBlock(abs, true, player), "not broken");
         List<ItemStack> items = level.getEntitiesOfClass(ItemEntity.class, new AABB(abs).inflate(2)).stream()
                 .map(ItemEntity::getItem).toList();
-        helper.assertTrue(onlyLot(items).rare() == LotNbt.RareSource.MUTATION, "the real break lost the flag");
-        helper.assertTrue(!be.rareAvailable(), "the real break did not consume the claim");
+        helper.assertTrue(mutationLots(items) == 1, "mutation lots after Level#destroyBlock: " + mutationLots(items));
+        helper.assertTrue(be.data().has(io.github.slugblue.wildroots.plant.PlantState.RARE_CLAIMED),
+                "the real break did not consume the claim");
         helper.succeed();
     }
 
@@ -323,5 +325,168 @@ public final class HarvestGameTests {
                 .withParameter(LootContextParams.TOOL, ItemStack.EMPTY)
                 .withOptionalParameter(LootContextParams.THIS_ENTITY, who)
                 .withOptionalParameter(LootContextParams.BLOCK_ENTITY, be);
+    }
+
+    static long mutationLots(List<ItemStack> items) {
+        return items.stream().filter(s -> s.is(ModItems.SEED_LOT.get()))
+                .filter(s -> LotStacks.read(s) instanceof LotNbt.Lot l && l.rare() == LotNbt.RareSource.MUTATION).count();
+    }
+
+    static PlantBlockEntity mutant(GameTestHelper helper, long key) {
+        PlantBlockEntity be = seedPlant(helper, PlantFixtures.PLANT, key);
+        be.setPlantFlag(io.github.slugblue.wildroots.plant.PlantState.MUTANT, true);
+        return be;
+    }
+
+    static List<ItemStack> itemsAround(GameTestHelper helper) {
+        return helper.getLevel().getEntitiesOfClass(ItemEntity.class,
+                new AABB(helper.absolutePos(PlantFixtures.PLANT)).inflate(4)).stream().map(ItemEntity::getItem).toList();
+    }
+
+    /**
+     * N1: a survival ServerPlayer breaks a mutant through
+     * ServerPlayerGameMode#destroyBlock (removeBlock, then playerDestroy):
+     * the lot carries MUTATION exactly once and the claim is stored.
+     */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "wr13x_server_player", timeoutTicks = 100)
+    public static void survivalPlayerBreakGrantsMutationOnce(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        PlantBlockEntity be = mutant(helper, 120);
+        // a plain survival ServerPlayer (makeMockServerPlayerInLevel needs a network channel in 1.20.1)
+        net.minecraft.server.level.ServerPlayer player = new net.minecraft.server.level.ServerPlayer(level.getServer(),
+                level, new com.mojang.authlib.GameProfile(java.util.UUID.randomUUID(), "wr-survival"));
+        player.setPos(net.minecraft.world.phys.Vec3.atCenterOf(helper.absolutePos(PlantFixtures.PLANT)).add(1, 0, 0));
+        try {
+            player.gameMode.changeGameModeForPlayer(net.minecraft.world.level.GameType.SURVIVAL);
+            helper.assertTrue(!player.gameMode.isCreative(), "player is in creative");
+            BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
+            helper.assertTrue(player.gameMode.destroyBlock(abs), "not broken");
+            helper.assertTrue(PlantFixtures.stage(helper, PlantFixtures.PLANT) < 0, "plant still there");
+            List<ItemStack> items = itemsAround(helper);
+            helper.assertTrue(mutationLots(items) == 1, "mutation lots " + mutationLots(items) + " in " + items);
+            helper.assertTrue(be.data().has(io.github.slugblue.wildroots.plant.PlantState.RARE_CLAIMED), "claim not stored");
+        } finally {
+            player.discard();
+        }
+        helper.succeed();
+    }
+
+    /** N1 for automation: an explosion and a piston give exactly one MUTATION lot. */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, timeoutTicks = 100)
+    public static void explosionOfAMutantGivesOneMutationLot(GameTestHelper helper) {
+        mutant(helper, 121);
+        BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
+        helper.getLevel().explode(null, abs.getX() + 0.5, abs.getY() + 0.5, abs.getZ() + 0.5, 1.0f,
+                Level.ExplosionInteraction.BLOCK);
+        helper.runAfterDelay(2, () -> {
+            helper.assertTrue(mutationLots(itemsAround(helper)) == 1, "mutation lots " + itemsAround(helper));
+            helper.succeed();
+        });
+    }
+
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, timeoutTicks = 100)
+    public static void pistonOnAMutantGivesOneMutationLot(GameTestHelper helper) {
+        mutant(helper, 122);
+        helper.setBlock(new BlockPos(0, 2, 1), Blocks.PISTON.defaultBlockState().setValue(PistonBaseBlock.FACING, Direction.EAST));
+        helper.setBlock(new BlockPos(0, 2, 0), Blocks.REDSTONE_BLOCK);
+        helper.runAfterDelay(10, () -> {
+            helper.assertTrue(PlantFixtures.stage(helper, PlantFixtures.PLANT) < 0, "plant still there");
+            helper.assertTrue(mutationLots(itemsAround(helper)) == 1, "mutation lots " + itemsAround(helper));
+            helper.succeed();
+        });
+    }
+
+    /** N1: a stage change (setBlock with the same block) claims nothing. */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
+    public static void stageChangeClaimsNothing(GameTestHelper helper) {
+        PlantBlockEntity be = mutant(helper, 123);
+        BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
+        ServerLevel level = helper.getLevel();
+        level.setBlock(abs, level.getBlockState(abs).setValue(FieldPlantBlock.STAGE, 4), 3);
+        level.setBlock(abs, level.getBlockState(abs).setValue(FieldPlantBlock.STAGE, 5), 3);
+        helper.assertTrue(helper.getBlockEntity(PlantFixtures.PLANT) == be, "block entity replaced");
+        helper.assertTrue(be.rareAvailable() && !be.data().has(io.github.slugblue.wildroots.plant.PlantState.RARE_CLAIMED), "a stage change claimed the flag");
+        helper.succeed();
+    }
+
+    /** Throws at one position: another mod's crop event handler failing inside our random tick. */
+    public static final class ThrowingCropProbe {
+        final BlockPos pos;
+
+        ThrowingCropProbe(BlockPos pos) {
+            this.pos = pos;
+        }
+
+        @net.minecraftforge.eventbus.api.SubscribeEvent
+        public void onPre(net.minecraftforge.event.level.BlockEvent.CropGrowEvent.Pre e) {
+            if (e.getPos().equals(pos)) {
+                throw new IllegalStateException("test failure inside the random tick");
+            }
+        }
+    }
+
+    /**
+     * SEC-34: logic that throws in a random tick makes the plant inert (the
+     * onFailure of Guarded runs before strict mode rethrows); it drops nothing.
+     */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
+    public static void throwingRandomTickMakesThePlantInert(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        PlantBlockEntity be = PlantFixtures.plant(PlantFixtures.place(helper, PlantFixtures.PLANT, 1), 124);
+        be.live(level).orElseThrow();
+        be.setGrowthChance(1f);
+        BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
+        ThrowingCropProbe probe = new ThrowingCropProbe(abs);
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.register(probe);
+        boolean thrown = false;
+        try {
+            level.getBlockState(abs).randomTick(level, abs, RandomSource.create(1));
+        } catch (RuntimeException e) {
+            thrown = true; // strict mode (dev and GameTest) rethrows after onFailure
+        } finally {
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.unregister(probe);
+        }
+        helper.assertTrue(thrown || !io.github.slugblue.wildroots.core.safety.Guarded.shared().strict(), "no exception");
+        helper.assertTrue(be.status() == PlantBlockEntity.Status.INERT, "status " + be.status());
+        helper.assertTrue(MotherRootGameTests.drops(helper, PlantFixtures.PLANT, helper.makeMockSurvivalPlayer()).isEmpty(),
+                "a failed plant dropped items");
+        // the data was not lost: a reload of the saved root gives a live plant again
+        PlantBlockEntity reloaded = PlantFixtures.saveLoad(be);
+        helper.assertTrue(reloaded.live(level).isPresent(), "data lost after the failure");
+        helper.succeed();
+    }
+
+    /** A root whose reading throws (outside the decoder's own checks). */
+    static final class ThrowingRoot extends CompoundTag {
+        @Override
+        public int getInt(String key) {
+            throw new IllegalStateException("test failure while loading");
+        }
+    }
+
+    /** SEC-34, load path: a load that throws leaves the plant inert and keeps its raw root through save/load. */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
+    public static void throwingLoadKeepsTheRawRoot(GameTestHelper helper) {
+        PlantBlockEntity be = PlantFixtures.plant(PlantFixtures.place(helper, PlantFixtures.PLANT, 1), 125);
+        CompoundTag tag = be.saveWithFullMetadata();
+        CompoundTag root = tag.getCompound(io.github.slugblue.wildroots.plant.PlantNbt.ROOT).copy();
+        ThrowingRoot bad = new ThrowingRoot();
+        for (String k : root.getAllKeys()) {
+            bad.put(k, root.get(k).copy());
+        }
+        tag.put(io.github.slugblue.wildroots.plant.PlantNbt.ROOT, bad);
+        PlantBlockEntity target = (PlantBlockEntity) BlockEntity.loadStatic(be.getBlockPos(), be.getBlockState(),
+                be.saveWithFullMetadata());
+        try {
+            target.load(tag);
+        } catch (RuntimeException e) {
+            // strict mode rethrows after onFailure
+        }
+        helper.assertTrue(target.status() == PlantBlockEntity.Status.INERT, "status " + target.status());
+        CompoundTag saved = target.saveWithoutMetadata().getCompound(io.github.slugblue.wildroots.plant.PlantNbt.ROOT);
+        helper.assertTrue(saved.equals(root), "raw root not kept: " + saved);
+        PlantBlockEntity again = PlantFixtures.saveLoad(target);
+        helper.assertTrue(again.live(helper.getLevel()).isPresent(), "data lost through save/load");
+        helper.succeed();
     }
 }
