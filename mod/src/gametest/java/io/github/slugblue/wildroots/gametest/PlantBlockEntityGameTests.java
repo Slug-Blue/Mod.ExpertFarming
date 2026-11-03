@@ -87,6 +87,15 @@ public final class PlantBlockEntityGameTests {
         PlantBlockEntity again = PlantFixtures.saveLoad(be);
         helper.assertTrue(again.saveWithoutMetadata().getCompound(PlantNbt.ROOT).equals(root), "raw root changed");
         helper.assertTrue(again.getUpdateTag().isEmpty(), "update tag of an inert built-in plant");
+        // inert in the world: no growth
+        placed.load(tag);
+        net.minecraft.core.BlockPos abs = placed.getBlockPos();
+        net.minecraft.util.RandomSource random = net.minecraft.util.RandomSource.create(1312);
+        int stage = PlantFixtures.stage(helper, PlantFixtures.PLANT);
+        for (int i = 0; i < 300; i++) {
+            helper.getLevel().getBlockState(abs).randomTick(helper.getLevel(), abs, random);
+        }
+        helper.assertTrue(PlantFixtures.stage(helper, PlantFixtures.PLANT) == stage, "an inert plant grew");
     }
 
     /** Unknown species: sleeps, keeps the raw tag; when the species returns it lives again. */
@@ -104,9 +113,20 @@ public final class PlantBlockEntityGameTests {
         PlantBlockEntity again = PlantFixtures.saveLoad(sleeping);
         helper.assertTrue(again.saveWithoutMetadata().getCompound(PlantNbt.ROOT).equals(root), "raw root changed");
 
+        // the plant in the world sleeps too: random ticks do nothing
+        be.load(tag);
+        net.minecraft.core.BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
+        net.minecraft.util.RandomSource random = net.minecraft.util.RandomSource.create(1311);
+        for (int i = 0; i < 300; i++) {
+            helper.getLevel().getBlockState(abs).randomTick(helper.getLevel(), abs, random);
+        }
+        helper.assertTrue(PlantFixtures.stage(helper, PlantFixtures.PLANT) == 1, "a sleeping plant grew");
+
         DefinitionsSnapshot original = Definitions.current();
         try {
             Definitions.publish(PlantFixtures.withSpecies(original, PlantFixtures.carrotAs(lost, q -> q)));
+            helper.assertTrue(GrowthGameTests.tickUntilGrown(helper.getLevel(), abs, random, 3000) > 0,
+                    "the plant does not grow after its species returned");
             PlantBlockEntity.Live live = again.live(helper.getLevel()).orElse(null);
             helper.assertTrue(live != null, "species returned but the plant still sleeps");
             helper.assertTrue(again.status() == PlantBlockEntity.Status.OK, "status after return " + again.status());

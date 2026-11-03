@@ -4,4 +4,7 @@
 #
 # Candidates from §16 (Bee#setHasNectar, Biome#getHeightAdjustedTemperature,
 # StructureTemplatePool templates/rawTemplates, Mob#goalSelector) are added
-# with SRG names by the task that needs them. Phase 4: empty.
+# with SRG names by the task that needs them.
+
+# SRG m_47528_, S11: Biome#getHeightAdjustedTemperature for ClimateService (WR-132)
+public net.minecraft.world.level.biome.Biome m_47528_(Lnet/minecraft/core/BlockPos;)F

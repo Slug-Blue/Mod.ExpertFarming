@@ -1,5 +1,7 @@
 package io.github.slugblue.wildroots.plant;
 
+import io.github.slugblue.wildroots.core.safety.EntryPoint;
+import io.github.slugblue.wildroots.core.safety.Guarded;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
@@ -121,14 +123,32 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
         return state.getValue(ACTIVE) && stage(state) < MAX_STAGE;
     }
 
+    /** Growth by the cached chance of the block entity (§10.1, {@link GrowthLogic}). */
     @Override
+    @EntryPoint
     public void randomTick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
-        // growth arrives with the plant block entity (WR-131, WR-132)
+        Guarded.run("plant random tick", pos, () -> GrowthLogic.randomTick(state, level, pos, random));
+    }
+
+    /** One stage without a roll (other mods); never past the final stage, keeps every property. */
+    @Override
+    @EntryPoint
+    public void growCrops(Level level, BlockPos pos, BlockState state) {
+        if (level instanceof ServerLevel server) {
+            Guarded.run("plant grow", pos, () -> GrowthLogic.grow(server, pos, state));
+        }
     }
 
     @Override
-    public void growCrops(Level level, BlockPos pos, BlockState state) {
-        // growth arrives with WR-132
+    public boolean isBonemealSuccess(Level level, RandomSource random, BlockPos pos, BlockState state) {
+        return true;
+    }
+
+    /** +1 stage with chance 0.35 on stages 1–3 (GDD §5.1); flowering always takes real time. */
+    @Override
+    @EntryPoint
+    public void performBonemeal(ServerLevel level, RandomSource random, BlockPos pos, BlockState state) {
+        Guarded.run("plant bone meal", pos, () -> GrowthLogic.bonemeal(level, random, pos, state));
     }
 
     /** Bone meal works on stages 1–3 (and on a non-final stage 5), never on flowering (GDD §5.1). */
