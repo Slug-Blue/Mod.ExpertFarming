@@ -1,6 +1,7 @@
 package io.github.slugblue.wildroots.data;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.mojang.serialization.Codec;
@@ -75,14 +76,17 @@ class RobustLoaderTest {
     }
 
     @Test
-    void depthCountIgnoresBracketsInStrings() {
+    void depthIsCountedByAStrictReader() throws Exception {
         assertEquals(1, DefinitionLoader.jsonDepth("{\"a\": \"[[[[{{{{\\\"]]]\"}", 32));
         assertEquals(3, DefinitionLoader.jsonDepth("{\"a\": [ {\"b\": 1} ]}", 32));
         assertEquals(33, DefinitionLoader.jsonDepth("[".repeat(100), 32));
         assertEquals(32, DefinitionLoader.jsonDepth("[".repeat(32) + "]".repeat(32), 32));
-        // Gson in lenient mode reads single-quoted strings: brackets inside them are not nesting
-        assertEquals(1, DefinitionLoader.jsonDepth("{'a': '" + "}}}{{{[[[".repeat(20) + "'}", 32));
-        assertEquals(1, DefinitionLoader.jsonDepth("{'a\\'b': 'it\\'s [[['}", 32));
+        // an apostrophe and brackets inside a normal string are not nesting
+        assertEquals(1, DefinitionLoader.jsonDepth("{\"a'b\": \"'" + "}}}{{{[[[".repeat(20) + "'\"}", 32));
+        // single-quoted strings need the lenient reader: refused
+        assertThrows(java.io.IOException.class,
+                () -> DefinitionLoader.jsonDepth("{'a': '" + "}}}".repeat(20) + "'}", 32));
+        assertThrows(java.io.IOException.class, () -> DefinitionLoader.jsonDepth("{\"a\": NaN}", 32));
     }
 
     @Test

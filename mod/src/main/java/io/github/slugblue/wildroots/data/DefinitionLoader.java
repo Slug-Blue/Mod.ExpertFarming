@@ -2,6 +2,8 @@ package io.github.slugblue.wildroots.data;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
@@ -12,7 +14,9 @@ import io.github.slugblue.wildroots.genetics.codec.LayoutDictionary;
 import io.github.slugblue.wildroots.genetics.model.GenomeLayout;
 import io.github.slugblue.wildroots.genetics.validation.DefinitionValidator;
 import io.github.slugblue.wildroots.genetics.validation.Problem;
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -46,8 +50,8 @@ import net.minecraft.server.packs.resources.IoSupplier;
  * <p>Every file is read inside {@code try/catch (Exception | StackOverflowError)}:
  * one bad file never stops the others (SEC-27, WR-126). Before the codec a
  * file over {@value #MAX_FILE_BYTES} bytes, an empty file and JSON nested
- * deeper than {@value #MAX_JSON_DEPTH} are errors; a UTF-8 byte order mark is
- * dropped.
+ * deeper than {@value #MAX_JSON_DEPTH} (counted by a strict reader, which also
+ * refuses non-standard JSON) are errors; a UTF-8 byte order mark is dropped.
  */
 public final class DefinitionLoader {
 
@@ -83,40 +87,53 @@ public final class DefinitionLoader {
     }
 
     /**
-     * Nesting depth of objects and arrays in {@code text}, counted without a
-     * parser (no recursion, strings and escapes skipped); stops counting once
-     * {@code limit} is passed. Gson parses recursively, so this runs first.
+     * Nesting depth of objects and arrays in {@code text}, read token by
+     * token with a strict {@link JsonReader} (no tree, no recursion) before
+     * Gson builds the tree recursively; stops once {@code limit} is passed.
+     * Strict mode refuses single-quoted strings, comments and {@code NaN}
+     * literals, so a file that would need the lenient reader is an error too.
+     *
+     * @throws IOException on malformed JSON
      */
-    static int jsonDepth(String text, int limit) {
+    static int jsonDepth(String text, int limit) throws IOException {
         int depth = 0;
         int max = 0;
-        char quote = 0; // the lenient Gson reader also takes single-quoted strings
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (quote != 0) {
-                if (c == '\\') {
-                    i++;
-                } else if (c == quote) {
-                    quote = 0;
-                }
-                continue;
-            }
-            switch (c) {
-                case '"', '\'' -> quote = c;
-                case '{', '[' -> {
-                    depth++;
-                    if (depth > max) {
-                        max = depth;
+        try (JsonReader r = new JsonReader(new StringReader(text))) {
+            r.setLenient(false);
+            while (true) {
+                JsonToken t = r.peek();
+                switch (t) {
+                    case BEGIN_OBJECT, BEGIN_ARRAY -> {
+                        if (t == JsonToken.BEGIN_OBJECT) {
+                            r.beginObject();
+                        } else {
+                            r.beginArray();
+                        }
+                        depth++;
+                        max = Math.max(max, depth);
                         if (max > limit) {
                             return max;
                         }
                     }
+                    case END_OBJECT -> {
+                        r.endObject();
+                        depth--;
+                    }
+                    case END_ARRAY -> {
+                        r.endArray();
+                        depth--;
+                    }
+                    case NAME -> r.nextName();
+                    case STRING, NUMBER -> r.nextString();
+                    case BOOLEAN -> r.nextBoolean();
+                    case NULL -> r.nextNull();
+                    case END_DOCUMENT -> {
+                        return max;
+                    }
+                    default -> throw new IOException("unexpected token " + t);
                 }
-                case '}', ']' -> depth = Math.max(0, depth - 1);
-                default -> { }
             }
         }
-        return max;
     }
 
     // ------------------------------------------------------------------ parsing

@@ -67,6 +67,7 @@ public final class DefinitionsSnapshot {
     private final Stats stats;
     private final Genetics genetics;
     private final LayoutDictionary dictionary;
+    private final Layouts layoutsView;
 
     /**
      * @param dictionary layout dictionary of the engine: jar and data-pack history plus the current layouts
@@ -83,6 +84,7 @@ public final class DefinitionsSnapshot {
         this.profiles = Collections.unmodifiableMap(byS);
         this.stats = stats;
         this.dictionary = dictionary;
+        this.layoutsView = new Layouts(dictionary);
         this.genetics = new Genetics(id -> {
             SpeciesEntry e = this.species.get(id);
             return e == null ? null : e.def();
@@ -114,11 +116,27 @@ public final class DefinitionsSnapshot {
         return stats;
     }
 
-    /** Layouts known to this snapshot, as a copy: the snapshot itself never changes. */
-    public LayoutDictionary layouts() {
-        LayoutDictionary copy = new LayoutDictionary();
-        dictionary.entries().forEach(copy::register);
-        return copy;
+    /** Read-only view of a layout dictionary: lookups and entries, no {@code register}. */
+    public static final class Layouts {
+        private final LayoutDictionary dictionary;
+
+        private Layouts(LayoutDictionary dictionary) {
+            this.dictionary = dictionary;
+        }
+
+        public Optional<GenomeLayout> lookup(String species, long lh) {
+            return dictionary.lookup(species, lh);
+        }
+
+        /** All entries, unmodifiable. */
+        public List<io.github.slugblue.wildroots.genetics.codec.LayoutDescriptor> entries() {
+            return List.copyOf(dictionary.entries());
+        }
+    }
+
+    /** Layouts known to this snapshot, without copying; the view cannot change them. */
+    public Layouts layouts() {
+        return layoutsView;
     }
 
     /** Engine facade over the definitions of this snapshot. */

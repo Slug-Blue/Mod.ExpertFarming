@@ -174,16 +174,20 @@ public final class ArchRules {
     }
 
     /**
-     * SEC-34: every method annotated {@code @EntryPoint} calls {@code Guarded}
-     * itself (run, call, execute, compute), so an exception cannot reach the
-     * vanilla tick.
+     * SEC-34: every method annotated {@code @EntryPoint} calls one of the
+     * wrapping methods of {@code Guarded} itself ({@link #GUARDED_WRAPPERS});
+     * other calls such as {@code Guarded.shared()} do not count.
      */
+    /** Methods of {@code Guarded} that run a body in isolation (static and instance forms). */
+    public static final Set<String> GUARDED_WRAPPERS = Set.of("run", "call", "execute", "compute");
+
     public static ArchRule entryPointsAreGuarded(String root, String annotation, String guardedClass) {
         ArchCondition<JavaMethod> callsGuarded = new ArchCondition<>("call " + guardedClass) {
             @Override
             public void check(JavaMethod method, ConditionEvents events) {
                 boolean ok = method.getMethodCallsFromSelf().stream()
-                        .anyMatch(c -> c.getTargetOwner().getName().equals(guardedClass));
+                        .anyMatch(c -> c.getTargetOwner().getName().equals(guardedClass)
+                                && GUARDED_WRAPPERS.contains(c.getTarget().getName()));
                 if (!ok) {
                     events.add(SimpleConditionEvent.violated(method,
                             method.getFullName() + " is an @EntryPoint but does not call " + guardedClass));

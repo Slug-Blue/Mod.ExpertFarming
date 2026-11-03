@@ -132,6 +132,7 @@ class ArchRulesSelfTest {
         ArchRule rule = ArchRules.entryPointsAreGuarded(F, "io.github.slugblue.wildroots.core.safety.EntryPoint",
                 F + ".core.safety.FakeGuarded");
         assertViolates(rule, "feature.UnguardedEntryPoint");
+        assertViolates(rule, "feature.SharedOnlyEntryPoint");
         assertAllows(rule, "feature.GuardedEntryPoint", "core.safety.FakeGuarded");
     }
 

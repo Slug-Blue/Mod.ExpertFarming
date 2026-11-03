@@ -75,11 +75,15 @@ class ReviewFixesTest {
     }
 
     @Test
-    void snapshotLayoutsCannotBeChangedFromOutside() {
-        DefinitionsSnapshot s = new DefinitionsSnapshot(Map.of(), Map.of(), DefinitionsSnapshot.Stats.NONE);
-        LayoutDictionary copy = s.layouts();
-        copy.register(new LayoutDescriptor("x:y", 1L, "q:a:1"));
-        assertTrue(s.layouts().entries().isEmpty(), "the snapshot dictionary changed");
+    void snapshotLayoutsAreAReadOnlyView() {
+        LayoutDictionary d = new LayoutDictionary();
+        DefinitionsSnapshot s = new DefinitionsSnapshot(Map.of(), Map.of(), DefinitionsSnapshot.Stats.NONE, d);
+        DefinitionsSnapshot.Layouts view = s.layouts();
+        assertTrue(view == s.layouts(), "the view is not copied per call");
+        assertTrue(java.util.Arrays.stream(DefinitionsSnapshot.Layouts.class.getMethods())
+                .noneMatch(m -> m.getName().equals("register")), "the view must not expose register");
+        assertThrows(UnsupportedOperationException.class,
+                () -> view.entries().add(new LayoutDescriptor("x:y", 1L, "q:a:1")));
     }
 
     @Test
