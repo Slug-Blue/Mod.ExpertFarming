@@ -141,6 +141,30 @@ public final class PlantService {
                 lot.generation(), lot.flags(), s.get().mutant() ? PlantState.MUTANT : 0), 0);
     }
 
+    /**
+     * Plants a mother root (GDD §5.2): genome and noise bit for bit (migrated
+     * only if the layout changed), the status of its plant, at harvest
+     * ripeness and marked as a mother, so it flowers within
+     * {@code seed_stage_min} and its harvest gives no food.
+     */
+    public static boolean plantMother(ServerLevel level, BlockPos pos, io.github.slugblue.wildroots.item.MotherNbt.Mother m,
+                                      UUID planter) {
+        Optional<FieldPlantBlock> block = blockFor(m.species());
+        DefinitionsSnapshot snap = Definitions.current();
+        Optional<DefinitionsSnapshot.SpeciesEntry> e = snap.species(m.species());
+        if (block.isEmpty() || e.isEmpty() || !canPlantAt(level, pos)) {
+            return false;
+        }
+        if (!(snap.genetics().decode(m.genome(), e.get().def())
+                instanceof io.github.slugblue.wildroots.genetics.codec.DecodeResult.Valid v)) {
+            return false;
+        }
+        Classification status = new Classification(m.cultivar().map(CultivarId::of), m.tier(), false);
+        return place(level, pos, block.get(), new PlantBlockEntity.Init(m.species(), v.genome(),
+                new NoiseVector(m.noise()), Passport.PLAYER, planter, status, m.lineName().orElse(null),
+                m.generation(), m.flags(), PlantState.MOTHER), FieldPlantBlock.HARVEST_STAGE);
+    }
+
     /** Sets the block, fills its block entity, computes look and growth chance of {@code stage}. */
     public static boolean place(ServerLevel level, BlockPos pos, FieldPlantBlock block, PlantBlockEntity.Init init,
                                 int stage) {

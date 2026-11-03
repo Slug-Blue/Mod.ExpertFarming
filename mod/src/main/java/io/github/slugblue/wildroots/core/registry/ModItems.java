@@ -3,6 +3,7 @@ package io.github.slugblue.wildroots.core.registry;
 import io.github.slugblue.wildroots.WildRoots;
 import io.github.slugblue.wildroots.core.line.LineContent;
 import io.github.slugblue.wildroots.data.CultivarInfo;
+import io.github.slugblue.wildroots.item.MotherItem;
 import io.github.slugblue.wildroots.item.ProduceItem;
 import io.github.slugblue.wildroots.item.SeedLotItem;
 import net.minecraft.world.item.Item;
@@ -38,7 +39,12 @@ public final class ModItems {
     public static final RegistryObject<ProduceItem> CARROT = REGISTER.register("carrot",
             () -> new ProduceItem(new Item.Properties(), CARROT_FOOD, false));
 
+    /** Mother root of carrot (and later beet), WR-137; GDD §5.2, narrative §7.4. */
+    public static final RegistryObject<MotherItem> MOTHER_ROOT = REGISTER.register("mother_root",
+            () -> new MotherItem(new Item.Properties()));
+
     static {
+        LineContent.assign(MOTHER_ROOT, CARROT_LINE);
         LineContent.assign(WILD_CARROT_ROOT, CARROT_LINE);
         LineContent.assign(EASTERN_CARROT, CARROT_LINE);
         LineContent.assign(CARROT, CARROT_LINE);

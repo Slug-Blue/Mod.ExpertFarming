@@ -175,6 +175,15 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
         }
     }
 
+    /** Drops from the block entity (HarvestService); vanilla loot tables are not used. */
+    @Override
+    @EntryPoint
+    @SuppressWarnings("deprecation")
+    public java.util.List<net.minecraft.world.item.ItemStack> getDrops(BlockState state,
+            net.minecraft.world.level.storage.loot.LootParams.Builder params) {
+        return Guarded.call("plant drops", "plant", () -> HarvestService.drops(state, params), java.util.List.of());
+    }
+
     /** Pick block gives a seed lot item (empty lot: inert until filled by the server). */
     @Override
     protected net.minecraft.world.level.ItemLike getBaseSeedId() {
