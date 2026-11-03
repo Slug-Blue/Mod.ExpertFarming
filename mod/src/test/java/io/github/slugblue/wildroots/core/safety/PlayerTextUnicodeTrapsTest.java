@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Optional;
 import java.util.stream.IntStream;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -59,9 +58,8 @@ class PlayerTextUnicodeTrapsTest {
      * see it), and they can pad names to look identical to another player's.
      * Expected: refused like zero-width characters.
      */
-    @Disabled("BUG: Hangul filler characters (Lo, rendered blank) pass PlayerText and give invisible names")
     @ParameterizedTest
-    @ValueSource(ints = {0x115F, 0x1160, 0x3164, 0xFFA0})
+    @ValueSource(ints = {0x115F, 0x1160, 0x3164, 0xFFA0, 0x2800, 0x17B4, 0x180E})
     void hangulFillersAreRefused(int c) {
         assertFalse(s(cp(c)).accepted(), () -> "alone: U+" + Integer.toHexString(c));
         assertFalse(s("Golden" + cp(c)).accepted(), () -> "padding: U+" + Integer.toHexString(c));

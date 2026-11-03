@@ -94,7 +94,7 @@ public final class PlayerText {
                 }
                 continue;
             }
-            if (forbiddenCategory(cp) || !allowed(cp)) {
+            if (forbiddenCategory(cp) || BLANK_GLYPHS.contains(cp) || !allowed(cp)) {
                 return Result.refuse(Reason.FORBIDDEN_CHARACTER);
             }
             if (cp == ' ') {
@@ -125,6 +125,27 @@ public final class PlayerText {
             default -> false;
         };
     }
+
+    /**
+     * Characters that pass the category rules (letters, or symbols another
+     * rule might allow later) but render as nothing, so a name made of them,
+     * or padded with them, looks empty or forged. Taken from the Unicode
+     * property Default_Ignorable_Code_Point (the ones that are not Cf/Mn,
+     * which are refused anyway) and from blank glyphs in the UCD:
+     * <ul>
+     *   <li>U+115F HANGUL CHOSEONG FILLER, U+1160 HANGUL JUNGSEONG FILLER,
+     *       U+3164 HANGUL FILLER, U+FFA0 HALFWIDTH HANGUL FILLER — all Lo;</li>
+     *   <li>U+2800 BRAILLE PATTERN BLANK — So, a blank cell often used as an
+     *       "invisible letter";</li>
+     *   <li>U+17B4, U+17B5 KHMER VOWEL INHERENT AQ/AA — Mn, invisible;</li>
+     *   <li>U+180B…U+180F MONGOLIAN FREE VARIATION SELECTORS and VOWEL
+     *       SEPARATOR — Mn/Cf, invisible.</li>
+     * </ul>
+     * The categories already refuse the So, Mn and Cf ones; they are listed
+     * so that a later change of the allowed alphabet cannot let them in.
+     */
+    static final java.util.Set<Integer> BLANK_GLYPHS = java.util.Set.of(0x115F, 0x1160, 0x3164, 0xFFA0, 0x2800,
+            0x17B4, 0x17B5, 0x180B, 0x180C, 0x180D, 0x180E, 0x180F);
 
     private static boolean allowed(int cp) {
         if (Character.isLetter(cp) || cp == ' ' || EXTRA_ALLOWED.indexOf(cp) >= 0) {
