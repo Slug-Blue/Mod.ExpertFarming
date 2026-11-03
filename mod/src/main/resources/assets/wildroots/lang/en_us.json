@@ -8,5 +8,19 @@
   "wildroots.message.packet_flood": "Disconnected: too many requests to Wild Roots",
   "wildroots.message.sync_too_large": "Wild Roots: data pack species left out of the client sync: %s. See the server log.",
   "wildroots.message.sync_failed": "Wild Roots could not read the server's plant data. Check that the client and the server run the same version of the mod.",
-  "block.wildroots.wild_carrot": "Wild Carrot"
+  "block.wildroots.wild_carrot": "Wild Carrot",
+  "item.wildroots.seed_lot": "Seed Lot",
+  "wildroots.species.wild_carrot": "Wild Carrot",
+  "wildroots.cultivar.eastern_carrot": "Eastern Carrot",
+  "wildroots.cultivar.carrot": "Carrot",
+  "wildroots.tooltip.lot.unknown": "Unknown species",
+  "wildroots.tooltip.lot.damaged": "Damaged data",
+  "wildroots.tooltip.lot.seedling": "Seedling: grows the same plant again",
+  "wildroots.tooltip.lot.generation": "Generation %s",
+  "wildroots.tooltip.lot.line_name": "Line: %s",
+  "wildroots.tooltip.lot.from_wild": "From the wild",
+  "wildroots.tooltip.lot.pollination.bees": "Pollinated by bees",
+  "wildroots.tooltip.lot.pollination.brush": "Pollinated by hand",
+  "wildroots.tooltip.lot.pollination.selfed": "Self-pollinated",
+  "wildroots.tooltip.lot.pollination.open": "Open-pollinated"
 }

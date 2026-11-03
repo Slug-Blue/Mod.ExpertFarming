@@ -18,6 +18,7 @@ import io.github.slugblue.wildroots.genetics.phenotype.NoiseVector;
 import io.github.slugblue.wildroots.genetics.random.Hash64;
 import io.github.slugblue.wildroots.item.LotFathersNbt;
 import io.github.slugblue.wildroots.item.LotFlags;
+import io.github.slugblue.wildroots.item.LotStacks;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -49,7 +50,7 @@ import org.slf4j.Logger;
  * written back unchanged on save, and nothing of it is copied into new
  * objects (no drops with its data).
  */
-public class PlantBlockEntity extends BlockEntity {
+public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim {
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final LogThrottle INERT_LOG = new LogThrottle(System::currentTimeMillis, 5 * 60 * 1000L);
@@ -363,5 +364,19 @@ public class PlantBlockEntity extends BlockEntity {
             state.plantFlags = (byte) (on ? state.plantFlags | flag : state.plantFlags & ~flag);
             setChanged();
         }
+    }
+
+    /**
+     * SEC-21: the {@code mutation} rare flag goes to exactly one item per
+     * mutant plant; {@code rareClaimed} is saved, so later harvests, regrowth
+     * and copies never get it again.
+     */
+    @Override
+    public boolean claimRare() {
+        if (state == null || !state.has(PlantState.MUTANT) || state.has(PlantState.RARE_CLAIMED)) {
+            return false;
+        }
+        setPlantFlag(PlantState.RARE_CLAIMED, true);
+        return true;
     }
 }

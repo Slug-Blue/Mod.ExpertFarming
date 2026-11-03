@@ -175,6 +175,12 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
         }
     }
 
+    /** Pick block gives a seed lot item (empty lot: inert until filled by the server). */
+    @Override
+    protected net.minecraft.world.level.ItemLike getBaseSeedId() {
+        return io.github.slugblue.wildroots.core.registry.ModItems.SEED_LOT.get();
+    }
+
     @Override
     public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
         return new PlantBlockEntity(pos, state);

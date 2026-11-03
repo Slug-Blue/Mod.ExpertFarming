@@ -6,7 +6,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.RegistryObject;
 
@@ -28,8 +27,7 @@ public final class ModCreativeTabs {
     public static final RegistryObject<CreativeModeTab> WILDROOTS = REGISTER.register(WildRoots.MOD_ID,
             () -> CreativeModeTab.builder()
                     .title(Component.translatable(TITLE_KEY))
-                    // Vanilla carrot until the line items exist (WR-135 replaces the icon)
-                    .icon(() -> new ItemStack(Items.CARROT))
+                    .icon(() -> new ItemStack(ModItems.SEED_LOT.get()))
                     .displayItems((params, output) -> CreativeTabContents.visibleItems().forEach(output::accept))
                     .build());
 

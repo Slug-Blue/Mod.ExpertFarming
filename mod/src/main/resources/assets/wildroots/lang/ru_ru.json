@@ -8,5 +8,19 @@
   "wildroots.message.packet_flood": "Соединение разорвано: слишком много запросов к Wild Roots",
   "wildroots.message.sync_too_large": "Wild Roots: видов из датапаков не отправлено клиентам: %s. Подробности — в логе сервера.",
   "wildroots.message.sync_failed": "Wild Roots не смог прочитать данные о растениях с сервера. Проверьте, что у клиента и сервера одна версия мода.",
-  "block.wildroots.wild_carrot": "Дикая морковь"
+  "block.wildroots.wild_carrot": "Дикая морковь",
+  "item.wildroots.seed_lot": "Лот семян",
+  "wildroots.species.wild_carrot": "Дикая морковь",
+  "wildroots.cultivar.eastern_carrot": "Восточная морковь",
+  "wildroots.cultivar.carrot": "Морковь",
+  "wildroots.tooltip.lot.unknown": "Неизвестный вид",
+  "wildroots.tooltip.lot.damaged": "Повреждённые данные",
+  "wildroots.tooltip.lot.seedling": "Росток: вырастет то же растение",
+  "wildroots.tooltip.lot.generation": "Поколение %s",
+  "wildroots.tooltip.lot.line_name": "Линия: %s",
+  "wildroots.tooltip.lot.from_wild": "Из дикой природы",
+  "wildroots.tooltip.lot.pollination.bees": "Опылено пчёлами",
+  "wildroots.tooltip.lot.pollination.brush": "Опылено кистью",
+  "wildroots.tooltip.lot.pollination.selfed": "Самоопыление",
+  "wildroots.tooltip.lot.pollination.open": "Свободное опыление"
 }
