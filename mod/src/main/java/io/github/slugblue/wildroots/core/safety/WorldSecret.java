@@ -27,6 +27,7 @@ import net.minecraftforge.event.level.LevelEvent;
 public final class WorldSecret extends SavedData {
 
     public static final String NAME = "wildroots_secret";
+    private static final org.slf4j.Logger LOGGER = com.mojang.logging.LogUtils.getLogger();
     private static final String KEY = "s";
 
     private final long value;
@@ -41,11 +42,17 @@ public final class WorldSecret extends SavedData {
         return s;
     }
 
-    /** Reads the stored secret; a damaged file gets a fresh secret, saved on the next autosave. */
+    /**
+     * Reads the stored secret. A damaged file gets a fresh secret (saved on the
+     * next autosave): a WARN without any value, and an audit line, because
+     * the seedlings of the world change from then on.
+     */
     public static WorldSecret load(CompoundTag tag) {
         if (tag.contains(KEY, Tag.TAG_LONG)) {
             return new WorldSecret(tag.getLong(KEY));
         }
+        LOGGER.warn("Wild Roots: {}.dat is damaged, a new world secret is created", NAME);
+        AuditLog.record("world_secret_recreated", "reason", "damaged_file");
         return create();
     }
 
@@ -67,6 +74,7 @@ public final class WorldSecret extends SavedData {
     }
 
     /** Creates the secret on the first load of the overworld (Forge event bus). */
+    @EntryPoint
     public static void onLevelLoad(LevelEvent.Load event) {
         if (event.getLevel() instanceof ServerLevel level && level.dimension() == Level.OVERWORLD) {
             Guarded.run("world secret", NAME, () -> get(level.getServer()));

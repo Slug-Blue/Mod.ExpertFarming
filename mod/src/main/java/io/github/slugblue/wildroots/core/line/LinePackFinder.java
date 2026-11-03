@@ -1,5 +1,6 @@
 package io.github.slugblue.wildroots.core.line;
 
+import io.github.slugblue.wildroots.core.safety.EntryPoint;
 import com.mojang.logging.LogUtils;
 import io.github.slugblue.wildroots.WildRoots;
 import io.github.slugblue.wildroots.core.safety.Guarded;
@@ -44,6 +45,7 @@ public final class LinePackFinder {
     }
 
     /** {@code AddPackFindersEvent} handler (mod bus): server data only. */
+    @EntryPoint
     public static void onAddPackFinders(AddPackFindersEvent event) {
         if (event.getPackType() != PackType.SERVER_DATA) {
             return;

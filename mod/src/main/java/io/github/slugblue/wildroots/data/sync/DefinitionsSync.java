@@ -1,5 +1,6 @@
 package io.github.slugblue.wildroots.data.sync;
 
+import io.github.slugblue.wildroots.core.safety.EntryPoint;
 import com.mojang.logging.LogUtils;
 import io.github.slugblue.wildroots.client.ClientPacketHandlers;
 import io.github.slugblue.wildroots.core.line.LineManifest;
@@ -57,14 +58,16 @@ public final class DefinitionsSync {
     /** Registers the S→C packet on the mod channel. */
     public static void register() {
         WrNetwork.registerToClient(DefinitionsSyncPacket.class, DefinitionsSyncPacket::encode,
-                buf -> {
-                    try {
-                        return DefinitionsSyncPacket.decode(buf);
-                    } catch (RuntimeException e) {
-                        return BROKEN;
-                    }
-                },
-                DefinitionsSync::onClientReceive);
+                DefinitionsSync::clientDecode, DefinitionsSync::onClientReceive);
+    }
+
+    /** Client decoder: never throws, a broken packet is {@link #BROKEN} (SEC-31). */
+    public static DefinitionsSyncPacket clientDecode(net.minecraft.network.FriendlyByteBuf buf) {
+        try {
+            return DefinitionsSyncPacket.decode(buf);
+        } catch (RuntimeException e) {
+            return BROKEN;
+        }
     }
 
     private static void onClientReceive(DefinitionsSyncPacket msg, java.util.function.Supplier<NetworkEvent.Context> ctx) {
@@ -91,12 +94,14 @@ public final class DefinitionsSync {
     }
 
     /** {@code OnDatapackSyncEvent} handler (Forge bus). */
+    @EntryPoint
     public static void onDatapackSync(OnDatapackSyncEvent event) {
         Guarded.run("definitions sync", "OnDatapackSyncEvent", () -> {
             Plan p = planFor(Definitions.current());
-            if (event.getPlayer() == null && !p.dropped().isEmpty()) {
-                OperatorNotice.toOperators(event.getPlayerList().getPlayers(),
-                        Component.translatable(TOO_LARGE_KEY, p.dropped().size()));
+            if (!p.dropped().isEmpty()) {
+                // after /reload every operator online, on join the joining operator (as OperatorNotice)
+                OperatorNotice.toOperators(event.getPlayer() == null ? event.getPlayerList().getPlayers()
+                        : List.of(event.getPlayer()), Component.translatable(TOO_LARGE_KEY, p.dropped().size()));
             }
             for (DefinitionsSyncPacket packet : p.packets()) {
                 sender.accept(event.getPlayer(), packet);

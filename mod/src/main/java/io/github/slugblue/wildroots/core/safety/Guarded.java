@@ -1,8 +1,6 @@
 package io.github.slugblue.wildroots.core.safety;
 
 import com.mojang.logging.LogUtils;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
@@ -27,17 +25,14 @@ public final class Guarded {
     public static final String STRICT_PROPERTY = "wildroots.strictErrors";
     /** At most one log line per key in this window (SEC-34). */
     public static final long THROTTLE_MS = 5 * 60 * 1000L;
-    /** Bound of the throttle map; when full it is cleared (memory, not correctness). */
-    static final int MAX_KEYS = 4096;
 
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final Guarded DEFAULT = new Guarded(Boolean.getBoolean(STRICT_PROPERTY),
             System::currentTimeMillis, LOGGER::warn);
 
     private final boolean strict;
-    private final LongSupplier clockMs;
     private final Consumer<String> sink;
-    private final Map<String, Long> lastLogged = new ConcurrentHashMap<>();
+    private final LogThrottle throttle;
 
     /**
      * @param strict  rethrow instead of isolating
@@ -46,8 +41,8 @@ public final class Guarded {
      */
     public Guarded(boolean strict, LongSupplier clockMs, Consumer<String> sink) {
         this.strict = strict;
-        this.clockMs = clockMs;
         this.sink = sink;
+        this.throttle = new LogThrottle(clockMs, THROTTLE_MS);
     }
 
     /** The shared instance: strict when {@value #STRICT_PROPERTY} is {@code true}. */
@@ -108,14 +103,7 @@ public final class Guarded {
                 // the failure handler must not escape either; the original exception is logged below
             }
         }
-        String k = where + "@" + key;
-        long now = clockMs.getAsLong();
-        Long last = lastLogged.get(k);
-        if (last == null || now - last >= THROTTLE_MS) {
-            if (lastLogged.size() >= MAX_KEYS) {
-                lastLogged.clear();
-            }
-            lastLogged.put(k, now);
+        if (throttle.allow(where + "@" + key)) {
             StackTraceElement[] st = e.getStackTrace();
             sink.accept("Wild Roots: " + where + " failed at " + key + ", object made inert: " + e
                     + (st.length > 0 ? " at " + st[0] : ""));

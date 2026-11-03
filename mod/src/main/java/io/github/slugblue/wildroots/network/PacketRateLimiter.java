@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.IntSupplier;
 import java.util.function.LongSupplier;
+import java.util.function.Supplier;
 
 /**
  * Rate limit of C→S packets (SEC-02; docs/05-architecture.md §14 item 7).
@@ -77,7 +78,7 @@ public final class PacketRateLimiter {
     private final IntSupplier capacity;
     private final IntSupplier perSecond;
     private final IntSupplier floodThreshold;
-    private final Map<String, ExtraLimit> extra;
+    private final Map<String, Supplier<ExtraLimit>> extra;
     private final Map<UUID, PlayerState> players = new HashMap<>();
 
     /**
@@ -85,10 +86,10 @@ public final class PacketRateLimiter {
      * @param capacity       bucket capacity
      * @param perSecond      refill per second
      * @param floodThreshold drops in 10 s that disconnect; 0 = never
-     * @param extra          extra buckets by packet type
+     * @param extra          extra buckets by packet type, read at each packet (SERVER config)
      */
     public PacketRateLimiter(LongSupplier clock, IntSupplier capacity, IntSupplier perSecond, IntSupplier floodThreshold,
-                             Map<String, ExtraLimit> extra) {
+                             Map<String, Supplier<ExtraLimit>> extra) {
         this.clock = clock;
         this.capacity = capacity;
         this.perSecond = perSecond;
@@ -103,7 +104,8 @@ public final class PacketRateLimiter {
         int cap = Math.max(1, capacity.getAsInt());
         Bucket main = s.buckets.computeIfAbsent(type, k -> new Bucket(cap, now));
         boolean ok = main.take(cap, Math.max(1, perSecond.getAsInt()), now);
-        ExtraLimit limit = extra.get(type);
+        Supplier<ExtraLimit> limitSource = extra.get(type);
+        ExtraLimit limit = limitSource == null ? null : limitSource.get();
         if (ok && limit != null) {
             Bucket slow = s.buckets.computeIfAbsent(type + "#slow", k -> new Bucket(limit.capacity(), now));
             ok = slow.take(limit.capacity(), limit.perSecond(), now);

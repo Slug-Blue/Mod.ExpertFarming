@@ -11,7 +11,11 @@ import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaCall;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.properties.HasName;
+import com.tngtech.archunit.core.domain.JavaMethod;
+import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ArchRule;
+import com.tngtech.archunit.lang.ConditionEvents;
+import com.tngtech.archunit.lang.SimpleConditionEvent;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.AccessibleObject;
 import java.util.ArrayList;
@@ -167,6 +171,44 @@ public final class ArchRules {
                         (JavaClass c) -> C2S_FIELD_TYPES.contains(c.getName())))
                 .allowEmptyShould(true)
                 .because("C→S packets carry only the player's intent (SEC-04)");
+    }
+
+    /**
+     * SEC-34: every method annotated {@code @EntryPoint} calls {@code Guarded}
+     * itself (run, call, execute, compute), so an exception cannot reach the
+     * vanilla tick.
+     */
+    public static ArchRule entryPointsAreGuarded(String root, String annotation, String guardedClass) {
+        ArchCondition<JavaMethod> callsGuarded = new ArchCondition<>("call " + guardedClass) {
+            @Override
+            public void check(JavaMethod method, ConditionEvents events) {
+                boolean ok = method.getMethodCallsFromSelf().stream()
+                        .anyMatch(c -> c.getTargetOwner().getName().equals(guardedClass));
+                if (!ok) {
+                    events.add(SimpleConditionEvent.violated(method,
+                            method.getFullName() + " is an @EntryPoint but does not call " + guardedClass));
+                }
+            }
+        };
+        return com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods()
+                .that().areAnnotatedWith(annotation)
+                .and().areDeclaredInClassesThat().resideInAPackage(root + "..")
+                .should(callsGuarded)
+                .allowEmptyShould(true)
+                .because("entry points isolate exceptions (SEC-34)");
+    }
+
+    /**
+     * SEC-04: C→S packets are registered with {@code ServerPacketGuard.register}
+     * only from {@code ..network..}, where the registrations are reviewed; the
+     * guard itself refuses types outside {@code ..network.c2s..} at run time.
+     */
+    public static ArchRule c2sRegistrationOnlyInNetwork(String root, String guardClass) {
+        return noClasses()
+                .that().resideInAPackage(root + "..")
+                .and().resideOutsideOfPackage(root + "..network..")
+                .should().callMethodWhere(callTo(guardClass, "register"))
+                .because("C→S packets are registered in the network package only (SEC-04)");
     }
 
     /** SEC-25 (switched on by WR-123): the world secret is not reachable from network, client or compat. */

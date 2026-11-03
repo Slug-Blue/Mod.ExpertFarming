@@ -4,4 +4,8 @@ public class FakeServerPacketGuard {
     void f(net.minecraftforge.network.simple.SimpleChannel channel) {
         channel.messageBuilder(String.class, 0).consumerMainThread((msg, ctx) -> { });
     }
+
+    /** Stand-in for ServerPacketGuard.register. */
+    public static void register(Class<?> type) {
+    }
 }

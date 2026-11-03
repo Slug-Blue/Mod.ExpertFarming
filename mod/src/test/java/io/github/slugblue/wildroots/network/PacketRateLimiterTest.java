@@ -17,7 +17,7 @@ class PacketRateLimiterTest {
     final AtomicLong now = new AtomicLong(42 * SECOND);
     final AtomicInteger threshold = new AtomicInteger(200);
     final PacketRateLimiter limiter = new PacketRateLimiter(now::get, () -> 5, () -> 5, threshold::get,
-            Map.of("NameSelection", PacketRateLimiter.ExtraLimit.perMinute(3)));
+            Map.of("NameSelection", () -> PacketRateLimiter.ExtraLimit.perMinute(3)));
     final UUID alice = UUID.randomUUID();
     final UUID bob = UUID.randomUUID();
 

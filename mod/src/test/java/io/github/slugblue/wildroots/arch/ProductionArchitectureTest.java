@@ -68,6 +68,19 @@ class ProductionArchitectureTest {
                 ROOT + ".network.ServerPacketGuard", ROOT + ".network.WrNetwork")).check(production);
     }
 
+    /** SEC-34 (review 1 of batch 2). */
+    @Test
+    void entryPointsAreGuarded() {
+        ArchRules.entryPointsAreGuarded(ROOT, ROOT + ".core.safety.EntryPoint", ROOT + ".core.safety.Guarded")
+                .check(production);
+    }
+
+    /** SEC-04 (review 1 of batch 2). */
+    @Test
+    void c2sRegistrationOnlyInNetwork() {
+        ArchRules.c2sRegistrationOnlyInNetwork(ROOT, ROOT + ".network.ServerPacketGuard").check(production);
+    }
+
     /** SEC-04, WR-127. */
     @Test
     void c2sPacketsCarryOnlyIntents() {

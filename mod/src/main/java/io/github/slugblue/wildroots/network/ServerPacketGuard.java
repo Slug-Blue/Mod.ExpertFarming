@@ -3,6 +3,7 @@ package io.github.slugblue.wildroots.network;
 import com.mojang.logging.LogUtils;
 import io.github.slugblue.wildroots.core.config.ServerConfig;
 import io.github.slugblue.wildroots.core.safety.AuditLog;
+import io.github.slugblue.wildroots.core.safety.LogThrottle;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.BiConsumer;
@@ -41,12 +42,19 @@ public final class ServerPacketGuard {
     public static final PacketRateLimiter LIMITER = new PacketRateLimiter(System::nanoTime,
             ServerConfig.PACKET_BUCKET_CAPACITY::get, ServerConfig.PACKET_REFILL_PER_SECOND::get,
             ServerConfig.PACKET_FLOOD_DISCONNECT_THRESHOLD::get,
-            Map.of(NameSelectionLimit.TYPE, PacketRateLimiter.ExtraLimit.perMinute(3)));
+            Map.of(ServerPacketGuard.NAME_SELECTION, () -> PacketRateLimiter.ExtraLimit.perMinute(
+                    ServerConfig.NAME_SELECTION_PER_MINUTE.get())));
 
-    /** Type names with an extra limit. */
-    static final class NameSelectionLimit {
-        static final String TYPE = "NameSelection";
-    }
+    /**
+     * Limiter of menu button clicks ({@code clickMenuButton}, SEC-02): per
+     * (player, menu) {@code menuButtonsPerSecond} from the SERVER config; the
+     * menus of the analyser and the lab use it (WR-184, WR-185).
+     */
+    public static final PacketRateLimiter MENU_BUTTONS = new PacketRateLimiter(System::nanoTime,
+            ServerConfig.MENU_BUTTONS_PER_SECOND::get, ServerConfig.MENU_BUTTONS_PER_SECOND::get, () -> 0, Map.of());
+
+    /** Type name of {@code NameSelectionPacket}, the one type with a slower extra bucket (SEC-02). */
+    public static final String NAME_SELECTION = "NameSelection";
 
     /** What the guard needs from a network context (Forge's {@link NetworkEvent.Context} in game, a fake in JUnit). */
     public interface Context<P> {
@@ -112,19 +120,63 @@ public final class ServerPacketGuard {
                         handler.accept(msg, sender);
                     }
                 } catch (RuntimeException e) {
-                    log.accept("Wild Roots: handler of " + type + " failed: " + e);
+                    failure(type, ctx.id(sender), "handler", e, log);
                 }
             });
         } catch (RuntimeException e) {
-            log.accept("Wild Roots: guard of " + type + " failed: " + e);
+            P sender = null;
+            try {
+                sender = ctx.sender();
+            } catch (RuntimeException ignored) {
+                // no sender to name in the line
+            }
+            failure(type, sender == null ? null : ctx.id(sender), "guard", e, log);
         } finally {
             ctx.setPacketHandled(true);
         }
     }
 
-    /** Registers a C→S packet on {@code channel}; the only call site of {@code consumer*} for C→S. */
+    /** At most one failure line per (packet type, player) in this window (as {@link io.github.slugblue.wildroots.core.safety.Guarded}). */
+    public static final long FAILURE_LOG_MS = io.github.slugblue.wildroots.core.safety.Guarded.THROTTLE_MS;
+    private static volatile LogThrottle failureThrottle = new LogThrottle(System::currentTimeMillis, FAILURE_LOG_MS);
+
+    /** Replaces the failure throttle (tests: own clock) and returns the previous one. */
+    public static LogThrottle setFailureThrottle(LogThrottle t) {
+        LogThrottle old = failureThrottle;
+        failureThrottle = t;
+        return old;
+    }
+
+    /**
+     * A handler or guard failure as an escaped audit line (SEC-47): the
+     * exception text comes from the packet and may carry line breaks or bidi
+     * characters; it is escaped and cut by {@link AuditLog#format}.
+     */
+    private static void failure(String type, UUID player, String stage, RuntimeException e, Consumer<String> log) {
+        if (failureThrottle.allow(type + "@" + player)) {
+            log.accept(AuditLog.format("packet_failed", "player", player, "type", type, "stage", stage,
+                    "error", e.getClass().getSimpleName(), "message", String.valueOf(e.getMessage())));
+        }
+    }
+
+    /** Package of C→S packet classes: the only types {@link #register} accepts (SEC-04). */
+    public static final String C2S_PACKAGE = "io.github.slugblue.wildroots.network.c2s";
+
+    /** Throws unless {@code type} is a C→S packet class of {@link #C2S_PACKAGE}. */
+    public static void requireC2sType(Class<?> type) {
+        if (type == null || !type.getPackageName().equals(C2S_PACKAGE)) {
+            throw new IllegalArgumentException("C→S packets live in " + C2S_PACKAGE + ": " + type);
+        }
+    }
+
+    /**
+     * Registers a C→S packet on {@code channel}; the only call site of
+     * {@code consumer*} for C→S. Only classes of {@link #C2S_PACKAGE} are
+     * accepted, whose fields ArchUnit limits to intents (SEC-04).
+     */
     public static <M> void register(SimpleChannel channel, int index, Class<M> type, BiConsumer<M, FriendlyByteBuf> encoder,
                                     Function<FriendlyByteBuf, M> decoder, M malformed, BiConsumer<M, ServerPlayer> handler) {
+        requireC2sType(type);
         String name = type.getSimpleName().replace("Packet", "");
         channel.messageBuilder(type, index, NetworkDirection.PLAY_TO_SERVER)
                 .encoder(encoder)

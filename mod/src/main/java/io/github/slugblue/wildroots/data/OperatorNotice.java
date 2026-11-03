@@ -1,5 +1,6 @@
 package io.github.slugblue.wildroots.data;
 
+import io.github.slugblue.wildroots.core.safety.EntryPoint;
 import io.github.slugblue.wildroots.core.safety.Guarded;
 import java.util.List;
 import java.util.function.BiConsumer;
@@ -40,6 +41,7 @@ public final class OperatorNotice {
     }
 
     /** {@code OnDatapackSyncEvent} handler (Forge bus): join has a player, {@code /reload} has none. */
+    @EntryPoint
     public static void onDatapackSync(OnDatapackSyncEvent event) {
         Guarded.run("operator notice", "OnDatapackSyncEvent",
                 () -> notify(event.getPlayerList().getPlayers(), event.getPlayer(), Definitions.current().stats()));

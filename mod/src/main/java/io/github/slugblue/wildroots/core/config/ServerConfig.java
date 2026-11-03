@@ -6,7 +6,9 @@ import net.minecraftforge.common.ForgeConfigSpec;
  * SERVER (per world) config (WR-120; docs/05-architecture.md §3, §9.2, §14,
  * §16; SEC-02, SEC-45, SEC-48). Every number is declared with
  * {@code defineInRange} with the bounds of {@code 09-security.md}; Forge
- * resets an out-of-range value to its default.
+ * clamps an out-of-range number to the nearest bound
+ * ({@code ForgeConfigSpec.Range#correct}) and resets a value of the wrong
+ * type to its default.
  *
  * <p>{@code strictErrors} is deliberately not here: it is the JVM property
  * {@code -Dwildroots.strictErrors=true} of dev and GameTest runs (SEC-34,

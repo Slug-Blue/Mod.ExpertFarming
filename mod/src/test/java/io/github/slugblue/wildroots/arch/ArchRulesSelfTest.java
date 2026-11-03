@@ -128,6 +128,21 @@ class ArchRulesSelfTest {
     }
 
     @Test
+    void entryPointRuleFiresWithoutGuarded() {
+        ArchRule rule = ArchRules.entryPointsAreGuarded(F, "io.github.slugblue.wildroots.core.safety.EntryPoint",
+                F + ".core.safety.FakeGuarded");
+        assertViolates(rule, "feature.UnguardedEntryPoint");
+        assertAllows(rule, "feature.GuardedEntryPoint", "core.safety.FakeGuarded");
+    }
+
+    @Test
+    void registrationRuleFiresOutsideNetwork() {
+        ArchRule rule = ArchRules.c2sRegistrationOnlyInNetwork(F, F + ".network.FakeServerPacketGuard");
+        assertViolates(rule, "feature.RegistersC2sOutsideNetwork");
+        assertAllows(rule, "network.FakeServerPacketGuard");
+    }
+
+    @Test
     void worldSecretRuleFiresInNetworkPackage() {
         ArchRule rule = ArchRules.worldSecretHidden(F, F + ".core.safety.FakeWorldSecret");
         assertViolates(rule, "network.UsesWorldSecret");

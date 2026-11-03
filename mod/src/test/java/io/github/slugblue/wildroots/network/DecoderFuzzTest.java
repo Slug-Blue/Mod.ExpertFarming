@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test;
  * packet that re-encodes to the same bytes or the malformed marker; payloads
  * stay within the C→S limit; lengths are checked before allocation.
  */
-class DecoderFuzzTest {
+public class DecoderFuzzTest {
 
     static final int RUNS = 100_000;
 
@@ -35,7 +35,7 @@ class DecoderFuzzTest {
     }
 
     /** One mutation of {@code seed}: flips, inserts, deletes, truncates or appends bytes. */
-    static byte[] mutate(byte[] seed, SplitMix64 rng) {
+    public static byte[] mutate(byte[] seed, SplitMix64 rng) {
         byte[] b = seed.clone();
         int ops = 1 + (int) Long.remainderUnsigned(rng.nextLong(), 4);
         for (int k = 0; k < ops; k++) {

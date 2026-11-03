@@ -150,4 +150,34 @@ class ServerPacketGuardTest {
                 ctx.disconnects.get(0).getContents()).getKey());
         assertEquals(2, log.size(), log::toString); // one drop line, one disconnect line
     }
+
+    /** SEC-47: an exception text from the packet cannot forge or break a log line; one line per (type, player). */
+    @Test
+    void failureLinesAreEscapedAndThrottled() {
+        AtomicLong ms = new AtomicLong();
+        io.github.slugblue.wildroots.core.safety.LogThrottle old =
+                ServerPacketGuard.setFailureThrottle(new io.github.slugblue.wildroots.core.safety.LogThrottle(ms::get, 1000));
+        try {
+            Player p = new Player(UUID.randomUUID(), false);
+            for (int i = 0; i < 3; i++) {
+                ServerPacketGuard.handle("NameSelection", ok, NameSelectionPacket.MALFORMED, new FakeContext(p), limiter,
+                        (m, pl) -> {
+                            throw new IllegalStateException("x\nwildroots.audit FAKE \u202E");
+                        }, log::add);
+            }
+            assertEquals(1, log.size(), log::toString);
+            String line = log.get(0);
+            assertTrue(line.startsWith("packet_failed "), line);
+            assertTrue(!line.contains("\n") && !line.contains("\u202E"), line);
+            assertTrue(line.contains("\\u000Awildroots.audit FAKE \\u202E"), line);
+            ms.addAndGet(1000);
+            ServerPacketGuard.handle("NameSelection", ok, NameSelectionPacket.MALFORMED, new FakeContext(p), limiter,
+                    (m, pl) -> {
+                        throw new IllegalStateException("again");
+                    }, log::add);
+            assertEquals(2, log.size());
+        } finally {
+            ServerPacketGuard.setFailureThrottle(old);
+        }
+    }
 }
