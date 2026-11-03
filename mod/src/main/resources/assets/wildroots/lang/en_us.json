@@ -22,5 +22,13 @@
   "wildroots.tooltip.lot.pollination.bees": "Pollinated by bees",
   "wildroots.tooltip.lot.pollination.brush": "Pollinated by hand",
   "wildroots.tooltip.lot.pollination.selfed": "Self-pollinated",
-  "wildroots.tooltip.lot.pollination.open": "Open-pollinated"
+  "wildroots.tooltip.lot.pollination.open": "Open-pollinated",
+  "item.wildroots.wild_carrot_root": "Wild Carrot Root",
+  "item.wildroots.eastern_carrot": "Eastern Carrot",
+  "item.wildroots.carrot": "Carrot",
+  "wildroots.grade.1": "Coarse",
+  "wildroots.grade.2": "Plain",
+  "wildroots.grade.3": "Sound",
+  "wildroots.grade.4": "Select",
+  "wildroots.grade.bitter": "Bitter"
 }

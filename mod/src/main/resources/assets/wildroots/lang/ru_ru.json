@@ -22,5 +22,13 @@
   "wildroots.tooltip.lot.pollination.bees": "Опылено пчёлами",
   "wildroots.tooltip.lot.pollination.brush": "Опылено кистью",
   "wildroots.tooltip.lot.pollination.selfed": "Самоопыление",
-  "wildroots.tooltip.lot.pollination.open": "Свободное опыление"
+  "wildroots.tooltip.lot.pollination.open": "Свободное опыление",
+  "item.wildroots.wild_carrot_root": "Корень дикой моркови",
+  "item.wildroots.eastern_carrot": "Восточная морковь",
+  "item.wildroots.carrot": "Морковь",
+  "wildroots.grade.1": "Грубый",
+  "wildroots.grade.2": "Простой",
+  "wildroots.grade.3": "Добротный",
+  "wildroots.grade.4": "Отборный",
+  "wildroots.grade.bitter": "Горький"
 }
