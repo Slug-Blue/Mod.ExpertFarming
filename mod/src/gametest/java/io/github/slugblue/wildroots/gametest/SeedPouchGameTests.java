@@ -367,4 +367,45 @@ public final class SeedPouchGameTests {
             helper.succeed();
         });
     }
+
+    /** WR-111 transfer: pouch entries keep their genomes through save/load and migrate when taken out (§5.3). */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "wr138_migration", timeoutTicks = 200)
+    public static void pouchEntriesMigrateAfterALayoutChange(GameTestHelper helper) {
+        String sp = "wildroots:gt_migrating_pouch";
+        var oldDef = PlantFixtures.carrotAs(sp, q -> q);
+        var newDef = PlantFixtures.carrotAs(sp, q -> q.stream()
+                .map(t -> t.id().equals(io.github.slugblue.wildroots.genetics.model.TraitId.of("yield"))
+                        ? new io.github.slugblue.wildroots.genetics.api.QuantTrait(t.id(), 8, t.sigmaEnv(), t.vigorAffected()) : t)
+                .toList());
+        var oldLayout = io.github.slugblue.wildroots.genetics.model.GenomeLayout.of(oldDef);
+        var newLayout = io.github.slugblue.wildroots.genetics.model.GenomeLayout.of(newDef);
+        var gs = io.github.slugblue.wildroots.data.Definitions.current().genetics();
+        var m = gs.encode(PlantFixtures.genome(138));
+        var mother = new io.github.slugblue.wildroots.genetics.codec.GenomeRecord(m.v(), sp, m.lh(), m.a());
+        var fathers = HarvestGameTests.fathers(2);
+        CompoundTag root = LotStacks.seedsTag(new LotStacks.Parent(sp, java.util.Optional.empty(), mother,
+                java.util.Optional.empty(), 0, 0), fathers, 0.5f, 0, 9L, LotStacks.RareClaim.NONE);
+        Player player = helper.makeMockSurvivalPlayer();
+        SimpleContainer c = new SimpleContainer(27);
+        ChestMenu menu = menu(player, c);
+        menu.setCarried(pouch());
+        c.setItem(0, LotStacks.stack(root, 2));
+        menu.clicked(0, 1, ClickType.PICKUP, player);
+        ItemStack saved = ItemStack.of(menu.getCarried().save(new CompoundTag()));
+        var original = io.github.slugblue.wildroots.data.Definitions.current();
+        try {
+            io.github.slugblue.wildroots.data.Definitions.publish(PlantFixtures.withSpecies(original, newDef,
+                    new io.github.slugblue.wildroots.genetics.codec.LayoutDescriptor(sp, oldLayout.hash(), oldLayout.canonical())));
+            menu.setCarried(saved);
+            menu.clicked(5, 1, ClickType.PICKUP, player);
+            LotNbt.Lot lot = (LotNbt.Lot) LotStacks.read(c.getItem(5));
+            var rec = LotStacks.record(lot, io.github.slugblue.wildroots.data.Definitions.current()).orElseThrow();
+            helper.assertTrue(rec.mother().layout().equals(newLayout), "pouch entry mother not migrated");
+            rec.fathers().forEach(f -> helper.assertTrue(f.genome().layout().equals(newLayout), "father not migrated"));
+            helper.assertTrue(rec.fathers().size() == 2 && used(menu.getCarried()) == 1, "entries");
+        } finally {
+            io.github.slugblue.wildroots.data.Definitions.publish(original);
+        }
+        helper.succeed();
+    }
 }
