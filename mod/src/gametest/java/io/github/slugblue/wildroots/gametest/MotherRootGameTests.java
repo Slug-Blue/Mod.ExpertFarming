@@ -89,7 +89,8 @@ public final class MotherRootGameTests {
         Player player = helper.makeMockSurvivalPlayer();
         PlantBlockEntity source = PlantFixtures.plant(PlantFixtures.place(helper, new BlockPos(0, 2, 0),
                 FieldPlantBlock.HARVEST_STAGE), 72);
-        ItemStack mother = drops(helper, new BlockPos(0, 2, 0), player).get(0);
+        ItemStack mother = drops(helper, new BlockPos(0, 2, 0), player).stream()
+                .filter(s -> s.is(ModItems.MOTHER_ROOT.get())).findFirst().orElseThrow();
         MotherNbt.Mother m = MotherItem.read(mother).orElseThrow();
 
         PlantFixtures.farmland(helper, PlantFixtures.PLANT);
