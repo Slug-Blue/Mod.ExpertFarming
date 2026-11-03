@@ -6,6 +6,7 @@ import io.github.slugblue.wildroots.data.CultivarInfo;
 import io.github.slugblue.wildroots.item.MotherItem;
 import io.github.slugblue.wildroots.item.ProduceItem;
 import io.github.slugblue.wildroots.item.SeedLotItem;
+import io.github.slugblue.wildroots.item.SeedPouchItem;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.DeferredRegister;
@@ -24,6 +25,10 @@ public final class ModItems {
     /** {@code wildroots:seed_lot}: seeds of one mother plant, every species (WR-135; GDD §5.3). Core content. */
     public static final RegistryObject<SeedLotItem> SEED_LOT = REGISTER.register("seed_lot",
             () -> new SeedLotItem(new Item.Properties()));
+
+    /** {@code wildroots:seed_pouch}: 16 seeds, LIFO, like a bundle (WR-138; GDD §5.3, ADR-0007). Core content. */
+    public static final RegistryObject<SeedPouchItem> SEED_POUCH = REGISTER.register("seed_pouch",
+            () -> new SeedPouchItem(new Item.Properties()));
 
     /** Carrot line (GDD §7.3, economy §2): food reference 3 / 0.6 like the vanilla carrot. */
     public static final String CARROT_LINE = "carrot";

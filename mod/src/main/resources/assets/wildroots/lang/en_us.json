@@ -31,5 +31,7 @@
   "wildroots.grade.3": "Sound",
   "wildroots.grade.4": "Select",
   "wildroots.grade.bitter": "Bitter",
-  "item.wildroots.mother_root": "Mother Root"
+  "item.wildroots.mother_root": "Mother Root",
+  "item.wildroots.seed_pouch": "Seed Pouch",
+  "wildroots.tooltip.pouch.fullness": "%s/%s seeds"
 }

@@ -31,5 +31,7 @@
   "wildroots.grade.3": "Добротный",
   "wildroots.grade.4": "Отборный",
   "wildroots.grade.bitter": "Горький",
-  "item.wildroots.mother_root": "Маточный корнеплод"
+  "item.wildroots.mother_root": "Маточный корнеплод",
+  "item.wildroots.seed_pouch": "Мешочек для семян",
+  "wildroots.tooltip.pouch.fullness": "Семян: %s из %s"
 }
