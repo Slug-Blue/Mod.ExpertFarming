@@ -159,7 +159,7 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
             }
         }, () -> {
             // never lose the plant on a failed save: the raw root if kept, else its essential data
-            CompoundTag keep = raw != null ? raw.copy() : essentialRoot();
+            CompoundTag keep = raw != null ? raw.copy() : essentialRoot(state);
             if (keep != null) {
                 tag.put(PlantNbt.ROOT, keep);
             }
@@ -167,11 +167,14 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
     }
 
     /**
-     * Version, species, genome, noise and passport written field by field,
-     * each guarded: the data a plant cannot be rebuilt without. Used only
-     * when the full write failed; no extra copy of the root is kept in memory.
+     * The root written part by part, each part guarded, so a part that
+     * cannot be written (typically the pending lot) is the only thing lost:
+     * genome and noise, passport, planter, cultivar status, line name,
+     * generation, lot flags, plant flags ({@code MOTHER}, {@code MUTANT},
+     * {@code rareClaimed}) and the pending lot. Used only when the full
+     * write failed; no extra copy of the root is kept in memory.
      */
-    private CompoundTag essentialRoot() {
+    static CompoundTag essentialRoot(PlantState state) {
         if (state == null) {
             return null;
         }
@@ -180,22 +183,49 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
         if (state.species != null) {
             root.putString("sp", state.species);
         }
+        part(root, state, s -> {
+            s.genome = state.genome;
+            s.noise = state.noise;
+        }, "g", "e");
+        part(root, state, s -> s.passport = state.passport, "pp");
+        part(root, state, s -> {
+            s.planterMost = state.planterMost;
+            s.planterLeast = state.planterLeast;
+        }, "um", "ul");
+        part(root, state, s -> {
+            s.cultivar = state.cultivar;
+            s.tier = state.tier;
+            s.inherited = state.inherited;
+        }, "cv", "ct", "ci");
+        part(root, state, s -> s.lineName = state.lineName, "ln");
+        part(root, state, s -> s.generation = state.generation, "gen");
+        part(root, state, s -> s.lotFlags = state.lotFlags, "fl");
+        part(root, state, s -> s.plantFlags = state.plantFlags, "pf");
+        if (root.contains("g")) {
+            part(root, state, s -> {
+                s.genome = state.genome;
+                s.pending = state.pending;
+            }, "pl");
+        }
+        return root;
+    }
+
+    /** Writes the keys {@code keys} of a root holding only what {@code fill} copies; nothing on a failure. */
+    private static void part(CompoundTag root, PlantState state, java.util.function.Consumer<PlantState> fill,
+                             String... keys) {
         try {
             PlantState s = new PlantState();
             s.species = state.species;
-            s.genome = state.genome;
-            s.noise = state.noise;
-            s.passport = state.passport;
-            s.planterMost = state.planterMost;
-            s.planterLeast = state.planterLeast;
-            CompoundTag full = PlantNbt.write(s);
-            for (String k : full.getAllKeys()) {
-                root.put(k, full.get(k));
+            fill.accept(s);
+            CompoundTag one = PlantNbt.write(s);
+            for (String k : keys) {
+                if (one.contains(k)) {
+                    root.put(k, one.get(k));
+                }
             }
         } catch (RuntimeException ignored) {
-            // the version and species are kept; the rest could not be written
+            // this part could not be written; the others are kept
         }
-        return root;
     }
 
     /** SEC-34: the logic of this plant threw; it becomes inert and keeps its data as it was. */
