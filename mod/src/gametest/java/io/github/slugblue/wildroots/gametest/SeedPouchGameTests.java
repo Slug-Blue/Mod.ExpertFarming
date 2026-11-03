@@ -408,4 +408,104 @@ public final class SeedPouchGameTests {
         }
         helper.succeed();
     }
+
+    /** A slot that refuses everything (armour, fuel, output). */
+    static final class RefusingSlot extends net.minecraft.world.inventory.Slot {
+        RefusingSlot(Container c) {
+            super(c, 0, 0, 0);
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) {
+            return false;
+        }
+    }
+
+    /** M2: an entry that accepts() would not take back (inert) stays in the pouch when the slot refuses it. */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
+    public static void refusingSlotKeepsAnInertEntry(GameTestHelper helper) {
+        Player player = helper.makeMockSurvivalPlayer();
+        CompoundTag lot = PlantingGameTests.lot(helper.getLevel(), 1).getTag().getCompound(LotNbt.KEY).copy();
+        lot.putInt("v", 2);
+        CompoundTag entry = new CompoundTag();
+        entry.put("l", lot);
+        entry.putByte("c", (byte) 1);
+        ListTag e = new ListTag();
+        e.add(entry);
+        CompoundTag stored = new CompoundTag();
+        stored.putInt("v", 1);
+        stored.put("e", e);
+        ItemStack p = pouch();
+        p.getOrCreateTag().put(PouchContents.KEY, stored);
+        CompoundTag before = p.getTag().copy();
+        SimpleContainer c = new SimpleContainer(1);
+        RefusingSlot slot = new RefusingSlot(c);
+        SeedPouchItem.stackedOnOther(p, slot, net.minecraft.world.inventory.ClickAction.SECONDARY, player, false);
+        helper.assertTrue(p.getTag().equals(before), "pouch changed: " + p.getTag());
+        helper.assertTrue(c.getItem(0).isEmpty(), "refusing slot got an item");
+        helper.succeed();
+    }
+
+    /** The 17 KiB guard also holds on the cursor path (lot on the cursor onto the pouch in a slot). */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
+    public static void guardHoldsOnTheCursorPath(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Player player = helper.makeMockSurvivalPlayer();
+        SimpleContainer c = new SimpleContainer(27);
+        ChestMenu menu = menu(player, c);
+        menu.setCarried(pouch());
+        c.setItem(0, PlantingGameTests.lot(level, 1));
+        menu.clicked(0, 1, ClickType.PICKUP, player);
+        ItemStack p = menu.getCarried();
+        p.getTag().getCompound(PouchContents.KEY).putString("junk", "j".repeat(NbtLimits.POUCH_MAX_BYTES - 600));
+        CompoundTag before = p.getTag().copy();
+        c.setItem(4, p);
+        menu.setCarried(PlantingGameTests.lot(level, 1));
+        menu.clicked(4, 1, ClickType.PICKUP, player);
+        helper.assertTrue(menu.getCarried().getCount() == 1, "the lot left the cursor");
+        helper.assertTrue(c.getItem(4).getTag().equals(before), "the pouch changed");
+        helper.succeed();
+    }
+
+    /** SEC-17: on the client a pouch click only claims the click; pouch, slot and cursor stay as they are. */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
+    public static void clientSidePouchCallsChangeNothing(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Player player = helper.makeMockSurvivalPlayer();
+        SimpleContainer c = new SimpleContainer(27);
+        ChestMenu menu = menu(player, c);
+        menu.setCarried(pouch());
+        c.setItem(0, PlantingGameTests.lot(level, 2));
+        menu.clicked(0, 1, ClickType.PICKUP, player);
+        ItemStack p = menu.getCarried().copy();
+        CompoundTag before = p.getTag().copy();
+        net.minecraft.world.inventory.Slot empty = menu.getSlot(3);
+        net.minecraft.world.inventory.Slot full = menu.getSlot(5);
+        c.setItem(5, PlantingGameTests.lot(level, 3));
+        ItemStack fullBefore = c.getItem(5).copy();
+        helper.assertTrue(SeedPouchItem.stackedOnOther(p, empty, net.minecraft.world.inventory.ClickAction.SECONDARY, player, true),
+                "client did not claim the click");
+        helper.assertTrue(SeedPouchItem.stackedOnOther(p, full, net.minecraft.world.inventory.ClickAction.SECONDARY, player, true),
+                "client did not claim the click");
+        ItemStack[] cursor = {PlantingGameTests.lot(level, 2)};
+        ItemStack cursorBefore = cursor[0].copy();
+        net.minecraft.world.entity.SlotAccess access = new net.minecraft.world.entity.SlotAccess() {
+            @Override
+            public ItemStack get() {
+                return cursor[0];
+            }
+
+            @Override
+            public boolean set(ItemStack s) {
+                cursor[0] = s;
+                return true;
+            }
+        };
+        SeedPouchItem.otherStackedOnMe(p, cursor[0], full, net.minecraft.world.inventory.ClickAction.SECONDARY, player, access, true);
+        SeedPouchItem.otherStackedOnMe(p, ItemStack.EMPTY, full, net.minecraft.world.inventory.ClickAction.SECONDARY, player, access, true);
+        helper.assertTrue(p.getTag().equals(before), "client changed the pouch");
+        helper.assertTrue(empty.getItem().isEmpty() && ItemStack.matches(c.getItem(5), fullBefore), "client changed a slot");
+        helper.assertTrue(ItemStack.matches(cursor[0], cursorBefore), "client changed the cursor");
+        helper.succeed();
+    }
 }

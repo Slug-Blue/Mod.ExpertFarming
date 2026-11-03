@@ -50,6 +50,18 @@ class PouchContentsTest {
         assertEquals(2L, back.removeLast().orElseThrow().lot().getLong("id"));
     }
 
+    /** Review minor 1: a pouch from a future version is inert and never rewritten as v1. */
+    @Test
+    void futureOrDamagedVersionIsInert() {
+        CompoundTag stored = PouchContents.EMPTY.insert(lot(1), 1).orElseThrow().pouch().write();
+        stored.putInt("v", 2);
+        assertTrue(PouchContents.read(stored).isEmpty(), "v2 pouch read as v1");
+        stored.putInt("v", 0);
+        assertTrue(PouchContents.read(stored).isEmpty(), "v0 pouch read");
+        stored.putString("v", "1");
+        assertTrue(PouchContents.read(stored).isEmpty(), "string version read");
+    }
+
     @Test
     void sixteenLotsAtTheLimitAlwaysFit() {
         PouchContents p = PouchContents.EMPTY;

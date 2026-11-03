@@ -128,4 +128,80 @@ public final class MotherRootGameTests {
         helper.assertTrue(!d.isEmpty() && d.stream().allMatch(s -> s.is(ModItems.SEED_LOT.get())), "drops " + d);
         helper.succeed();
     }
+
+    /** Minor 6: the mother root keeps the status of its plant, the hysteresis flag included. */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
+    public static void motherRootKeepsTheInheritedStatus(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Player player = helper.makeMockSurvivalPlayer();
+        PlantBlockEntity be = PlantFixtures.place(helper, new BlockPos(0, 2, 0), FieldPlantBlock.HARVEST_STAGE);
+        be.init(io.github.slugblue.wildroots.data.Definitions.current().genetics(), new PlantBlockEntity.Init(
+                PlantFixtures.SP, PlantFixtures.genome(74), PlantFixtures.noise(75),
+                io.github.slugblue.wildroots.plant.Passport.PLAYER, new java.util.UUID(7, 7),
+                new io.github.slugblue.wildroots.genetics.api.Classification(java.util.Optional.of(
+                        io.github.slugblue.wildroots.genetics.api.CultivarId.of("wildroots:eastern_carrot")), 1, true),
+                null, 1, 0, 0));
+        ItemStack mother = drops(helper, new BlockPos(0, 2, 0), player).stream()
+                .filter(s -> s.is(ModItems.MOTHER_ROOT.get())).findFirst().orElseThrow();
+        helper.assertTrue(MotherItem.read(mother).orElseThrow().inherited(), "inherited not stored");
+        PlantFixtures.farmland(helper, PlantFixtures.PLANT);
+        helper.assertTrue(PlantingGameTests.use(helper, player, mother, PlantFixtures.PLANT).consumesAction(), "not planted");
+        PlantBlockEntity planted = (PlantBlockEntity) helper.getBlockEntity(PlantFixtures.PLANT);
+        helper.assertTrue(planted.data().inherited() && planted.data().tier() == 1
+                && "wildroots:eastern_carrot".equals(planted.data().cultivar()), "status lost");
+        helper.assertTrue(level != null, "level");
+        helper.succeed();
+    }
+
+    /**
+     * M1: a mother root and a seedling lot stored in the old layout, planted
+     * under the new one, get the noise migrated like the block entity does
+     * (trait order of the new layout), not the stored bytes as they are.
+     */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "wr13x_noise_migration", timeoutTicks = 200)
+    public static void storedNoiseMigratesWhenPlantedUnderANewLayout(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Player player = helper.makeMockSurvivalPlayer();
+        var gs = io.github.slugblue.wildroots.data.Definitions.current().genetics();
+        var oldDef = PlantFixtures.carrot().def();
+        var oldLayout = io.github.slugblue.wildroots.genetics.model.GenomeLayout.of(oldDef);
+        // a new trait that sorts first shifts every noise byte (traits are ordered by id)
+        var newDef = PlantFixtures.carrotAs(PlantFixtures.SP, q -> {
+            java.util.List<io.github.slugblue.wildroots.genetics.api.QuantTrait> l = new java.util.ArrayList<>(q);
+            l.add(new io.github.slugblue.wildroots.genetics.api.QuantTrait(
+                    io.github.slugblue.wildroots.genetics.model.TraitId.of("aroma"), 4, 0.06, false));
+            return l;
+        });
+        var genome = gs.encode(PlantFixtures.genome(76));
+        byte[] noise = PlantFixtures.noise(77).bytes();
+        ItemStack mother = new ItemStack(ModItems.MOTHER_ROOT.get());
+        mother.getOrCreateTag().put(MotherNbt.KEY, MotherNbt.write(new MotherNbt.Mother(genome, noise,
+                java.util.Optional.empty(), 0, false, java.util.Optional.empty(), 0, 0, 3, false)));
+        ItemStack seedling = LotStacks.stack(LotStacks.seedlingTag(new LotStacks.Parent(PlantFixtures.SP,
+                java.util.Optional.empty(), genome, java.util.Optional.empty(), 0, 0), noise, 77L), 1);
+        BlockPos a = new BlockPos(0, 2, 1);
+        BlockPos b = new BlockPos(2, 2, 1);
+        PlantFixtures.farmland(helper, a);
+        PlantFixtures.farmland(helper, b);
+        var original = io.github.slugblue.wildroots.data.Definitions.current();
+        try {
+            io.github.slugblue.wildroots.data.Definitions.publish(PlantFixtures.withSpecies(original, newDef));
+            var gsNew = io.github.slugblue.wildroots.data.Definitions.current().genetics();
+            helper.assertTrue(!gsNew.layout(newDef).orElseThrow().equals(oldLayout), "layout did not change");
+            for (var c : java.util.List.of(java.util.Map.entry(a, mother), java.util.Map.entry(b, seedling))) {
+                helper.assertTrue(PlantingGameTests.use(helper, player, c.getValue(), c.getKey()).consumesAction(),
+                        "not planted at " + c.getKey());
+                BlockPos abs = helper.absolutePos(c.getKey());
+                var expected = gsNew.migrateNoise(new io.github.slugblue.wildroots.genetics.phenotype.NoiseVector(noise),
+                        oldLayout, newDef, io.github.slugblue.wildroots.plant.PlantService.noiseMigrationKey(abs, PlantFixtures.SP))
+                        .orElseThrow();
+                var live = ((PlantBlockEntity) helper.getBlockEntity(c.getKey())).live(level).orElseThrow();
+                helper.assertTrue(live.noise().equals(expected), "noise not migrated at " + c.getKey());
+                helper.assertTrue(live.noise().size() == newDef.quantitative().size(), "noise length");
+            }
+        } finally {
+            io.github.slugblue.wildroots.data.Definitions.publish(original);
+        }
+        helper.succeed();
+    }
 }

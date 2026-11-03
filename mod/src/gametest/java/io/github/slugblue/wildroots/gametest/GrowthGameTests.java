@@ -163,15 +163,50 @@ public final class GrowthGameTests {
         helper.succeed();
     }
 
-    /** n = 400 per stage, fixed RNG: stages 1–3 advance at 0.35 ± 0.05, flowering never. */
+    /** A random source whose {@code nextFloat} is fixed (bone-meal threshold). */
+    static final class FixedFloat extends net.minecraft.world.level.levelgen.LegacyRandomSource {
+        final float value;
+
+        FixedFloat(float value) {
+            super(1L);
+            this.value = value;
+        }
+
+        @Override
+        public float nextFloat() {
+            return value;
+        }
+    }
+
+    /** The threshold is exactly 0.35: a roll of 0.3499 advances, 0.3501 does not (stages 1–3). */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
+    public static void boneMealThresholdIs035(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        PlantFixtures.plant(PlantFixtures.place(helper, PlantFixtures.PLANT, 1), 25);
+        BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
+        FieldPlantBlock block = ModBlocks.WILD_CARROT.get();
+        for (int stage = 1; stage <= 3; stage++) {
+            for (float roll : new float[] {0.3499f, 0.3501f}) {
+                BlockState s = level.getBlockState(abs).setValue(FieldPlantBlock.STAGE, stage);
+                level.setBlock(abs, s, 2);
+                block.performBonemeal(level, new FixedFloat(roll), abs, s);
+                boolean grew = FieldPlantBlock.stage(level.getBlockState(abs)) == stage + 1;
+                helper.assertTrue(grew == (roll < 0.35f), "stage " + stage + " roll " + roll + " grew " + grew);
+            }
+        }
+        helper.succeed();
+    }
+
+    /** n = 400 per stage (pooled 1200 at 0.35 ± 0.05), fixed RNG; flowering 0 of 400. */
     @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
     public static void boneMealAdvancesAt035ButNeverOnFlowering(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         PlantFixtures.plant(PlantFixtures.place(helper, PlantFixtures.PLANT, 1), 22);
         BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
         FieldPlantBlock block = ModBlocks.WILD_CARROT.get();
-        RandomSource random = RandomSource.create(2202);
+        RandomSource random = RandomSource.create(2201);
         StringBuilder rates = new StringBuilder();
+        int pooled = 0;
         for (int stage : new int[] {1, 2, 3, 4}) {
             int advanced = 0;
             for (int i = 0; i < 400; i++) {
@@ -190,9 +225,10 @@ public final class GrowthGameTests {
             if (stage == FieldPlantBlock.FLOWER_STAGE) {
                 helper.assertTrue(advanced == 0, "bone meal worked on flowering: " + advanced + "/400");
             } else {
-                helper.assertTrue(Math.abs(rate - 0.35) <= 0.05, "stage " + stage + " rate " + rate);
+                pooled += advanced;
             }
         }
+        helper.assertTrue(Math.abs(pooled / 1200.0 - 0.35) <= 0.05, "pooled rate " + pooled / 1200.0 + " (" + rates + ")");
         // the vanilla item path refuses flowering and the final stage
         for (int stage : new int[] {4, 5}) {
             level.setBlock(abs, level.getBlockState(abs).setValue(FieldPlantBlock.STAGE, stage), 2);

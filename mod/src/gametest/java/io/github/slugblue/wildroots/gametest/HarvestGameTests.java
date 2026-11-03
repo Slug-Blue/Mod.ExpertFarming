@@ -43,6 +43,10 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.piston.PistonBaseBlock;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraftforge.common.util.FakePlayerFactory;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
@@ -169,14 +173,20 @@ public final class HarvestGameTests {
     public static void youngPlantDropsItsRealisedGenome(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Player player = helper.makeMockSurvivalPlayer();
-        for (int stage : new int[] {1, 2}) {
+        BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
+        AABB area = new AABB(abs).inflate(2);
+        for (int stage : new int[] {0, 1, 2}) {
             PlantBlockEntity be = PlantFixtures.plant(PlantFixtures.place(helper, PlantFixtures.PLANT, stage), 87 + stage);
             PlantBlockEntity.Live before = be.live(level).orElseThrow();
-            List<ItemStack> d = MotherRootGameTests.drops(helper, PlantFixtures.PLANT, player);
+            // the real break path: Level#destroyBlock by the player, drops as item entities
+            level.getEntitiesOfClass(ItemEntity.class, area).forEach(ItemEntity::discard);
+            helper.assertTrue(level.destroyBlock(abs, true, player), "not broken at stage " + stage);
+            List<ItemEntity> dropped = level.getEntitiesOfClass(ItemEntity.class, area);
+            List<ItemStack> d = dropped.stream().map(ItemEntity::getItem).toList();
             LotNbt.Lot lot = onlyLot(d);
-            helper.assertTrue(lot.seedling() && d.get(0).getCount() == 1, "not a seedling: " + d);
-            helper.setBlock(PlantFixtures.PLANT, Blocks.AIR);
-            ItemStack s = d.get(0);
+            helper.assertTrue(lot.seedling() && d.size() == 1 && d.get(0).getCount() == 1, "not a seedling: " + d);
+            ItemStack s = d.get(0).copy();
+            dropped.forEach(ItemEntity::discard);
             helper.assertTrue(PlantingGameTests.use(helper, player, s, PlantFixtures.PLANT).consumesAction(), "replant");
             PlantBlockEntity.Live after = ((PlantBlockEntity) helper.getBlockEntity(PlantFixtures.PLANT)).live(level).orElseThrow();
             helper.assertTrue(after.genome().equals(before.genome()) && after.noise().equals(before.noise()),
@@ -231,5 +241,87 @@ public final class HarvestGameTests {
         helper.assertTrue(!variants.isEmpty(), "no harvest");
         variants.forEach((item, tags) -> helper.assertTrue(tags.size() <= 6, item + ": " + tags.size() + " variants"));
         helper.succeed();
+    }
+
+    /** Minor 3: an explosion whose source is a player is automation: no fathers. */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, timeoutTicks = 100)
+    public static void explosionWithAPlayerSourceGivesNoFathers(GameTestHelper helper) {
+        seedPlant(helper, PlantFixtures.PLANT, 92);
+        BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
+        Player player = helper.makeMockSurvivalPlayer();
+        helper.getLevel().explode(player, abs.getX() + 0.5, abs.getY() + 0.5, abs.getZ() + 0.5, 1.0f,
+                Level.ExplosionInteraction.BLOCK);
+        expectLotWithoutFathers(helper, PlantFixtures.PLANT, 2);
+    }
+
+    /** Minor 4: getDrops has no side effects; the mutation flag is consumed only by the real break. */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, timeoutTicks = 100)
+    public static void getDropsTwiceDoesNotConsumeTheRareClaim(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Player player = helper.makeMockSurvivalPlayer();
+        PlantBlockEntity be = seedPlant(helper, PlantFixtures.PLANT, 93);
+        be.setPlantFlag(io.github.slugblue.wildroots.plant.PlantState.MUTANT, true);
+        for (int i = 0; i < 2; i++) {
+            LotNbt.Lot lot = onlyLot(MotherRootGameTests.drops(helper, PlantFixtures.PLANT, player));
+            helper.assertTrue(lot.rare() == LotNbt.RareSource.MUTATION, "preview " + i + " lost the flag");
+            helper.assertTrue(be.rareAvailable(), "getDrops consumed the claim");
+        }
+        BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
+        helper.assertTrue(level.destroyBlock(abs, true, player), "not broken");
+        List<ItemStack> items = level.getEntitiesOfClass(ItemEntity.class, new AABB(abs).inflate(2)).stream()
+                .map(ItemEntity::getItem).toList();
+        helper.assertTrue(onlyLot(items).rare() == LotNbt.RareSource.MUTATION, "the real break lost the flag");
+        helper.assertTrue(!be.rareAvailable(), "the real break did not consume the claim");
+        helper.succeed();
+    }
+
+    /** Breaking an inert or a sleeping plant drops nothing, so its data is never copied (§6.1). */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "wr13x_inert_drops", timeoutTicks = 200)
+    public static void inertOrSleepingPlantDropsNothing(GameTestHelper helper) {
+        Player player = helper.makeMockSurvivalPlayer();
+        for (int stage : new int[] {1, 3, 5}) {
+            PlantBlockEntity be = seedPlant(helper, PlantFixtures.PLANT, 94 + stage);
+            helper.getLevel().setBlock(helper.absolutePos(PlantFixtures.PLANT), helper.getBlockState(PlantFixtures.PLANT)
+                    .setValue(FieldPlantBlock.STAGE, stage), 2);
+            CompoundTag tag = be.saveWithFullMetadata();
+            CompoundTag future = tag.copy();
+            future.getCompound(io.github.slugblue.wildroots.plant.PlantNbt.ROOT).putInt("v", 99);
+            be.load(future);
+            helper.assertTrue(MotherRootGameTests.drops(helper, PlantFixtures.PLANT, player).isEmpty(),
+                    "inert plant dropped at stage " + stage);
+            CompoundTag lost = tag.copy();
+            lost.getCompound(io.github.slugblue.wildroots.plant.PlantNbt.ROOT).putString("sp", "wildroots:gt_gone");
+            lost.getCompound(io.github.slugblue.wildroots.plant.PlantNbt.ROOT).getCompound("g").putString("sp", "wildroots:gt_gone");
+            be.load(lost);
+            helper.assertTrue(be.status() == PlantBlockEntity.Status.SLEEPING, "not sleeping");
+            helper.assertTrue(MotherRootGameTests.drops(helper, PlantFixtures.PLANT, player).isEmpty(),
+                    "sleeping plant dropped at stage " + stage);
+        }
+        helper.succeed();
+    }
+
+    /** A player and automation harvest the same plant with the same RNG: the same seed count, only the fathers differ. */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
+    public static void playerAndAutomationGetTheSameSeedCount(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Player player = helper.makeMockSurvivalPlayer();
+        PlantBlockEntity be = seedPlant(helper, PlantFixtures.PLANT, 99);
+        BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
+        BlockState state = level.getBlockState(abs);
+        for (long seed = 1; seed <= 20; seed++) {
+            List<ItemStack> a = HarvestService.drops(state, params(level, abs, be, player), RandomSource.create(seed));
+            List<ItemStack> b = HarvestService.drops(state, params(level, abs, be, FakePlayerFactory.getMinecraft(level)),
+                    RandomSource.create(seed));
+            helper.assertTrue(a.get(0).getCount() == b.get(0).getCount(), "seed " + seed + ": " + a + " vs " + b);
+            helper.assertTrue(onlyLot(a).fathers().size() == 3 && onlyLot(b).fathers().isEmpty(), "fathers");
+        }
+        helper.succeed();
+    }
+
+    static LootParams.Builder params(ServerLevel level, BlockPos abs, PlantBlockEntity be, net.minecraft.world.entity.Entity who) {
+        return new LootParams.Builder(level).withParameter(LootContextParams.ORIGIN, net.minecraft.world.phys.Vec3.atCenterOf(abs))
+                .withParameter(LootContextParams.TOOL, ItemStack.EMPTY)
+                .withOptionalParameter(LootContextParams.THIS_ENTITY, who)
+                .withOptionalParameter(LootContextParams.BLOCK_ENTITY, be);
     }
 }
