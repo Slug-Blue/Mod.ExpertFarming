@@ -33,5 +33,8 @@
   "wildroots.grade.bitter": "Горький",
   "item.wildroots.mother_root": "Маточный корнеплод",
   "item.wildroots.seed_pouch": "Мешочек для семян",
-  "wildroots.tooltip.pouch.fullness": "Семян: %s из %s"
+  "wildroots.tooltip.pouch.fullness": "Семян: %s из %s",
+  "commands.wildroots.locate_patch.success": "Ближайший кандидатный чанк для %s: %s (%s блоков)",
+  "commands.wildroots.locate_patch.not_found": "Для %s нет кандидатного чанка в радиусе %s блоков",
+  "commands.wildroots.locate_patch.unknown": "Неизвестный вид или у него нет диких патчей: %s"
 }
