@@ -88,15 +88,39 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
         builder.add(STAGE, SIZE, VARIANT, AILING, VILLAGE, ACTIVE);
     }
 
+    /** Set while {@link #canSurvive} checks a static wild state (worldgen threads too). */
+    private static final ThreadLocal<Boolean> WILD_CHECK = ThreadLocal.withInitial(() -> false);
+
     /**
-     * Farmland, or the wild soil of the species ({@code #wildroots:wild_soil/<species>},
-     * worldgen §2.4): a wild patch stands on grass, dirt or podzol and must
-     * not pop on the first neighbour update. Planting by players still
-     * needs farmland ({@code PlantService#canPlantAt}).
+     * Farmland; for a static wild state ({@code active = false}, worldgen
+     * §12.2) also the wild soil of the species
+     * ({@code #wildroots:wild_soil/<species>}, worldgen §2.4), so a wild
+     * patch on grass, dirt or podzol does not pop on the first neighbour
+     * update. An active (planted) plant needs farmland as vanilla crops do:
+     * trampled to dirt, it pops (review 1, M3).
      */
     @Override
     protected boolean mayPlaceOn(BlockState state, BlockGetter level, BlockPos pos) {
-        return super.mayPlaceOn(state, level, pos) || state.is(wildSoil());
+        return super.mayPlaceOn(state, level, pos) || (WILD_CHECK.get() && state.is(wildSoil()));
+    }
+
+    /**
+     * Vanilla rule (light and the soil below, through Forge
+     * {@code canSustainPlant} → {@link #mayPlaceOn}); the wild soil counts
+     * only while the state is static wild. The soil is not read here
+     * directly: the decision travels to {@code mayPlaceOn} in a thread-local
+     * flag, so the block keeps reading neighbours only through vanilla.
+     */
+    @Override
+    public boolean canSurvive(BlockState state, LevelReader level, BlockPos pos) {
+        boolean wild = state.hasProperty(ACTIVE) && !state.getValue(ACTIVE);
+        boolean before = WILD_CHECK.get();
+        WILD_CHECK.set(wild);
+        try {
+            return super.canSurvive(state, level, pos);
+        } finally {
+            WILD_CHECK.set(before);
+        }
     }
 
     private net.minecraft.tags.TagKey<Block> wildSoil;
