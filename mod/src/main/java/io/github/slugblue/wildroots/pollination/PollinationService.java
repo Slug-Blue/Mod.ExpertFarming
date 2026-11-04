@@ -125,4 +125,41 @@ public final class PollinationService {
         }
         return out;
     }
+
+    /** What a bee visit did (tests, diagnostics). */
+    public enum Visit {
+        /** Not a flowering plant of a species with bees, or not loaded: nothing happened. */
+        NONE,
+        /** Visited; the bee had no fresh pollen of this species from another plant. */
+        VISITED,
+        /** Visited and the bee's pollen became a donor of the plant. */
+        DONOR
+    }
+
+    /**
+     * A bee finished hovering at the plant at {@code pos} (§10.3 item 3; GDD
+     * §4.3): fresh pollen of the same species from another plant becomes a
+     * donor of weight {@code Defaults.BEE_DONOR_WEIGHT}; the plant is marked
+     * bee-visited; the bee's pollen is replaced by this plant's (a visit to
+     * another species replaces it too); the bee gets nectar.
+     */
+    public static Visit beeVisit(ServerLevel level, net.minecraft.world.entity.animal.Bee bee, BlockPos pos) {
+        Optional<PlantBlockEntity> be = BeeCropPollinateGoal.flowering(level, pos);
+        Optional<BeePollen> pollen = bee.getCapability(BeePollenCapability.CAPABILITY).resolve();
+        if (be.isEmpty() || pollen.isEmpty()) {
+            return Visit.NONE;
+        }
+        Optional<PlantBlockEntity.Live> live = be.get().live(level);
+        if (live.isEmpty() || live.get().def().pollination().bees().isEmpty()) {
+            return Visit.NONE;
+        }
+        BeePollen p = pollen.get();
+        String species = live.get().def().id();
+        boolean donor = p.fresh() && species.equals(p.species()) && p.source() != pos.asLong();
+        be.get().beeVisit(donor ? p.genome() : null, (float) Defaults.BEE_DONOR_WEIGHT);
+        p.collect(species, pos.asLong(), live.get().genetics().encode(live.get().genome()).toFather());
+        p.nectarFromUs = true;
+        bee.setHasNectar(true); // package-private in 1.20.1, opened by the access transformer (S2)
+        return donor ? Visit.DONOR : Visit.VISITED;
+    }
 }

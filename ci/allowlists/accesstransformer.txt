@@ -2,9 +2,12 @@
 # §16, ADR-0014, SEC-45). One AT line per line, exactly as in the file
 # (comments and blank lines of the .cfg are ignored).
 #
-# Candidates from §16 (Bee#setHasNectar, Biome#getHeightAdjustedTemperature,
-# StructureTemplatePool templates/rawTemplates, Mob#goalSelector) are added
-# with SRG names by the task that needs them.
+# Candidates from §16 (StructureTemplatePool templates/rawTemplates) are
+# added with SRG names by the task that needs them. Mob#goalSelector is
+# public in 1.20.1 and needs no entry (S2).
 
 # SRG m_47528_, S11: Biome#getHeightAdjustedTemperature for ClimateService (WR-132)
 public net.minecraft.world.level.biome.Biome m_47528_(Lnet/minecraft/core/BlockPos;)F
+
+# SRG m_27919_, S2: Bee#setHasNectar for the bee pollination goal (WR-142)
+public net.minecraft.world.entity.animal.Bee m_27919_(Z)V

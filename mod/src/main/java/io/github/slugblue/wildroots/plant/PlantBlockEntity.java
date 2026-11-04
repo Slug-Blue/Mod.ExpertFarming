@@ -507,6 +507,37 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
         }
     }
 
+    /**
+     * A pollinator visited the flowering plant (GDD §4.3, WR-142): the plant
+     * is marked as bee-visited and, when the bee brought fresh pollen of the
+     * same species, the pollen becomes a donor of weight {@code weight}
+     * (copied by value). At most {@code NbtLimits.BLOCK_ENTITY_MAX_DONORS}
+     * donors wait in the pending lot; the oldest goes first. No-op on an
+     * inert plant or one without a stored genome.
+     */
+    public void beeVisit(io.github.slugblue.wildroots.genetics.codec.FatherRecord donor, float weight) {
+        if (status != Status.OK || state == null || state.genome == null) {
+            return;
+        }
+        PendingLot p = state.pending;
+        List<LotFathersNbt.Father> fathers = new ArrayList<>(p == null ? List.of() : p.fathers());
+        if (donor != null) {
+            fathers.add(new LotFathersNbt.Father(donor, weight, true));
+            long donors = fathers.stream().filter(LotFathersNbt.Father::donor).count();
+            for (int i = 0; i < fathers.size() && donors > io.github.slugblue.wildroots.core.safety.NbtLimits
+                    .BLOCK_ENTITY_MAX_DONORS; i++) {
+                if (fathers.get(i).donor()) {
+                    fathers.remove(i);
+                    donors--;
+                    i--;
+                }
+            }
+        }
+        state.pending = new PendingLot(fathers, p == null ? 0 : p.pOut(),
+                p == null ? io.github.slugblue.wildroots.genetics.pollination.Brush.NONE : p.brush(), true);
+        setChanged();
+    }
+
     /** Sets or clears a plant flag of {@link PlantState}. */
     public void setPlantFlag(int flag, boolean on) {
         if (state != null) {
