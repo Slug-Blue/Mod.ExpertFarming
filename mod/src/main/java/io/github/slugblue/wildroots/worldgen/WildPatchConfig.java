@@ -3,6 +3,7 @@ package io.github.slugblue.wildroots.worldgen;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import java.util.List;
+import java.util.Optional;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.RegistryCodecs;
 import net.minecraft.core.registries.Registries;
@@ -26,10 +27,11 @@ import net.minecraft.world.level.levelgen.feature.configurations.FeatureConfigur
  * @param soil        blocks a plant may stand on
  * @param replaceable blocks a plant may replace besides air
  * @param stages      shares of mature / flowering / seeding plants
+ * @param beeNest     bee nest step (worldgen §7), absent for wind-pollinated species
  */
 public record WildPatchConfig(String species, List<String> categories, IntProvider plants, int minPlants, int tries,
                               int xzSpread, int ySpread, HolderSet<Block> soil, HolderSet<Block> replaceable,
-                              Stages stages) implements FeatureConfiguration {
+                              Stages stages, Optional<BeeNestConfig> beeNest) implements FeatureConfiguration {
 
     /** Plants per patch, hard limit (worldgen §12.1). */
     public static final int MAX_PLANTS = 24;
@@ -57,6 +59,13 @@ public record WildPatchConfig(String species, List<String> categories, IntProvid
             RegistryCodecs.homogeneousList(Registries.BLOCK).fieldOf("soil").forGetter(WildPatchConfig::soil),
             RegistryCodecs.homogeneousList(Registries.BLOCK).fieldOf("replaceable")
                     .forGetter(WildPatchConfig::replaceable),
-            Stages.CODEC.fieldOf("stages").forGetter(WildPatchConfig::stages)
+            Stages.CODEC.fieldOf("stages").forGetter(WildPatchConfig::stages),
+            BeeNestConfig.CODEC.optionalFieldOf("bee_nest").forGetter(WildPatchConfig::beeNest)
     ).apply(i, WildPatchConfig::new));
+
+    /** The same configuration with another nest block (tests, starter patch). */
+    public WildPatchConfig withBeeNest(Optional<BeeNestConfig> nest) {
+        return new WildPatchConfig(species, categories, plants, minPlants, tries, xzSpread, ySpread, soil, replaceable,
+                stages, nest);
+    }
 }

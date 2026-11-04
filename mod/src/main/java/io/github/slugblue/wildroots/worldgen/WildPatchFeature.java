@@ -49,14 +49,17 @@ import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
  *   the passport: origin, category, {@code rich}, {@code starter}. The
  *   genome is not generated here; it is realised on the first server access
  *   (worldgen §3.3).</li>
+ *   <li>The bee nest ({@link BeeNests}, worldgen §7), from the same patch
+ *   RNG.</li>
  * </ol>
  */
 public class WildPatchFeature extends Feature<WildPatchConfig> {
 
     /** What a call placed (tests, starter patch). */
-    public record Result(boolean placed, List<BlockPos> plants, String category, boolean rich) {
+    public record Result(boolean placed, List<BlockPos> plants, String category, boolean rich,
+                         BeeNests.Result nest) {
 
-        static final Result NONE = new Result(false, List.of(), "", false);
+        static final Result NONE = new Result(false, List.of(), "", false, BeeNests.Result.NONE);
     }
 
     /** Overrides of the starter patch (worldgen §6.2 item 5); {@link #NATURAL} for worldgen. */
@@ -114,7 +117,10 @@ public class WildPatchFeature extends Feature<WildPatchConfig> {
                 plant.initWild(config.species(), passport);
             }
         }
-        return new Result(true, List.copyOf(spots), category, rich);
+        BeeNests.Result nest = config.beeNest()
+                .map(n -> BeeNests.place(level, generator, origin, n, rich, options.starter(), rng, random))
+                .orElse(BeeNests.Result.NONE);
+        return new Result(true, List.copyOf(spots), category, rich, nest);
     }
 
     /** First category of {@code categories} whose tag {@code wildroots:patch_category/<id>} holds {@code biome}. */

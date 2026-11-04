@@ -25,6 +25,28 @@
       "mature": 0.55,
       "flowering": 0.3,
       "seeding": 0.15
+    },
+    "bee_nest": {
+      "chance": 0.6,
+      "rich_chance": 1.0,
+      "min_distance": 6,
+      "max_distance": 16,
+      "bees": {
+        "type": "minecraft:uniform",
+        "value": {
+          "min_inclusive": 2,
+          "max_inclusive": 3
+        }
+      },
+      "fallbacks": [
+        "tree",
+        "lone_tree"
+      ],
+      "lone_tree_only_for": [
+        "starter",
+        "rich"
+      ],
+      "lone_tree_feature": "wildroots:lone_birch_bees"
     }
   }
 }
