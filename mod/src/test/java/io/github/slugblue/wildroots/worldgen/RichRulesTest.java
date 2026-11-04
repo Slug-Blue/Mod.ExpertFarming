@@ -26,4 +26,19 @@ class RichRulesTest {
         assertTrue(RichRules.rich(0.0, 1.0, false, 256, 0, 256));
         assertTrue(RichRules.rich(0.0, 1.0, false, -200, -200, 256), "d = 282.8");
     }
+
+    /**
+     * Review 2, T2: the boulder blob reaches 3 blocks on its -x/-z side, so a
+     * plant at Chebyshev distance 3 blocks the landmark; 4 is clear.
+     */
+    @Test
+    void landmarkKeepsMoreThanThreeFromEveryPlant() {
+        java.util.List<net.minecraft.core.BlockPos> plants = java.util.List.of(new net.minecraft.core.BlockPos(0, 64, 0));
+        assertFalse(RichRules.landmarkClear(plants, 3, 0), "x + 3");
+        assertFalse(RichRules.landmarkClear(plants, 3, 3), "diagonal 3");
+        assertFalse(RichRules.landmarkClear(plants, -2, 3));
+        assertTrue(RichRules.landmarkClear(plants, 4, 0));
+        assertTrue(RichRules.landmarkClear(plants, 4, -3));
+        assertTrue(RichRules.landmarkClear(java.util.List.of(), 0, 0), "no plants");
+    }
 }

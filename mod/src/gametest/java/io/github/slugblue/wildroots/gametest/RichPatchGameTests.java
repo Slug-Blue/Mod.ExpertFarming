@@ -131,4 +131,40 @@ public final class RichPatchGameTests {
                 && r.plants().getMaxValue() == 20 && r.landmark().isPresent(), "carrot rich " + r);
         helper.succeed();
     }
+
+    /**
+     * Review 2, T2: the landmark boulder never replaces a plant. 24 rich
+     * patches (24 patch seeds) on a flat platform; after each one every
+     * plant of the result is still a plant block. With the old clearance 2
+     * the blob, which reaches 3 blocks on its -x/-z side, could land on one.
+     */
+    @GameTest(template = FLOOR, batch = "wr153_sky_landmark", timeoutTicks = 400)
+    public static void landmarkNeverReplacesAPlant(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        SkyPlatform sky = SkyPlatform.build(helper, 16);
+        try {
+            WildPatchConfig c = alwaysRich(level, 0).withBeeNest(Optional.empty());
+            int boulders = 0;
+            for (int i = 0; i < 24; i++) {
+                sky.fill(Blocks.GRASS_BLOCK.defaultBlockState());
+                BlockPos origin = sky.surface().offset(i % 5 - 2, 0, i / 5 - 2);
+                WildPatchFeature.Result r = WildPatchGameTests.place(level, origin, c, WildPatchGameTests.TEST);
+                helper.assertTrue(r.placed() && r.rich(), "rich patch " + i + " not placed");
+                for (BlockPos p : r.plants()) {
+                    helper.assertTrue(level.getBlockState(p).getBlock() instanceof io.github.slugblue.wildroots.plant.FieldPlantBlock,
+                            "patch " + i + ": plant at " + p + " replaced by " + level.getBlockState(p));
+                }
+                for (BlockPos q : BlockPos.betweenClosed(origin.offset(-12, -1, -12), origin.offset(12, 3, 12))) {
+                    if (level.getBlockState(q).is(Blocks.MOSSY_COBBLESTONE)) {
+                        boulders++;
+                        break;
+                    }
+                }
+            }
+            helper.assertTrue(boulders >= 20, "landmarks placed in only " + boulders + " of 24 patches");
+        } finally {
+            sky.clear();
+        }
+        helper.succeed();
+    }
 }

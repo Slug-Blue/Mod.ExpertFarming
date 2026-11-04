@@ -148,13 +148,13 @@ public class WildPatchFeature extends Feature<WildPatchConfig> {
     /** The landmark stands this far beyond the spread (a blob of radius ≈ 1 stays clear of the plants). */
     static final int LANDMARK_OFFSET = 4;
 
-    /** A landmark keeps this far from every plant: the boulder blob never replaces one. */
-    static final int LANDMARK_CLEARANCE = 2;
+    /** See {@link RichRules#LANDMARK_CLEARANCE}. */
+    static final int LANDMARK_CLEARANCE = RichRules.LANDMARK_CLEARANCE;
 
     /**
      * The landmark of a rich patch (worldgen §5.3): its configured feature
      * (a mossy boulder) just outside the patch, {@code xz_spread + 4}
-     * blocks from the centre, on the surface and at least
+     * blocks from the centre, on the surface and more than
      * {@value #LANDMARK_CLEARANCE} blocks from every plant; up to 8 angles
      * are tried, nothing if none fits.
      */
@@ -168,9 +168,7 @@ public class WildPatchFeature extends Feature<WildPatchConfig> {
                 int x = origin.getX() + (int) Math.round(StrictMath.cos(a) * d);
                 int z = origin.getZ() + (int) Math.round(StrictMath.sin(a) * d);
                 BlockPos at = new BlockPos(x, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z), z);
-                boolean clear = plants.stream().allMatch(p -> Math.max(Math.abs(p.getX() - x),
-                        Math.abs(p.getZ() - z)) > LANDMARK_CLEARANCE);
-                if (clear && Math.abs(at.getY() - origin.getY()) <= 3) {
+                if (RichRules.landmarkClear(plants, x, z) && Math.abs(at.getY() - origin.getY()) <= 3) {
                     f.value().place(level, generator, random, at);
                     return;
                 }
