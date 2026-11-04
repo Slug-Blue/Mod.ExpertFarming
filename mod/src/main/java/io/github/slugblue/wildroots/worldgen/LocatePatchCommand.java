@@ -52,8 +52,6 @@ public final class LocatePatchCommand {
 
     public static final int DEFAULT_RADIUS = 1024;
     public static final int MAX_RADIUS = 6400;
-    /** Y at which the biome of a candidate chunk is sampled (the usual surface band). */
-    static final int SAMPLE_Y = 64;
 
     private LocatePatchCommand() {
     }
@@ -141,9 +139,15 @@ public final class LocatePatchCommand {
     }
 
     /**
-     * The nearest candidate chunk within {@code radius} blocks, searched in
-     * square rings of chunks around {@code from}; within a ring the nearest
-     * one wins. Reads only the chunk band and the biome source.
+     * The Euclidean nearest candidate chunk within {@code radius} blocks
+     * (review 1, m7). Square rings of chunks are walked outwards; after the
+     * first hit the walk goes on while a ring can still hold a nearer chunk
+     * (its nearest centre is at least {@code 16·r − 16} blocks away). The
+     * biome is sampled at the surface the noise generator predicts for the
+     * chunk centre ({@code getBaseHeight}, pure noise, no chunk access), at
+     * least at sea level, so cave biomes under hills do not hide a
+     * candidate. Only chunks that pass the band hash (≈ 3.6 % for carrot)
+     * pay for that height.
      */
     static Optional<Found> nearest(ServerLevel level, BlockPos from, SpeciesDef def, List<Band> bands, int radius,
                                    TagKey<Biome> spawns) {
@@ -151,10 +155,16 @@ public final class LocatePatchCommand {
         int cx0 = from.getX() >> 4;
         int cz0 = from.getZ() >> 4;
         int rings = Math.max(0, radius >> 4);
-        var source = level.getChunkSource().getGenerator().getBiomeSource();
-        var sampler = level.getChunkSource().randomState().sampler();
+        var generator = level.getChunkSource().getGenerator();
+        var randomState = level.getChunkSource().randomState();
+        var source = generator.getBiomeSource();
+        var sampler = randomState.sampler();
+        int sea = generator.getSeaLevel();
+        Found best = null;
         for (int r = 0; r <= rings; r++) {
-            Found best = null;
+            if (best != null && 16L * r - 16 > best.distance()) {
+                break;
+            }
             for (int dx = -r; dx <= r; dx++) {
                 for (int dz = -r; dz <= r; dz++) {
                     if (Math.max(Math.abs(dx), Math.abs(dz)) != r) {
@@ -172,23 +182,25 @@ public final class LocatePatchCommand {
                     if (band == null) {
                         continue;
                     }
-                    BlockPos c = new BlockPos((cx << 4) + 8, SAMPLE_Y, (cz << 4) + 8);
-                    Holder<Biome> biome = source.getNoiseBiome(QuartPos.fromBlock(c.getX()),
-                            QuartPos.fromBlock(c.getY()), QuartPos.fromBlock(c.getZ()), sampler);
+                    int x = (cx << 4) + 8;
+                    int z = (cz << 4) + 8;
+                    int d = (int) Math.round(Math.sqrt(Math.pow(x - from.getX(), 2) + Math.pow(z - from.getZ(), 2)));
+                    if (d > radius || (best != null && d >= best.distance())) {
+                        continue;
+                    }
+                    int y = Math.max(sea, generator.getBaseHeight(x, z,
+                            net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE_WG, level, randomState));
+                    BlockPos c = new BlockPos(x, y, z);
+                    Holder<Biome> biome = source.getNoiseBiome(QuartPos.fromBlock(x), QuartPos.fromBlock(y),
+                            QuartPos.fromBlock(z), sampler);
                     if (!biome.is(spawns) || !ClimateWindow.fits(ClimateService.temperature(biome, c), def.tempMin(),
                             def.tempMax(), band.tolerance(), SpeciesClimatePlacement.noisy(biome, c))) {
                         continue;
                     }
-                    int d = (int) Math.round(Math.sqrt(c.distSqr(from.atY(SAMPLE_Y))));
-                    if (best == null || d < best.distance()) {
-                        best = new Found(cx, cz, c, d);
-                    }
+                    best = new Found(cx, cz, c, d);
                 }
             }
-            if (best != null) {
-                return Optional.of(best);
-            }
         }
-        return Optional.empty();
+        return Optional.ofNullable(best);
     }
 }
