@@ -20,6 +20,7 @@ import io.github.slugblue.wildroots.genetics.phenotype.NoiseVector;
 import io.github.slugblue.wildroots.item.LotFathersNbt;
 import io.github.slugblue.wildroots.item.LotFlags;
 import io.github.slugblue.wildroots.item.LotStacks;
+import io.github.slugblue.wildroots.pollination.BloomTracker;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -264,6 +265,47 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
         String species = state == null ? null : state.species;
         boolean builtIn = getBlockState().getBlock() instanceof FieldPlantBlock b && b.species().equals(species);
         return PlantNbt.updateTag(builtIn || species == null, species);
+    }
+
+    // ------------------------------------------------------------------ bloom index (§10.2)
+
+    /**
+     * A flowering plant registers in the bloom index when its block entity
+     * enters the level: chunk load (static wild plants included, worldgen
+     * §12.2) and placement. Only the block state is read here; the genome
+     * stays undecoded (§10.5, risk 1).
+     */
+    @Override
+    @EntryPoint
+    public void onLoad() {
+        super.onLoad();
+        Guarded.run("plant onLoad", worldPosition, () -> {
+            if (getBlockState().getBlock() instanceof FieldPlantBlock b
+                    && FieldPlantBlock.stage(getBlockState()) == FieldPlantBlock.FLOWER_STAGE) {
+                BloomTracker.set(level, worldPosition, b.species(), true);
+            }
+        });
+    }
+
+    /** Broken, replaced or unloaded: out of the bloom index. */
+    @Override
+    @EntryPoint
+    public void setRemoved() {
+        super.setRemoved();
+        Guarded.run("plant removed", worldPosition, this::leaveIndex);
+    }
+
+    @Override
+    @EntryPoint
+    public void onChunkUnloaded() {
+        super.onChunkUnloaded();
+        Guarded.run("plant chunk unloaded", worldPosition, this::leaveIndex);
+    }
+
+    private void leaveIndex() {
+        if (getBlockState().getBlock() instanceof FieldPlantBlock b) {
+            BloomTracker.set(level, worldPosition, b.species(), false);
+        }
     }
 
     // ------------------------------------------------------------------ status

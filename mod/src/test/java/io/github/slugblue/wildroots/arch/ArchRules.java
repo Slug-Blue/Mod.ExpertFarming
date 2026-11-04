@@ -240,6 +240,18 @@ public final class ArchRules {
                 .because("neighbour reads must not load chunks (SEC-32)");
     }
 
+    /**
+     * ADR-0008 (WR-140): the bloom index lives in memory only; nothing in
+     * {@code ..pollination..} is {@code SavedData}, so it is never written to disk.
+     */
+    public static ArchRule bloomIndexNotSaved(String root) {
+        return noClasses()
+                .that().resideInAPackage(root + ".pollination..")
+                .should().beAssignableTo("net.minecraft.world.level.saveddata.SavedData")
+                .allowEmptyShould(true)
+                .because("the bloom index is transient and rebuilds from onLoad (ADR-0008)");
+    }
+
     /** SEC-07 (switched on by WR-122): player strings are never parsed as JSON components. */
     public static ArchRule noComponentSerializerFromJson(String root) {
         DescribedPredicate<JavaCall<?>> fromJson = DescribedPredicate.describe(

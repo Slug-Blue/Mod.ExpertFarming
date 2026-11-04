@@ -3,6 +3,7 @@ package io.github.slugblue.wildroots.plant;
 import io.github.slugblue.wildroots.core.safety.EntryPoint;
 import io.github.slugblue.wildroots.core.safety.Guarded;
 import io.github.slugblue.wildroots.core.safety.LoadedLevelAccess;
+import io.github.slugblue.wildroots.pollination.BloomTracker;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
@@ -180,6 +181,27 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
                     .ifPresent(PlantBlockEntity::claimForRemoval));
         }
         super.onRemove(state, level, pos, newState, moved);
+    }
+
+    /**
+     * Entering and leaving flowering keeps the bloom index in step
+     * (docs/05-architecture.md §10.2): every {@code setBlock} that changes
+     * the stage passes here, whoever makes it (growth, bone meal, other
+     * mods, commands). Removal of the block is handled by the block entity
+     * ({@code setRemoved}).
+     */
+    @Override
+    @EntryPoint
+    @SuppressWarnings("deprecation")
+    public void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState, boolean moved) {
+        super.onPlace(state, level, pos, oldState, moved);
+        if (level instanceof ServerLevel server) {
+            boolean was = oldState.is(this) && stage(oldState) == FLOWER_STAGE;
+            boolean now = stage(state) == FLOWER_STAGE;
+            if (was != now) {
+                Guarded.run("plant bloom", pos, () -> BloomTracker.set(server, pos, species, now));
+            }
+        }
     }
 
     /**

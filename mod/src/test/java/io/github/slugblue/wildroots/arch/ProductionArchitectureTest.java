@@ -100,6 +100,12 @@ class ProductionArchitectureTest {
                 ROOT + ".core.safety.LoadedLevelAccess")).check(production);
     }
 
+    /** ADR-0008, WR-140: the bloom index has no SavedData. */
+    @Test
+    void bloomIndexNotSaved() {
+        ArchRules.bloomIndexNotSaved(ROOT).check(production);
+    }
+
     /** SEC-07, switched on by WR-122. */
     @Test
     void noComponentSerializerFromJson() {

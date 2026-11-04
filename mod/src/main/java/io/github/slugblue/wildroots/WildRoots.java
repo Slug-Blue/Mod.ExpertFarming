@@ -13,6 +13,7 @@ import io.github.slugblue.wildroots.data.OperatorNotice;
 import io.github.slugblue.wildroots.data.sync.DefinitionsSync;
 import io.github.slugblue.wildroots.network.ServerPacketGuard;
 import io.github.slugblue.wildroots.network.WrNetwork;
+import io.github.slugblue.wildroots.pollination.BloomTracker;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -47,6 +48,8 @@ public final class WildRoots {
         MinecraftForge.EVENT_BUS.addListener(CultivarManager::onAddReloadListeners);
         MinecraftForge.EVENT_BUS.addListener(OperatorNotice::onDatapackSync);
         MinecraftForge.EVENT_BUS.addListener(DefinitionsSync::onDatapackSync);
+        MinecraftForge.EVENT_BUS.addListener(BloomTracker::onChunkUnload);
+        MinecraftForge.EVENT_BUS.addListener(BloomTracker::onLevelUnload);
         WrNetwork.register();
         MinecraftForge.EVENT_BUS.addListener(ServerPacketGuard::onLogout);
         LOGGER.debug("Wild Roots constructed");
