@@ -47,9 +47,13 @@ public final class RngKeys {
         return Hash64.of(worldSeed, villagePos, Hash64.str(landraceId), harvestCount);
     }
 
-    /** Fathers at seed set: {@code Hash64(secret, plantUid, cycleIndex)}. */
-    public static long fathers(long secret, long plantUid, int cycleIndex) {
-        return Hash64.of(secret, plantUid, cycleIndex);
+    /**
+     * Fathers at seed set: {@code Hash64(secret, packedPos, gameTick)} — the
+     * mother's packed position and the game tick of the seed set, which is
+     * unique per flowering cycle (WR-141; review 1, m6).
+     */
+    public static long fathers(long secret, long packedPos, int gameTick) {
+        return Hash64.of(secret, packedPos, gameTick);
     }
 
     /** Realising a lazy lot (grass, chest, trade): {@code Hash64(secret, lotId)}. */

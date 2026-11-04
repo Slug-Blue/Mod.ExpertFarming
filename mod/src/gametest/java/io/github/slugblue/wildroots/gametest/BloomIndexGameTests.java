@@ -93,6 +93,18 @@ public final class BloomIndexGameTests {
         helper.succeed();
     }
 
+    /** Review m3: a deferred {@code onLoad} after the removal does not put the plant back. */
+    @GameTest(template = FLOOR)
+    public static void onLoadAfterRemovalAddsNothing(GameTestHelper helper) {
+        BlockPos rel = PlantFixtures.PLANT;
+        PlantBlockEntity be = PlantFixtures.plant(PlantFixtures.place(helper, rel, FieldPlantBlock.FLOWER_STAGE), 6);
+        helper.getLevel().destroyBlock(helper.absolutePos(rel), false);
+        helper.assertTrue(be.isRemoved(), "block entity not removed");
+        be.onLoad();
+        helper.assertFalse(indexed(helper, rel), "onLoad of a removed block entity re-added it");
+        helper.succeed();
+    }
+
     /** Level unload drops the whole index of the level (own batch: it empties the index for everyone). */
     @GameTest(template = FLOOR, batch = "wr140_level_unload")
     public static void levelUnloadDropsIndex(GameTestHelper helper) {

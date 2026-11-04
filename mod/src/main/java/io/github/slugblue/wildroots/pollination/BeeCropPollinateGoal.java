@@ -112,7 +112,12 @@ public final class BeeCropPollinateGoal extends Goal {
     }
 
     @Override
+    @EntryPoint
     public boolean canContinueToUse() {
+        return Guarded.call("bee goal continue", "bee", this::keepGoing, false);
+    }
+
+    private boolean keepGoing() {
         return target != null && !bee.hasNectar() && !bee.isAngry() && bee.level() instanceof ServerLevel level
                 && !level.isRaining() && ticks < GIVE_UP_TICKS && flowering(level, target).isPresent();
     }

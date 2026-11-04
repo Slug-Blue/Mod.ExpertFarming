@@ -40,7 +40,11 @@ public final class BeeEvents {
         if (event.getLevel().isClientSide() || !(event.getEntity() instanceof Bee bee)) {
             return;
         }
-        Guarded.run("bee goal", "bee", () -> addGoal(bee));
+        Guarded.run("bee goal", "bee", () -> {
+            addGoal(bee);
+            // a bee loaded with nectar (chunk load, restart, hive) must not count a visit on its first tick
+            bee.getCapability(BeePollenCapability.CAPABILITY).ifPresent(p -> p.hadNectar = bee.hasNectar());
+        });
     }
 
     /** Adds our goal unless the bee has it already; returns whether it was added. */

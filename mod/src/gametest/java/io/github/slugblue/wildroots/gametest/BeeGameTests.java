@@ -215,6 +215,29 @@ public final class BeeGameTests {
         });
     }
 
+    /** Review m2: a bee loaded with nectar does not count a vanilla visit on its first ticks. */
+    @GameTest(template = FIELD, setupTicks = SETUP, timeoutTicks = 100)
+    public static void reloadedBeeWithNectarCountsNoVisit(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Bee bee = helper.spawn(EntityType.BEE, new BlockPos(4, 4, 4));
+        pollen(bee).collect(PlantFixtures.SP, 0x5EED_0000_0002L, new FatherRecord(9L, new long[] {1}));
+        bee.setHasNectar(true);
+        CompoundTag tag = new CompoundTag();
+        bee.save(tag);
+        bee.discard();
+        Bee loaded = (Bee) EntityType.loadEntityRecursive(tag, level, e -> e);
+        helper.assertTrue(loaded != null, "bee did not load");
+        loaded.setUUID(java.util.UUID.randomUUID());
+        loaded.setNoAi(true);
+        level.addFreshEntity(loaded);
+        helper.assertTrue(loaded.hasNectar() && pollen(loaded).hasPollen(), "nectar or pollen lost in the reload");
+        helper.runAfterDelay(10, () -> {
+            helper.assertTrue(pollen(loaded).visits() == 0, "reload counted a visit: " + pollen(loaded).visits());
+            loaded.discard();
+            helper.succeed();
+        });
+    }
+
     /** Our blocks are not in {@code #minecraft:bee_growables}: the vanilla growth bonus does not apply. */
     @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
     public static void beeGrowablesSkipsOurPlants(GameTestHelper helper) {

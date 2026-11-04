@@ -280,6 +280,9 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
     public void onLoad() {
         super.onLoad();
         Guarded.run("plant onLoad", worldPosition, () -> {
+            if (isRemoved() || level == null) {
+                return; // removed or unloaded before Forge ran the deferred onLoad: no stale entry
+            }
             if (getBlockState().getBlock() instanceof FieldPlantBlock b
                     && FieldPlantBlock.stage(getBlockState()) == FieldPlantBlock.FLOWER_STAGE) {
                 BloomTracker.set(level, worldPosition, b.species(), true);

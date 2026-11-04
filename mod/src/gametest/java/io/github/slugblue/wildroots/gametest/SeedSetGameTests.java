@@ -110,7 +110,33 @@ public final class SeedSetGameTests {
             }
         }
         helper.assertTrue(ailing >= 1, "no ailing seedling among 10 selfed ones");
+        // review 1, deviation 2: the same mother outcrossed to the bed's fathers is ailing less often
+        PendingLot bedLot = ((PlantBlockEntity) helper.getBlockEntity(bed.get(5))).data().pending();
+        List<io.github.slugblue.wildroots.item.LotFathersNbt.Father> outFathers = bedLot.fathers();
+        LotNbt.Lot selfed = (LotNbt.Lot) LotStacks.read(LotStacks.seeds(level, live, List.of(), 0f, 0, () -> false, 40));
+        LotNbt.Lot crossed = (LotNbt.Lot) LotStacks.read(LotStacks.seeds(level, live, outFathers, 0.95f, 0,
+                () -> false, 40));
+        int self = ailingOf(helper, live, selfed, 40);
+        int cross = ailingOf(helper, live, crossed, 40);
+        org.slf4j.LoggerFactory.getLogger(SeedSetGameTests.class).info("WR-141 ailing of 40: selfed {}, outcrossed {}",
+                self, cross);
+        helper.assertTrue(self > cross, "selfed " + self + " not more ailing than outcrossed " + cross);
         helper.succeed();
+    }
+
+    static int ailingOf(GameTestHelper helper, PlantBlockEntity.Live live, LotNbt.Lot lot, int n) {
+        ServerLevel level = helper.getLevel();
+        int ailing = 0;
+        for (int i = 0; i < n; i++) {
+            BlockPos at = helper.absolutePos(new BlockPos(1 + i % 15, 2, 14));
+            Genome g = PlantService.seedling(level, lot, n - i, at).orElseThrow().genome();
+            Phenotype p = Definitions.current().genetics().phenotype(g, live.def(),
+                    GrowthLogic.environment(level, at), PlantFixtures.noise(i)).orElseThrow();
+            if (p.vigor() < GrowthLogic.AILING_BELOW) {
+                ailing++;
+            }
+        }
+        return ailing;
     }
 
     /** A wild genome key whose genome has one dd load locus and at least three heterozygous ones. */
