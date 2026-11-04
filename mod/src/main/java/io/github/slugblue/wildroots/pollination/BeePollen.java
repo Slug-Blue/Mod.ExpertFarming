@@ -31,7 +31,7 @@ import net.minecraftforge.common.util.LazyOptional;
  */
 public final class BeePollen {
 
-    public static final ResourceLocation ID = new ResourceLocation("wildroots", "bee_pollen");
+    public static final ResourceLocation ID = io.github.slugblue.wildroots.core.Ids.mod("bee_pollen");
 
     /** Pollen older than this many ticks outside the hive is stale (GDD §4.3). */
     public static final int MAX_AGE_OUTSIDE = 1200;

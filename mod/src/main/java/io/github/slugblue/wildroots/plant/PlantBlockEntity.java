@@ -499,6 +499,23 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
         setChanged();
     }
 
+    /**
+     * An existing wild patch becomes the starter patch (worldgen §6.2 item 1):
+     * its passport gets {@code starter}, so the genome realised later uses
+     * the generous starter frequencies (§6.4). Only for a wild plant whose
+     * genome is not realised yet; returns whether the passport changed.
+     */
+    public boolean markStarter() {
+        if (state == null || state.genome != null || state.passport.origin() != Passport.Origin.WILD
+                || state.passport.starter()) {
+            return false;
+        }
+        Passport p = state.passport;
+        state.passport = Passport.wild(p.patchOrigin(), p.category(), false, true);
+        setChanged();
+        return true;
+    }
+
     /** Replaces the pending lot (seed set, WR-141). */
     public void setPendingLot(PendingLot lot) {
         if (state != null) {

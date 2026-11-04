@@ -107,7 +107,7 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
             net.minecraft.resources.ResourceLocation id = net.minecraft.resources.ResourceLocation.tryParse(species);
             String path = id == null ? "none" : id.getPath();
             wildSoil = net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.BLOCK,
-                    new net.minecraft.resources.ResourceLocation("wildroots", "wild_soil/" + path));
+                    io.github.slugblue.wildroots.core.Ids.mod("wild_soil/" + path));
         }
         return wildSoil;
     }

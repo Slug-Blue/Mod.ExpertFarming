@@ -54,6 +54,10 @@ public final class BeeNests {
     static final int CROWN_RADIUS = 2;
     /** Crowns searched per patch: ≤ 3 × 250 block reads (worldgen §12.2 budget). */
     static final int MAX_CROWNS = 3;
+    /** Vertical reach of a nest from the patch centre. */
+    static final int MAX_DY = 12;
+    /** A lone tree stands on ground at most this far above or below the patch centre. */
+    static final int LONE_TREE_DY = 4;
 
     private BeeNests() {
     }
@@ -197,7 +201,8 @@ public final class BeeNests {
             int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, col.getX(), col.getZ());
             BlockPos at = col.atY(y);
             BlockState ground = level.getBlockState(at.below());
-            if (!(ground.is(Blocks.GRASS_BLOCK) || ground.is(Blocks.DIRT)) || !level.getBlockState(at).canBeReplaced()
+            if (Math.abs(at.getY() - center.getY()) > LONE_TREE_DY
+                    || !(ground.is(Blocks.GRASS_BLOCK) || ground.is(Blocks.DIRT)) || !level.getBlockState(at).canBeReplaced()
                     || !flat(level, at)) {
                 continue;
             }
@@ -221,7 +226,11 @@ public final class BeeNests {
         return true;
     }
 
+    /** Horizontally within reach of the centre and at most {@value #MAX_DY} blocks above or below it. */
     static boolean within(BlockPos center, BlockPos p) {
+        if (Math.abs(p.getY() - center.getY()) > MAX_DY) {
+            return false;
+        }
         long dx = p.getX() - center.getX();
         long dz = p.getZ() - center.getZ();
         return dx * dx + dz * dz <= (long) (BeeNestConfig.MAX_DISTANCE + 1) * (BeeNestConfig.MAX_DISTANCE + 1);

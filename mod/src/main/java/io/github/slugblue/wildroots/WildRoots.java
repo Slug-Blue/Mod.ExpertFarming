@@ -15,6 +15,7 @@ import io.github.slugblue.wildroots.network.ServerPacketGuard;
 import io.github.slugblue.wildroots.network.WrNetwork;
 import io.github.slugblue.wildroots.pollination.BeeEvents;
 import io.github.slugblue.wildroots.pollination.BloomTracker;
+import io.github.slugblue.wildroots.worldgen.StarterPatch;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -55,6 +56,7 @@ public final class WildRoots {
         MinecraftForge.EVENT_BUS.addGenericListener(net.minecraft.world.entity.Entity.class, BeeEvents::onAttach);
         MinecraftForge.EVENT_BUS.addListener(BeeEvents::onJoin);
         MinecraftForge.EVENT_BUS.addListener(BeeEvents::onLivingTick);
+        MinecraftForge.EVENT_BUS.addListener(StarterPatch::onServerStarted);
         WrNetwork.register();
         MinecraftForge.EVENT_BUS.addListener(ServerPacketGuard::onLogout);
         LOGGER.debug("Wild Roots constructed");
