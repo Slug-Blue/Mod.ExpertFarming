@@ -1,0 +1,6 @@
+{
+  "type": "forge:add_features",
+  "biomes": "#wildroots:spawns/wild_carrot",
+  "features": "wildroots:wild_patch/wild_carrot",
+  "step": "vegetal_decoration"
+}

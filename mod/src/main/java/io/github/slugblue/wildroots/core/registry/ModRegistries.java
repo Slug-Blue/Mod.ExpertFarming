@@ -17,7 +17,8 @@ public final class ModRegistries {
     public static final List<DeferredRegister<?>> ALL = List.of(
             ModBlocks.REGISTER, ModItems.REGISTER, ModBlockEntities.REGISTER, ModMenus.REGISTER,
             ModRecipeSerializers.REGISTER, ModLootModifiers.REGISTER, ModPoiTypes.REGISTER,
-            ModProfessions.REGISTER, ModFeatures.REGISTER, ModProcessors.REGISTER, ModPoolElements.REGISTER,
+            ModProfessions.REGISTER, ModFeatures.REGISTER, ModPlacementModifiers.REGISTER, ModProcessors.REGISTER,
+            ModPoolElements.REGISTER,
             ModCreativeTabs.REGISTER);
 
     private ModRegistries() {

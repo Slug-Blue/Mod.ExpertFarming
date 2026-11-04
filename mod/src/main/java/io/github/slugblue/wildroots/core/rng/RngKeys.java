@@ -16,6 +16,8 @@ public final class RngKeys {
 
     /** String part of the planting-noise key ({@code "noise"}). */
     static final long NOISE = Hash64.str("noise");
+    /** String part of the chunk band ({@code "wildroots_patch"}, worldgen §4.2). */
+    static final long PATCH_BAND = Hash64.str("wildroots_patch");
 
     private RngKeys() {
     }
@@ -53,5 +55,15 @@ public final class RngKeys {
     /** Realising a lazy lot (grass, chest, trade): {@code Hash64(secret, lotId)}. */
     public static long lazyLot(long secret, long lotId) {
         return Hash64.of(secret, lotId);
+    }
+
+    /** Seed of a wild patch: {@code Hash64(worldSeed, origin)} (worldgen §3.2 item 2); no secret. */
+    public static long patchSeed(long worldSeed, long patchOrigin) {
+        return Hash64.of(worldSeed, patchOrigin);
+    }
+
+    /** The chunk number of the band: {@code Hash64(worldSeed, chunkX, chunkZ, "wildroots_patch")} (worldgen §4.2); no secret. */
+    public static long chunkBand(long worldSeed, int chunkX, int chunkZ) {
+        return Hash64.of(worldSeed, chunkX, chunkZ, PATCH_BAND);
     }
 }

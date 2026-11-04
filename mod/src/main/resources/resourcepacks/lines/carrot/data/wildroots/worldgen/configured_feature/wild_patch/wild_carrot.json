@@ -1,0 +1,30 @@
+{
+  "type": "wildroots:wild_patch",
+  "config": {
+    "species": "wildroots:wild_carrot",
+    "categories": [
+      "meadow",
+      "flower_fields",
+      "plains",
+      "forest_edge"
+    ],
+    "plants": {
+      "type": "minecraft:uniform",
+      "value": {
+        "min_inclusive": 8,
+        "max_inclusive": 14
+      }
+    },
+    "min_plants": 5,
+    "tries": 48,
+    "xz_spread": 4,
+    "y_spread": 2,
+    "soil": "#wildroots:wild_soil/wild_carrot",
+    "replaceable": "#wildroots:patch_replaceable",
+    "stages": {
+      "mature": 0.55,
+      "flowering": 0.3,
+      "seeding": 0.15
+    }
+  }
+}

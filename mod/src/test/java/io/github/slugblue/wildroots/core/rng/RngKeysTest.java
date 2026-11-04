@@ -58,6 +58,17 @@ class RngKeysTest {
         assertEquals(4, village.getParameterCount());
     }
 
+    /** WR-150: worldgen keys (patch seed, chunk band) take the world seed only, never the secret (§4.3). */
+    @Test
+    void worldgenPatchKeysTakeOnlyTheWorldSeed() throws NoSuchMethodException {
+        assertEquals(Hash64.of(99L, POS), RngKeys.patchSeed(99L, POS));
+        assertEquals(Hash64.of(99L, 3, -4, Hash64.fnv1a64("wildroots_patch")), RngKeys.chunkBand(99L, 3, -4));
+        assertEquals(2, RngKeys.class.getMethod("patchSeed", long.class, long.class).getParameterCount());
+        assertEquals(3, RngKeys.class.getMethod("chunkBand", long.class, int.class, int.class).getParameterCount());
+        assertNotEquals(RngKeys.chunkBand(1L, 0, 0), RngKeys.chunkBand(2L, 0, 0));
+        assertNotEquals(RngKeys.chunkBand(1L, 0, 1), RngKeys.chunkBand(1L, 1, 0));
+    }
+
     @Test
     void lotIdsAreDistinctWithinOneTick() {
         Set<Long> ids = new HashSet<>();

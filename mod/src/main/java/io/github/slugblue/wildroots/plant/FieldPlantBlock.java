@@ -88,6 +88,30 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
         builder.add(STAGE, SIZE, VARIANT, AILING, VILLAGE, ACTIVE);
     }
 
+    /**
+     * Farmland, or the wild soil of the species ({@code #wildroots:wild_soil/<species>},
+     * worldgen §2.4): a wild patch stands on grass, dirt or podzol and must
+     * not pop on the first neighbour update. Planting by players still
+     * needs farmland ({@code PlantService#canPlantAt}).
+     */
+    @Override
+    protected boolean mayPlaceOn(BlockState state, BlockGetter level, BlockPos pos) {
+        return super.mayPlaceOn(state, level, pos) || state.is(wildSoil());
+    }
+
+    private net.minecraft.tags.TagKey<Block> wildSoil;
+
+    /** {@code #wildroots:wild_soil/<path of the species id>}. */
+    public net.minecraft.tags.TagKey<Block> wildSoil() {
+        if (wildSoil == null) {
+            net.minecraft.resources.ResourceLocation id = net.minecraft.resources.ResourceLocation.tryParse(species);
+            String path = id == null ? "none" : id.getPath();
+            wildSoil = net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.BLOCK,
+                    new net.minecraft.resources.ResourceLocation("wildroots", "wild_soil/" + path));
+        }
+        return wildSoil;
+    }
+
     @Override
     protected IntegerProperty getAgeProperty() {
         return STAGE;

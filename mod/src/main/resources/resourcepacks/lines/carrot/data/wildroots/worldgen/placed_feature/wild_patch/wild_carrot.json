@@ -1,0 +1,25 @@
+{
+  "feature": "wildroots:wild_patch/wild_carrot",
+  "placement": [
+    {
+      "type": "wildroots:chunk_band",
+      "from": 0.0,
+      "to": 0.036
+    },
+    {
+      "type": "minecraft:in_square"
+    },
+    {
+      "type": "minecraft:heightmap",
+      "heightmap": "MOTION_BLOCKING_NO_LEAVES"
+    },
+    {
+      "type": "minecraft:biome"
+    },
+    {
+      "type": "wildroots:species_climate",
+      "species": "wildroots:wild_carrot",
+      "tolerance": 0.0
+    }
+  ]
+}
