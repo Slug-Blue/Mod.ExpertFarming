@@ -3,6 +3,8 @@ package io.github.slugblue.wildroots.worldgen;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.slugblue.wildroots.core.registry.ModPlacementModifiers;
+import io.github.slugblue.wildroots.core.safety.EntryPoint;
+import io.github.slugblue.wildroots.core.safety.Guarded;
 import io.github.slugblue.wildroots.data.Definitions;
 import io.github.slugblue.wildroots.genetics.api.SpeciesDef;
 import io.github.slugblue.wildroots.plant.ClimateService;
@@ -55,7 +57,12 @@ public final class SpeciesClimatePlacement extends PlacementFilter {
     }
 
     @Override
+    @EntryPoint
     protected boolean shouldPlace(PlacementContext context, RandomSource random, BlockPos pos) {
+        return Guarded.call("species_climate", pos, () -> fitsAt(context, pos), false);
+    }
+
+    private boolean fitsAt(PlacementContext context, BlockPos pos) {
         Optional<SpeciesDef> def = Definitions.current().species(species).map(e -> e.def());
         if (def.isEmpty()) {
             return false;

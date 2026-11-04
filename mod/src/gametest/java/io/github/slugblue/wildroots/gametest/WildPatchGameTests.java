@@ -71,7 +71,7 @@ public final class WildPatchGameTests {
             BlockPos origin = sky.surface();
             WildPatchFeature.Result r = place(level, origin, c, TEST);
             helper.assertTrue(r.placed(), "patch not placed on a flat grass platform");
-            helper.assertTrue(r.plants().size() >= 5 && r.plants().size() <= 14, "plants " + r.plants().size());
+            helper.assertTrue(r.plants().size() >= 8 && r.plants().size() <= 14, "plants " + r.plants().size());
             int flowering = 0;
             for (BlockPos p : r.plants()) {
                 BlockState st = level.getBlockState(p);
@@ -108,6 +108,39 @@ public final class WildPatchGameTests {
         helper.succeed();
     }
 
+    /**
+     * Review M4: on flat open ground a patch reaches its configured count.
+     * 20 origins (20 patch seeds) on one platform: every patch has 8–14
+     * plants, the configured range, and the mean is near its middle 11.
+     * The count does not depend on where the test runs or on the world seed:
+     * on flat ground every try lands, so the count is the sampled target.
+     */
+    @GameTest(template = FLOOR, batch = "wr150_sky_counts", timeoutTicks = 400)
+    public static void patchCountsMatchTheConfig(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        SkyPlatform sky = SkyPlatform.build(helper, 12);
+        try {
+            WildPatchConfig c = carrotConfig(level);
+            int sum = 0;
+            int n = 20;
+            for (int i = 0; i < n; i++) {
+                sky.fill(Blocks.GRASS_BLOCK.defaultBlockState());
+                BlockPos origin = sky.surface().offset(i % 5 - 2, 0, i / 5 - 2);
+                WildPatchFeature.Result r = place(level, origin, c.withBeeNest(Optional.empty()), TEST);
+                int k = r.plants().size();
+                helper.assertTrue(r.placed() && k >= c.plants().getMinValue() && k <= c.plants().getMaxValue(),
+                        "patch " + i + ": " + k + " plants");
+                sum += k;
+            }
+            double mean = sum / (double) n;
+            org.slf4j.LoggerFactory.getLogger(WildPatchGameTests.class).info("WR-150 mean plants {}", mean);
+            helper.assertTrue(Math.abs(mean - 11) <= 1.5, "mean plants " + mean);
+        } finally {
+            sky.clear();
+        }
+        helper.succeed();
+    }
+
     /** Fewer valid spots than {@code min_plants}: nothing at all is placed (worldgen §3.2 item 4). */
     @GameTest(template = FLOOR, batch = "wr150_sky_min")
     public static void tooFewSpotsPlacesNothing(GameTestHelper helper) {
@@ -137,6 +170,39 @@ public final class WildPatchGameTests {
         helper.assertTrue(Blocks.GRASS_BLOCK.defaultBlockState().is(block.wildSoil()), "grass not in the soil tag");
         helper.assertTrue(Blocks.PODZOL.defaultBlockState().is(block.wildSoil()), "podzol not in the soil tag");
         helper.assertFalse(Blocks.STONE.defaultBlockState().is(block.wildSoil()), "stone in the soil tag");
+        helper.succeed();
+    }
+
+    /**
+     * Review M3: wild soil holds only static wild plants. On grass a static
+     * wild carrot survives a neighbour update; a planted (active) carrot on
+     * dirt pops, as vanilla crops do once the farmland is gone; on farmland
+     * it stays.
+     */
+    @GameTest(template = SeedSetGameTests.FIELD, setupTicks = SeedSetGameTests.SETUP)
+    public static void wildSoilHoldsOnlyStaticWildPlants(GameTestHelper helper) {
+        BlockState stage4 = ModBlocks.WILD_CARROT.get().getStateForAge(FieldPlantBlock.FLOWER_STAGE);
+        BlockPos wild = new BlockPos(3, 2, 3);
+        BlockPos planted = new BlockPos(6, 2, 3);
+        BlockPos farmed = new BlockPos(9, 2, 3);
+        helper.setBlock(wild.below(), Blocks.GRASS_BLOCK.defaultBlockState());
+        helper.setBlock(planted.below(), Blocks.DIRT.defaultBlockState());
+        PlantFixtures.farmland(helper, farmed);
+        helper.setBlock(wild, stage4.setValue(FieldPlantBlock.ACTIVE, false));
+        helper.setBlock(planted, stage4);
+        helper.setBlock(farmed, stage4);
+        ServerLevel level = helper.getLevel();
+        helper.assertTrue(stage4.setValue(FieldPlantBlock.ACTIVE, false).canSurvive(level, helper.absolutePos(wild)),
+                "static wild plant cannot stand on grass");
+        helper.assertFalse(stage4.canSurvive(level, helper.absolutePos(planted)), "active plant survives on dirt");
+        for (BlockPos p : new BlockPos[] {wild, planted, farmed}) {
+            helper.setBlock(p.north(), Blocks.STONE.defaultBlockState()); // neighbour shape update
+        }
+        helper.assertTrue(level.getBlockState(helper.absolutePos(wild)).getBlock() instanceof FieldPlantBlock,
+                "static wild plant popped on grass");
+        helper.assertTrue(level.getBlockState(helper.absolutePos(planted)).isAir(), "active plant kept on dirt");
+        helper.assertTrue(level.getBlockState(helper.absolutePos(farmed)).getBlock() instanceof FieldPlantBlock,
+                "plant on farmland popped");
         helper.succeed();
     }
 

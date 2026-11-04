@@ -1,6 +1,8 @@
 package io.github.slugblue.wildroots.worldgen;
 
 import io.github.slugblue.wildroots.core.rng.RngKeys;
+import io.github.slugblue.wildroots.core.safety.EntryPoint;
+import io.github.slugblue.wildroots.core.safety.Guarded;
 import io.github.slugblue.wildroots.data.Definitions;
 import io.github.slugblue.wildroots.genetics.random.SplitMix64;
 import io.github.slugblue.wildroots.plant.FieldPlantBlock;
@@ -77,10 +79,15 @@ public class WildPatchFeature extends Feature<WildPatchConfig> {
         super(WildPatchConfig.CODEC);
     }
 
+    /**
+     * Worldgen entry point: a failure skips this patch instead of crashing
+     * the chunk generation (review 1, m4; SEC-34).
+     */
     @Override
+    @EntryPoint
     public boolean place(FeaturePlaceContext<WildPatchConfig> context) {
-        return placePatch(context.level(), context.chunkGenerator(), context.origin(), context.config(),
-                Options.NATURAL).placed();
+        return Guarded.call("wild_patch", context.origin(), () -> placePatch(context.level(), context.chunkGenerator(),
+                context.origin(), context.config(), Options.NATURAL).placed(), false);
     }
 
     /** Places a patch of {@code config} at {@code origin}. */
@@ -130,7 +137,7 @@ public class WildPatchFeature extends Feature<WildPatchConfig> {
             }
         }
         if (rich) {
-            landmark(level, generator, origin, config, rng, random);
+            landmark(level, generator, origin, config, spots, rng, random);
         }
         BeeNests.Result nest = config.beeNest()
                 .map(n -> BeeNests.place(level, generator, origin, n, rich, options.starter(), rng, random))
@@ -138,21 +145,35 @@ public class WildPatchFeature extends Feature<WildPatchConfig> {
         return new Result(true, List.copyOf(spots), category, rich, nest);
     }
 
+    /** The landmark stands this far beyond the spread (a blob of radius ≈ 1 stays clear of the plants). */
+    static final int LANDMARK_OFFSET = 4;
+
+    /** A landmark keeps this far from every plant: the boulder blob never replaces one. */
+    static final int LANDMARK_CLEARANCE = 2;
+
     /**
      * The landmark of a rich patch (worldgen §5.3): its configured feature
-     * (a mossy boulder) at the edge of the patch, {@code xz_spread + 2}
-     * blocks from the centre, on the surface; nothing if it does not fit.
+     * (a mossy boulder) just outside the patch, {@code xz_spread + 4}
+     * blocks from the centre, on the surface and at least
+     * {@value #LANDMARK_CLEARANCE} blocks from every plant; up to 8 angles
+     * are tried, nothing if none fits.
      */
     static void landmark(WorldGenLevel level, ChunkGenerator generator, BlockPos origin, WildPatchConfig c,
-                         SplitMix64 rng, RandomSource random) {
+                         List<BlockPos> plants, SplitMix64 rng, RandomSource random) {
         c.rich().flatMap(RichConfig::landmark).ifPresent(f -> {
-            double a = rng.nextDouble() * 2 * Math.PI;
-            int d = Math.min(WildPatchConfig.MAX_SPREAD, c.xzSpread()) + 2;
-            int x = origin.getX() + (int) Math.round(StrictMath.cos(a) * d);
-            int z = origin.getZ() + (int) Math.round(StrictMath.sin(a) * d);
-            BlockPos at = new BlockPos(x, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z), z);
-            if (Math.abs(at.getY() - origin.getY()) <= 3) {
-                f.value().place(level, generator, random, at);
+            int d = Math.min(WildPatchConfig.MAX_SPREAD, c.xzSpread()) + LANDMARK_OFFSET;
+            double a0 = rng.nextDouble() * 2 * Math.PI;
+            for (int k = 0; k < 8; k++) {
+                double a = a0 + k * Math.PI / 4;
+                int x = origin.getX() + (int) Math.round(StrictMath.cos(a) * d);
+                int z = origin.getZ() + (int) Math.round(StrictMath.sin(a) * d);
+                BlockPos at = new BlockPos(x, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z), z);
+                boolean clear = plants.stream().allMatch(p -> Math.max(Math.abs(p.getX() - x),
+                        Math.abs(p.getZ() - z)) > LANDMARK_CLEARANCE);
+                if (clear && Math.abs(at.getY() - origin.getY()) <= 3) {
+                    f.value().place(level, generator, random, at);
+                    return;
+                }
             }
         });
     }
@@ -168,24 +189,41 @@ public class WildPatchFeature extends Feature<WildPatchConfig> {
         return null;
     }
 
-    /** Distinct valid positions, at most {@code target}, from at most {@code tries} attempts. */
+    /**
+     * Distinct valid positions, at most {@code target}, from at most
+     * {@code tries} columns (review 1, M4): a try draws a column by the
+     * triangular offset and takes the highest cell of
+     * {@code origin.y ± y_spread} that fits, so uneven ground does not
+     * waste tries; a column drawn again does not count as a try (at most
+     * {@value #DRAW_FACTOR}× {@code tries} draws in all).
+     */
     static List<BlockPos> spots(WorldGenLevel level, BlockPos origin, WildPatchConfig c, SplitMix64 rng, int target,
                                 int tries) {
         List<BlockPos> out = new ArrayList<>(target);
-        Set<BlockPos> seen = new HashSet<>();
+        Set<Long> columns = new HashSet<>();
         int xz = Math.min(WildPatchConfig.MAX_SPREAD, c.xzSpread());
         int y = Math.min(WildPatchConfig.MAX_SPREAD, c.ySpread());
-        for (int t = 0; t < tries && out.size() < target; t++) {
+        int used = 0;
+        for (int draw = 0; draw < tries * DRAW_FACTOR && used < tries && out.size() < target; draw++) {
             int dx = rng.nextInt(xz + 1) - rng.nextInt(xz + 1);
             int dz = rng.nextInt(xz + 1) - rng.nextInt(xz + 1);
-            int dy = rng.nextInt(2 * y + 1) - y;
-            BlockPos p = origin.offset(dx, dy, dz);
-            if (seen.add(p) && fits(level, p, c)) {
-                out.add(p);
+            if (!columns.add(((long) dx << 32) ^ (dz & 0xFFFFFFFFL))) {
+                continue;
+            }
+            used++;
+            for (int dy = y; dy >= -y; dy--) {
+                BlockPos p = origin.offset(dx, dy, dz);
+                if (fits(level, p, c)) {
+                    out.add(p);
+                    break;
+                }
             }
         }
         return out;
     }
+
+    /** Draw limit per try when columns repeat. */
+    static final int DRAW_FACTOR = 4;
 
     /** Air or replaceable, no fluid, soil below, open to the sky (worldgen §3.2 item 3). */
     static boolean fits(WorldGenLevel level, BlockPos p, WildPatchConfig c) {

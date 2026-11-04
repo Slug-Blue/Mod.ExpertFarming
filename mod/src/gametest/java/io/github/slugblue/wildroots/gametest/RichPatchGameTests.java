@@ -53,7 +53,8 @@ public final class RichPatchGameTests {
                     WildPatchGameTests.TEST);
             helper.assertTrue(r.placed() && r.rich(), "rich patch not placed: " + r);
             helper.assertTrue(allRich(level, r, true), "a plant without the rich flag");
-            helper.assertTrue(r.plants().size() >= 12, "rich patch with " + r.plants().size() + " plants");
+            helper.assertTrue(r.plants().size() >= 14 && r.plants().size() <= 20,
+                    "rich patch with " + r.plants().size() + " plants");
             boolean boulder = false;
             for (BlockPos q : BlockPos.betweenClosed(origin.offset(-9, -1, -9), origin.offset(9, 4, 9))) {
                 if (level.getBlockState(q).is(Blocks.MOSSY_COBBLESTONE)) {
@@ -66,6 +67,26 @@ public final class RichPatchGameTests {
                     "rich patch without a nest");
             PlantBlockEntity be = (PlantBlockEntity) level.getBlockEntity(r.plants().get(0));
             helper.assertTrue(be.live(level).isPresent(), "rich wild genome not realised");
+        } finally {
+            sky.clear();
+        }
+        helper.succeed();
+    }
+
+    /** Review M4: 5 rich patches (5 seeds) on flat ground each have 14–20 plants. */
+    @GameTest(template = FLOOR, batch = "wr153_sky_counts")
+    public static void richCountsMatchTheConfig(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        SkyPlatform sky = SkyPlatform.build(helper, 12);
+        try {
+            WildPatchConfig c = alwaysRich(level, 0).withBeeNest(Optional.empty());
+            for (int i = 0; i < 5; i++) {
+                sky.fill(Blocks.GRASS_BLOCK.defaultBlockState());
+                WildPatchFeature.Result r = WildPatchGameTests.place(level, sky.surface().offset(i - 2, 0, 0), c,
+                        WildPatchGameTests.TEST);
+                int k = r.plants().size();
+                helper.assertTrue(r.placed() && r.rich() && k >= 14 && k <= 20, "rich patch " + i + ": " + k);
+            }
         } finally {
             sky.clear();
         }

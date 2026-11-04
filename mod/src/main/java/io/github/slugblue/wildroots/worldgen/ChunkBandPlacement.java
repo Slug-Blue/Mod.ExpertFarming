@@ -3,6 +3,8 @@ package io.github.slugblue.wildroots.worldgen;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import io.github.slugblue.wildroots.core.registry.ModPlacementModifiers;
+import io.github.slugblue.wildroots.core.safety.EntryPoint;
+import io.github.slugblue.wildroots.core.safety.Guarded;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.levelgen.placement.PlacementContext;
@@ -47,8 +49,10 @@ public final class ChunkBandPlacement extends PlacementFilter {
     }
 
     @Override
+    @EntryPoint
     protected boolean shouldPlace(PlacementContext context, RandomSource random, BlockPos pos) {
-        return candidate(context.getLevel().getSeed(), pos.getX() >> 4, pos.getZ() >> 4);
+        return Guarded.call("chunk_band", pos, () -> candidate(context.getLevel().getSeed(), pos.getX() >> 4,
+                pos.getZ() >> 4), false);
     }
 
     @Override
