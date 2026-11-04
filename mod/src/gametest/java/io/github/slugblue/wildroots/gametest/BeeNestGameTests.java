@@ -56,7 +56,7 @@ public final class BeeNestGameTests {
     static void assertNest(GameTestHelper helper, ServerLevel level, BlockPos pos, BlockPos origin) {
         helper.assertTrue(level.getBlockState(pos).is(Blocks.BEE_NEST), "no bee_nest at " + pos);
         double d = horizontal(pos, origin);
-        helper.assertTrue(d >= 5 && d <= 17, "nest at distance " + d);
+        helper.assertTrue(d >= 5 && d <= 16, "nest at distance " + d);
         BeehiveBlockEntity hive = (BeehiveBlockEntity) level.getBlockEntity(pos);
         helper.assertTrue(hive.getOccupantCount() >= 2 && hive.getOccupantCount() <= 3,
                 "bees in the nest " + hive.getOccupantCount());
@@ -84,6 +84,44 @@ public final class BeeNestGameTests {
             BlockPos nest = r.nest().pos();
             helper.assertTrue(trunks.stream().anyMatch(t -> horizontal(nest, t) <= 1.01),
                     "nest not on a trunk: " + nest);
+        } finally {
+            sky.clear();
+        }
+        helper.succeed();
+    }
+
+    /**
+     * Review M1: the patch origin on the last column of its chunk and trees
+     * 16 blocks away on the far side. Every nest stays within 16 blocks and
+     * inside the 3×3 chunks around the origin chunk (the write region of a
+     * decoration step), and a refused write is never reported as a nest.
+     */
+    @GameTest(template = FLOOR, batch = "wr151_sky_edge")
+    public static void nestStaysInTheWriteRegionAtAChunkEdge(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        SkyPlatform sky = SkyPlatform.build(helper, 26);
+        try {
+            BlockPos s0 = sky.surface();
+            int shift = ((15 - (s0.getX() & 15) + 8) & 15) - 8;
+            BlockPos origin = s0.offset(shift, 0, 0);
+            helper.assertTrue((origin.getX() & 15) == 15, "origin not on the chunk edge");
+            for (int dz = -4; dz <= 4; dz += 4) {
+                tree(level, origin.offset(16, 0, dz));
+            }
+            WildPatchFeature.Result r = WildPatchGameTests.place(level, origin,
+                    withNest(level, List.of("tree"), 14, 16), WildPatchGameTests.TEST);
+            helper.assertTrue(r.placed(), "patch not placed");
+            for (BlockPos q : BlockPos.betweenClosed(origin.offset(-24, -2, -24), origin.offset(24, 10, 24))) {
+                if (level.getBlockState(q).is(Blocks.BEE_NEST)) {
+                    helper.assertTrue(io.github.slugblue.wildroots.worldgen.WriteRegion.nestSpot(origin.getX(),
+                            origin.getZ(), q.getX(), q.getZ()), "nest outside the write region at " + q);
+                }
+            }
+            if (r.nest().kind() == BeeNests.Kind.TREE) {
+                assertNest(helper, level, r.nest().pos(), origin);
+            } else {
+                helper.assertTrue(r.nest().kind() == BeeNests.Kind.NONE, "nest " + r.nest());
+            }
         } finally {
             sky.clear();
         }

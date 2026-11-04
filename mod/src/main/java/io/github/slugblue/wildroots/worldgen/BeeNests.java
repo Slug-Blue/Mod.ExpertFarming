@@ -52,12 +52,14 @@ public final class BeeNests {
     static final int TRUNK_DESCENT = 10;
     /** Horizontal reach from a leafy column to its trunk. */
     static final int CROWN_RADIUS = 2;
-    /** Crowns searched per patch: ≤ 3 × 250 block reads (worldgen §12.2 budget). */
-    static final int MAX_CROWNS = 3;
+    /** Crowns searched per patch: one, ≤ 250 block reads (worldgen §12.2, nest ≈ 300). */
+    static final int MAX_CROWNS = 1;
     /** Vertical reach of a nest from the patch centre. */
     static final int MAX_DY = 12;
     /** A lone tree stands on ground at most this far above or below the patch centre. */
     static final int LONE_TREE_DY = 4;
+    /** Crown radius plus the hive of the tree decorator: the lone tree box that must stay in the region. */
+    static final int LONE_TREE_MARGIN = 3;
 
     private BeeNests() {
     }
@@ -150,13 +152,13 @@ public final class BeeNests {
                                 continue;
                             }
                             BlockPos log = p.offset(dx, -d, dz);
-                            if (!level.getBlockState(log).is(BlockTags.LOGS)) {
+                            if (!within(center, log) || !level.getBlockState(log).is(BlockTags.LOGS)) {
                                 continue;
                             }
                             for (Direction side : SIDES) {
                                 BlockPos air = log.relative(side);
-                                if (level.getBlockState(air).isAir() && within(center, air)) {
-                                    setNest(level, air, side, c, random);
+                                if (within(center, air) && level.getBlockState(air).isAir()
+                                        && setNest(level, air, side, c, random)) {
                                     return new Result(Kind.TREE, air);
                                 }
                             }
@@ -181,8 +183,8 @@ public final class BeeNests {
             for (Direction side : SIDES) {
                 BlockPos n = p.relative(side);
                 int below = level.getHeight(Heightmap.Types.WORLD_SURFACE, n.getX(), n.getZ()) - 1;
-                if (top - below >= 2 && level.getBlockState(n).isAir() && within(center, p)) {
-                    setNest(level, p, side, c, random);
+                if (top - below >= 2 && within(center, p) && level.getBlockState(n).isAir()
+                        && setNest(level, p, side, c, random)) {
                     return new Result(Kind.CLIFF, p);
                 }
             }
@@ -201,7 +203,8 @@ public final class BeeNests {
             int y = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, col.getX(), col.getZ());
             BlockPos at = col.atY(y);
             BlockState ground = level.getBlockState(at.below());
-            if (Math.abs(at.getY() - center.getY()) > LONE_TREE_DY
+            if (!WriteRegion.containsBox(center.getX(), center.getZ(), at.getX(), at.getZ(), LONE_TREE_MARGIN)
+                    || Math.abs(at.getY() - center.getY()) > LONE_TREE_DY
                     || !(ground.is(Blocks.GRASS_BLOCK) || ground.is(Blocks.DIRT)) || !level.getBlockState(at).canBeReplaced()
                     || !flat(level, at)) {
                 continue;
@@ -226,19 +229,24 @@ public final class BeeNests {
         return true;
     }
 
-    /** Horizontally within reach of the centre and at most {@value #MAX_DY} blocks above or below it. */
+    /**
+     * At most 16 blocks from the centre horizontally, inside the 3×3 write
+     * region of the decoration step ({@link WriteRegion}) and at most
+     * {@value #MAX_DY} blocks above or below the centre.
+     */
     static boolean within(BlockPos center, BlockPos p) {
-        if (Math.abs(p.getY() - center.getY()) > MAX_DY) {
-            return false;
-        }
-        long dx = p.getX() - center.getX();
-        long dz = p.getZ() - center.getZ();
-        return dx * dx + dz * dz <= (long) (BeeNestConfig.MAX_DISTANCE + 1) * (BeeNestConfig.MAX_DISTANCE + 1);
+        return Math.abs(p.getY() - center.getY()) <= MAX_DY
+                && WriteRegion.nestSpot(center.getX(), center.getZ(), p.getX(), p.getZ());
     }
 
-    /** A vanilla {@code bee_nest} facing {@code facing} with 2–3 bees stored as occupants. */
-    static void setNest(WorldGenLevel level, BlockPos pos, Direction facing, BeeNestConfig c, RandomSource random) {
-        level.setBlock(pos, Blocks.BEE_NEST.defaultBlockState().setValue(BeehiveBlock.FACING, facing), 2);
+    /**
+     * A vanilla {@code bee_nest} facing {@code facing} with 2–3 bees stored
+     * as occupants; {@code false} when the level refused the block.
+     */
+    static boolean setNest(WorldGenLevel level, BlockPos pos, Direction facing, BeeNestConfig c, RandomSource random) {
+        if (!level.setBlock(pos, Blocks.BEE_NEST.defaultBlockState().setValue(BeehiveBlock.FACING, facing), 2)) {
+            return false;
+        }
         if (level.getBlockEntity(pos) instanceof BeehiveBlockEntity hive) {
             int bees = c.bees().sample(random);
             for (int i = 0; i < bees; i++) {
@@ -247,5 +255,6 @@ public final class BeeNests {
                 hive.storeBee(tag, random.nextInt(599), false);
             }
         }
+        return true;
     }
 }
