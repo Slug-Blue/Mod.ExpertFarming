@@ -49,6 +49,10 @@ import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
  *   the passport: origin, category, {@code rich}, {@code starter}. The
  *   genome is not generated here; it is realised on the first server access
  *   (worldgen §3.3).</li>
+ *   <li>Rich (worldgen §5): the patch roll against {@code rich.chance},
+ *   never the starter patch and never closer than 256 blocks to the world
+ *   spawn ({@link RichRules}); a rich patch has 14–20 plants, +50 % tries,
+ *   a landmark at its edge and a certain nest.</li>
  *   <li>The bee nest ({@link BeeNests}, worldgen §7), from the same patch
  *   RNG.</li>
  * </ol>
@@ -99,9 +103,17 @@ public class WildPatchFeature extends Feature<WildPatchConfig> {
             }
             category = options.fallbackCategory();
         }
-        boolean rich = false;
-        int target = Math.min(WildPatchConfig.MAX_PLANTS, options.plants().orElse(config.plants()).sample(random));
+        double roll = rng.nextDouble();
+        BlockPos spawn = new BlockPos(level.getLevelData().getXSpawn(), 0, level.getLevelData().getZSpawn());
+        boolean rich = config.rich().isPresent() && RichRules.rich(roll, config.rich().get().chance(),
+                options.starter(), origin.getX() - spawn.getX(), origin.getZ() - spawn.getZ(),
+                config.rich().get().minFromSpawn());
+        IntProvider plants = options.plants().orElse(rich ? config.rich().get().plants() : config.plants());
+        int target = Math.min(WildPatchConfig.MAX_PLANTS, plants.sample(random));
         int tries = options.tries() > 0 ? options.tries() : config.tries();
+        if (rich) {
+            tries += tries / 2;
+        }
         List<BlockPos> spots = spots(level, origin, config, rng, target, tries);
         if (spots.size() < Math.min(config.minPlants(), target)) {
             return Result.NONE;
@@ -117,10 +129,32 @@ public class WildPatchFeature extends Feature<WildPatchConfig> {
                 plant.initWild(config.species(), passport);
             }
         }
+        if (rich) {
+            landmark(level, generator, origin, config, rng, random);
+        }
         BeeNests.Result nest = config.beeNest()
                 .map(n -> BeeNests.place(level, generator, origin, n, rich, options.starter(), rng, random))
                 .orElse(BeeNests.Result.NONE);
         return new Result(true, List.copyOf(spots), category, rich, nest);
+    }
+
+    /**
+     * The landmark of a rich patch (worldgen §5.3): its configured feature
+     * (a mossy boulder) at the edge of the patch, {@code xz_spread + 2}
+     * blocks from the centre, on the surface; nothing if it does not fit.
+     */
+    static void landmark(WorldGenLevel level, ChunkGenerator generator, BlockPos origin, WildPatchConfig c,
+                         SplitMix64 rng, RandomSource random) {
+        c.rich().flatMap(RichConfig::landmark).ifPresent(f -> {
+            double a = rng.nextDouble() * 2 * Math.PI;
+            int d = Math.min(WildPatchConfig.MAX_SPREAD, c.xzSpread()) + 2;
+            int x = origin.getX() + (int) Math.round(StrictMath.cos(a) * d);
+            int z = origin.getZ() + (int) Math.round(StrictMath.sin(a) * d);
+            BlockPos at = new BlockPos(x, level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, x, z), z);
+            if (Math.abs(at.getY() - origin.getY()) <= 3) {
+                f.value().place(level, generator, random, at);
+            }
+        });
     }
 
     /** First category of {@code categories} whose tag {@code wildroots:patch_category/<id>} holds {@code biome}. */

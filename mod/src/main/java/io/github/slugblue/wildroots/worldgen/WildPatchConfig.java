@@ -28,10 +28,12 @@ import net.minecraft.world.level.levelgen.feature.configurations.FeatureConfigur
  * @param replaceable blocks a plant may replace besides air
  * @param stages      shares of mature / flowering / seeding plants
  * @param beeNest     bee nest step (worldgen §7), absent for wind-pollinated species
+ * @param rich        rich patches (worldgen §5), absent: never rich
  */
 public record WildPatchConfig(String species, List<String> categories, IntProvider plants, int minPlants, int tries,
                               int xzSpread, int ySpread, HolderSet<Block> soil, HolderSet<Block> replaceable,
-                              Stages stages, Optional<BeeNestConfig> beeNest) implements FeatureConfiguration {
+                              Stages stages, Optional<BeeNestConfig> beeNest,
+                              Optional<RichConfig> rich) implements FeatureConfiguration {
 
     /** Plants per patch, hard limit (worldgen §12.1). */
     public static final int MAX_PLANTS = 24;
@@ -60,12 +62,19 @@ public record WildPatchConfig(String species, List<String> categories, IntProvid
             RegistryCodecs.homogeneousList(Registries.BLOCK).fieldOf("replaceable")
                     .forGetter(WildPatchConfig::replaceable),
             Stages.CODEC.fieldOf("stages").forGetter(WildPatchConfig::stages),
-            BeeNestConfig.CODEC.optionalFieldOf("bee_nest").forGetter(WildPatchConfig::beeNest)
+            BeeNestConfig.CODEC.optionalFieldOf("bee_nest").forGetter(WildPatchConfig::beeNest),
+            RichConfig.CODEC.optionalFieldOf("rich").forGetter(WildPatchConfig::rich)
     ).apply(i, WildPatchConfig::new));
 
     /** The same configuration with another nest block (tests, starter patch). */
     public WildPatchConfig withBeeNest(Optional<BeeNestConfig> nest) {
         return new WildPatchConfig(species, categories, plants, minPlants, tries, xzSpread, ySpread, soil, replaceable,
-                stages, nest);
+                stages, nest, rich);
+    }
+
+    /** The same configuration with another rich block (tests). */
+    public WildPatchConfig withRich(Optional<RichConfig> r) {
+        return new WildPatchConfig(species, categories, plants, minPlants, tries, xzSpread, ySpread, soil, replaceable,
+                stages, beeNest, r);
     }
 }

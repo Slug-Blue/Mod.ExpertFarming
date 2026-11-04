@@ -26,6 +26,18 @@
       "flowering": 0.3,
       "seeding": 0.15
     },
+    "rich": {
+      "chance": 0.08,
+      "min_distance_from_spawn": 256,
+      "plants": {
+        "type": "minecraft:uniform",
+        "value": {
+          "min_inclusive": 14,
+          "max_inclusive": 20
+        }
+      },
+      "landmark": "wildroots:patch_landmark/boulder"
+    },
     "bee_nest": {
       "chance": 0.6,
       "rich_chance": 1.0,
