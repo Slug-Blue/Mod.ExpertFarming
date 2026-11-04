@@ -204,6 +204,46 @@ public final class StarterPatchGameTests {
     }
 
     /**
+     * Review 2, T6: fallback 2 makes a 5x5 stone pad grass; when the patch
+     * then does not fit (torches over every cell, no spot), the pad is stone
+     * again and the torches stay.
+     */
+    @GameTest(template = FLOOR, batch = "wr152_sky_pad")
+    public static void failedFallbackPadIsRestored(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        SkyPlatform sky = SkyPlatform.build(helper, 2);
+        try {
+            sky.fill(Blocks.STONE.defaultBlockState());
+            for (int dx = -2; dx <= 2; dx++) {
+                for (int dz = -2; dz <= 2; dz++) {
+                    level.setBlock(sky.center.offset(dx, 1, dz), Blocks.TORCH.defaultBlockState(), 2);
+                }
+            }
+            BlockPos centre = sky.center.offset(-28, 1, 0);
+            BlockPos only = sky.center;
+            StarterPatch.Placement p = StarterPatch.place(level, centre, q -> q.equals(only));
+            helper.assertTrue(p.outcome().failure(), "outcome " + p);
+            for (int dx = -2; dx <= 2; dx++) {
+                for (int dz = -2; dz <= 2; dz++) {
+                    helper.assertTrue(level.getBlockState(sky.center.offset(dx, 0, dz)).is(Blocks.STONE),
+                            "pad not restored at " + dx + "," + dz + ": "
+                                    + level.getBlockState(sky.center.offset(dx, 0, dz)));
+                    helper.assertTrue(level.getBlockState(sky.center.offset(dx, 1, dz)).is(Blocks.TORCH),
+                            "torch gone at " + dx + "," + dz);
+                }
+            }
+            // the pad itself was made: the same call without the failure turns the 5x5 into grass
+            List<java.util.Map.Entry<BlockPos, net.minecraft.world.level.block.state.BlockState>> changed =
+                    StarterPatch.grassPad(level, sky.center);
+            helper.assertTrue(changed.size() == 25 && level.getBlockState(sky.center).is(Blocks.GRASS_BLOCK),
+                    "grassPad changed " + changed.size());
+        } finally {
+            sky.clear();
+        }
+        helper.succeed();
+    }
+
+    /**
      * The placement itself (search restricted to a sky platform, no patch
      * there yet): 10–14 starter plants in the ring 24–96, never rich, a nest
      * within 16 blocks (a lone birch: there are no trees).
