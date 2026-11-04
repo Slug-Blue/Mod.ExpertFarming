@@ -255,6 +255,27 @@ public final class HarvestGameTests {
         expectLotWithoutFathers(helper, PlantFixtures.PLANT, 2);
     }
 
+    /**
+     * Batch 3 mutation pass (survivor M6): the explosion test above passes even without the
+     * EXPLOSION_RADIUS check, because the vanilla explosion path never reaches it with a Player as
+     * THIS_ENTITY. Here the loot params carry both: a player and an explosion radius is automation
+     * (no fathers); the same params without the radius are a player harvest (fathers kept).
+     */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
+    public static void explosionRadiusWithAPlayerEntityIsAutomation(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        PlantBlockEntity be = seedPlant(helper, PlantFixtures.PLANT, 93);
+        BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
+        Player player = helper.makeMockSurvivalPlayer();
+        net.minecraft.world.level.block.state.BlockState state = level.getBlockState(abs);
+        LotNbt.Lot exploded = onlyLot(HarvestService.drops(state, params(level, abs, be, player)
+                .withParameter(LootContextParams.EXPLOSION_RADIUS, 1.0f), RandomSource.create(93)));
+        helper.assertTrue(exploded.fathers().isEmpty() && exploded.pOut() == 0, "explosion with a player kept the fathers");
+        LotNbt.Lot harvested = onlyLot(HarvestService.drops(state, params(level, abs, be, player), RandomSource.create(93)));
+        helper.assertTrue(harvested.fathers().size() == 3 && harvested.pOut() > 0, "control: player harvest lost the fathers");
+        helper.succeed();
+    }
+
     /** Minor 4: getDrops has no side effects; the mutation flag is consumed only by the real break. */
     @GameTest(template = SmokeGameTests.FLOOR_3X3X3, timeoutTicks = 100)
     public static void getDropsTwiceDoesNotConsumeTheRareClaim(GameTestHelper helper) {
