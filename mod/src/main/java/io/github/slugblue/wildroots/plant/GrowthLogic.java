@@ -8,6 +8,7 @@ import io.github.slugblue.wildroots.genetics.api.Timing;
 import io.github.slugblue.wildroots.genetics.api.Traits;
 import io.github.slugblue.wildroots.genetics.model.TraitId;
 import io.github.slugblue.wildroots.genetics.random.Hash64;
+import io.github.slugblue.wildroots.pollination.PollinationService;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -156,6 +157,8 @@ public final class GrowthLogic {
     /**
      * Stage change: recompute {@code E} and {@code P}, set stage, size,
      * ailing and variant in one {@code setBlock}, refresh the cached chance.
+     * Entering flowering starts a new cycle (empty pending lot); flowering →
+     * seeds is the seed set (WR-141, §10.2).
      */
     public static void advance(ServerLevel level, BlockPos pos, BlockState state, PlantBlockEntity be,
                                PlantBlockEntity.Live live, int newStage) {
@@ -163,6 +166,14 @@ public final class GrowthLogic {
         Optional<Phenotype> p = phenotype(live, env);
         if (p.isEmpty()) {
             return;
+        }
+        int oldStage = FieldPlantBlock.stage(state);
+        if (newStage == FieldPlantBlock.FLOWER_STAGE && oldStage < FieldPlantBlock.FLOWER_STAGE) {
+            // a new flowering cycle: donors and fathers of an earlier cycle do not carry over
+            be.setPendingLot(null);
+        } else if (newStage == FieldPlantBlock.SEED_STAGE && oldStage == FieldPlantBlock.FLOWER_STAGE) {
+            // seed set, once per cycle, while the plant is still in the bloom index (§10.2)
+            PollinationService.seedSet(level, pos, be, live);
         }
         BlockState next = look(state.setValue(FieldPlantBlock.STAGE, newStage), live.def(), p.get());
         level.setBlock(pos, next, 2);
