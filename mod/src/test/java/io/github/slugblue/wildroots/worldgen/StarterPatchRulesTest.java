@@ -30,4 +30,34 @@ class StarterPatchRulesTest {
         assertEquals(Outcome.ALREADY_DONE, StarterPatchRules.decide(StarterPatch.FORCE, true, true, 99));
         assertEquals(Outcome.DISABLED, StarterPatchRules.decide(StarterPatch.FALSE, false, false, 0));
     }
+
+    /** Review 2, T1: a miss with fewer than half of the ring columns loaded is NOT_LOADED. */
+    @Test
+    void missIsNotLoadedBelowHalf() {
+        assertEquals(Outcome.NOT_LOADED, StarterPatchRules.miss(0, 0), "no columns at all");
+        assertEquals(Outcome.NOT_LOADED, StarterPatchRules.miss(100, 51));
+        assertEquals(Outcome.NOT_FOUND, StarterPatchRules.miss(100, 50), "exactly half loaded is representative");
+        assertEquals(Outcome.NOT_FOUND, StarterPatchRules.miss(100, 0));
+    }
+
+    /** Review 2, T1: the third failed attempt gives up, earlier ones retry. */
+    @Test
+    void thirdFailureGivesUp() {
+        org.junit.jupiter.api.Assertions.assertFalse(StarterPatchRules.giveUp(1));
+        org.junit.jupiter.api.Assertions.assertFalse(StarterPatchRules.giveUp(2));
+        org.junit.jupiter.api.Assertions.assertTrue(StarterPatchRules.giveUp(3));
+        assertEquals(3, StarterPatchRules.MAX_ATTEMPTS);
+    }
+
+    /** Only a placed or marked patch sets the flag; only NOT_FOUND / NOT_LOADED count an attempt. */
+    @Test
+    void successAndFailureOutcomes() {
+        for (Outcome o : Outcome.values()) {
+            boolean ok = o == Outcome.MARKED_EXISTING || o == Outcome.PLACED || o == Outcome.FALLBACK
+                    || o == Outcome.ISLAND;
+            boolean miss = o == Outcome.NOT_FOUND || o == Outcome.NOT_LOADED;
+            assertEquals(ok, o.success(), o.name());
+            assertEquals(miss, o.failure(), o.name());
+        }
+    }
 }

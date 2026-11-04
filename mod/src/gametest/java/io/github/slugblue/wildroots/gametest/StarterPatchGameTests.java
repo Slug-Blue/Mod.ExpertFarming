@@ -1,11 +1,15 @@
 package io.github.slugblue.wildroots.gametest;
 
 import io.github.slugblue.wildroots.WildRoots;
+import io.github.slugblue.wildroots.core.config.ServerConfig;
 import io.github.slugblue.wildroots.plant.PlantBlockEntity;
 import io.github.slugblue.wildroots.worldgen.StarterPatch;
+import io.github.slugblue.wildroots.worldgen.StarterPatchRules;
 import io.github.slugblue.wildroots.worldgen.StarterPatchRules.Outcome;
 import io.github.slugblue.wildroots.worldgen.WildPatchFeature;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
@@ -31,21 +35,170 @@ public final class StarterPatchGameTests {
     }
 
     /**
-     * On server start the starter step ran once. The GameTest world is kept
-     * between runs, so after the first run it is an existing world: then no
-     * data file and no patch (the log says so); on a new world the flag is
-     * set. Either way the outcome matches the world data.
+     * On server start the starter step ran once. A world reused from an
+     * earlier run is an existing world: then no data file and no patch (the
+     * log says so). A placed or marked patch sets the flag; a failed search
+     * (NOT_FOUND / NOT_LOADED) counts an attempt and leaves the flag unset
+     * (review 2, T1). Later tests may retry (login), so the flag is only
+     * checked for a success here.
      */
     @GameTest(template = FLOOR)
     public static void starterStepRanOnStart(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        StarterPatch.Placement p = StarterPatch.last().orElseThrow(() -> new IllegalStateException("did not run"));
-        org.slf4j.LoggerFactory.getLogger(StarterPatchGameTests.class).info("WR-152 starter on start: {}", p);
-        boolean done = StarterPatch.data(level.getServer()).map(StarterPatch.Data::done).orElse(false);
+        StarterPatch.Placement p = StarterPatch.atStart().orElseThrow(() -> new IllegalStateException("did not run"));
+        LOG.info("WR-152 starter on start: {} ({})", p, p.survey());
+        Optional<StarterPatch.Data> data = StarterPatch.data(level.getServer());
         if (p.outcome() == Outcome.EXISTING_WORLD) {
-            helper.assertTrue(StarterPatch.data(level.getServer()).isEmpty(), "existing world got the data file");
+            helper.assertTrue(data.isEmpty(), "existing world got the data file");
+        } else if (p.outcome().success()) {
+            helper.assertTrue(data.map(StarterPatch.Data::done).orElse(false), "starter_patch_done not set after " + p);
+        } else if (p.outcome().failure()) {
+            helper.assertTrue(data.isPresent() && data.get().attempts() >= 1,
+                    "a failed start attempt was not counted: " + p);
+        }
+        helper.succeed();
+    }
+
+    static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(StarterPatchGameTests.class);
+
+    /**
+     * Centres of the loaded area: every column of the ring 24-128 has its
+     * 22-box loaded. Reads loaded chunks only.
+     */
+    static List<BlockPos> loadedCentres(ServerLevel level) {
+        List<BlockPos> out = new ArrayList<>();
+        BlockPos spawn = level.getSharedSpawnPos();
+        for (int x = -1024; x <= 1024; x += 32) {
+            for (int z = -1024; z <= 1024; z += 32) {
+                BlockPos c = new BlockPos(spawn.getX() + x, 64, spawn.getZ() + z);
+                boolean corners = true;
+                for (int[] o : new int[][] {{0, 0}, {150, 150}, {-150, 150}, {150, -150}, {-150, -150}}) {
+                    corners &= level.getChunkSource().getChunkNow((c.getX() + o[0]) >> 4, (c.getZ() + o[1]) >> 4)
+                            != null;
+                }
+                if (corners && StarterPatch.loadedShare(level, c) >= 0.999) {
+                    out.add(c);
+                }
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Review 2, T1: the real search (no area predicate, no platform) centred
+     * on a fully loaded area of the real terrain places a patch or marks an
+     * existing one whenever the survey accepted a column; it never loads a
+     * chunk. Own batch: it writes into the terrain.
+     */
+    @GameTest(template = FLOOR, batch = "wr152_real_search", timeoutTicks = 400)
+    public static void realSearchOnLoadedTerrainPlacesOrMarks(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        List<BlockPos> centres = loadedCentres(level);
+        helper.assertTrue(!centres.isEmpty(), "no fully loaded area of the ring size");
+        BlockPos best = null;
+        StarterPatch.Survey bestSurvey = null;
+        for (BlockPos c : centres.subList(0, Math.min(16, centres.size()))) {
+            StarterPatch.Survey sv = StarterPatch.survey(level, c);
+            if (bestSurvey == null || sv.accepted() > bestSurvey.accepted()) {
+                best = c;
+                bestSurvey = sv;
+            }
+        }
+        int loaded = level.getChunkSource().getLoadedChunksCount();
+        StarterPatch.Placement p = StarterPatch.place(level, best);
+        LOG.info("WR-152 real search at {} ({} loaded centres): {}; survey {}", best, centres.size(), p, bestSurvey);
+        helper.assertTrue(level.getChunkSource().getLoadedChunksCount() == loaded, "the real search loaded chunks");
+        helper.assertTrue(bestSurvey.unloaded() == 0, "loaded centre with unloaded columns: " + bestSurvey);
+        if (bestSurvey.accepted() > 0) {
+            helper.assertTrue(p.outcome().success(), "accepted columns but no patch: " + p + "; " + bestSurvey);
+            helper.assertTrue(p.outcome() == Outcome.MARKED_EXISTING ? p.plants() >= 5
+                    : p.plants() >= 10 && p.plants() <= 14, "plants " + p);
+            List<List<BlockPos>> patches = StarterPatch.existingPatches(level, p.origin(), 0, 8);
+            helper.assertTrue(!patches.isEmpty() && patches.get(0).stream().allMatch(q -> starter(level, q)),
+                    "patch not starter: " + p);
         } else {
-            helper.assertTrue(done, "starter_patch_done not set after " + p);
+            helper.assertTrue(p.outcome() == Outcome.NOT_FOUND, "no accepted column but " + p);
+        }
+        helper.succeed();
+    }
+
+    /**
+     * Review 2, T1: a failed search does not set the flag. Each NOT_FOUND
+     * counts an attempt (kept through NBT), the third sets the flag; then the
+     * step is ALREADY_DONE. A fresh Data, so the world flag is not touched.
+     */
+    @GameTest(template = FLOOR)
+    public static void failedAttemptsCountAndTheThirdGivesUp(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        List<BlockPos> centres = loadedCentres(level);
+        helper.assertTrue(!centres.isEmpty(), "no fully loaded area");
+        BlockPos centre = centres.get(0);
+        StarterPatch.Data[] data = {new StarterPatch.Data()};
+        for (int i = 1; i <= 3; i++) {
+            StarterPatch.Placement p = StarterPatch.attempt(level, () -> data[0], centre, q -> false,
+                    StarterPatch.Trigger.START);
+            helper.assertTrue(p.outcome() == Outcome.NOT_FOUND, "attempt " + i + ": " + p);
+            helper.assertTrue(p.survey().columns() > 0 && p.survey().unloaded() == 0, "survey " + p.survey());
+            helper.assertTrue(data[0].attempts() == i, "attempts " + data[0].attempts() + " after " + i);
+            helper.assertTrue(data[0].done() == (i == 3), "done " + data[0].done() + " after attempt " + i);
+            helper.assertTrue(data[0].isDirty(), "the counter is not saved");
+            data[0] = data[0].reloaded();
+            helper.assertTrue(data[0].attempts() == i && data[0].done() == (i == 3), "NBT lost the counter");
+        }
+        helper.assertTrue(StarterPatchRules.decide(ServerConfig.StarterPatch.TRUE, true, data[0].done(), 99)
+                == Outcome.ALREADY_DONE, "not done after three failures");
+        helper.succeed();
+    }
+
+    /**
+     * Review 2, T1: a centre far outside the loaded area is NOT_LOADED, counts
+     * one attempt, leaves the flag unset and loads no chunk.
+     */
+    @GameTest(template = FLOOR)
+    public static void unloadedCentreIsNotLoaded(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        int loaded = level.getChunkSource().getLoadedChunksCount();
+        BlockPos far = new BlockPos(1_000_000, 64, -1_000_000);
+        StarterPatch.Data data = new StarterPatch.Data();
+        StarterPatch.Placement p = StarterPatch.attempt(level, () -> data, far, q -> true, StarterPatch.Trigger.LOGIN);
+        helper.assertTrue(level.getChunkSource().getLoadedChunksCount() == loaded, "chunks were loaded");
+        helper.assertTrue(p.outcome() == Outcome.NOT_LOADED, "outcome " + p);
+        helper.assertTrue(p.survey().unloaded() == p.survey().columns() && p.survey().columns() > 0,
+                "survey " + p.survey());
+        helper.assertTrue(data.attempts() == 1 && !data.done(), "attempts " + data.attempts());
+        helper.assertTrue(StarterPatch.loadedShare(level, far) == 0, "far centre counted as loaded");
+        helper.succeed();
+    }
+
+    /**
+     * Review 2, T1: the login retry runs only for a world whose flag is not
+     * set, once per server run, and only with the spawn ring loaded. In the
+     * harness the start attempt often fails (the spawn moves after the spawn
+     * area is prepared), so this is the real recovery path. Own batch: it
+     * may place the starter patch of the world.
+     */
+    @GameTest(template = FLOOR, batch = "wr152_login_retry", timeoutTicks = 400)
+    public static void loginRetryRunsOncePerServerRun(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Optional<StarterPatch.Data> before = StarterPatch.data(level.getServer());
+        boolean pending = before.isPresent() && !before.get().done();
+        int attemptsBefore = before.map(StarterPatch.Data::attempts).orElse(0);
+        double share = StarterPatch.loadedShare(level, level.getSharedSpawnPos());
+        Optional<StarterPatch.Placement> first = StarterPatch.retryOnLogin(level.getServer());
+        Optional<StarterPatch.Placement> second = StarterPatch.retryOnLogin(level.getServer());
+        LOG.info("WR-152 login retry: pending {}, spawn ring loaded {}, first {}, second {}", pending, share, first,
+                second);
+        helper.assertTrue(second.isEmpty(), "second login retry in one run: " + second);
+        if (!pending) {
+            helper.assertTrue(first.isEmpty(), "retry without a failed attempt: " + first);
+        } else if (share >= StarterPatchRules.MIN_LOADED_SHARE) {
+            helper.assertTrue(first.isPresent() && (first.get().outcome().success()
+                    || first.get().outcome().failure()), "login retry did not search: " + first);
+            StarterPatch.Data after = StarterPatch.data(level.getServer()).orElseThrow();
+            helper.assertTrue(first.get().outcome().success() ? after.done()
+                    : after.attempts() == attemptsBefore + 1, "bookkeeping after " + first);
+        } else {
+            helper.assertTrue(first.isEmpty(), "retried with the spawn ring unloaded");
         }
         helper.succeed();
     }
@@ -153,7 +306,7 @@ public final class StarterPatchGameTests {
                             && q.getY() >= SkyPlatform.Y);
             helper.assertTrue(level.getChunkSource().getLoadedChunksCount() == loaded,
                     "loaded chunks " + loaded + " -> " + level.getChunkSource().getLoadedChunksCount());
-            helper.assertTrue(p.outcome() == Outcome.NOT_FOUND || p.outcome() == Outcome.MARKED_EXISTING,
+            helper.assertTrue(p.outcome().failure() || p.outcome() == Outcome.MARKED_EXISTING,
                     "placed at the edge of the loaded area: " + p);
             helper.assertTrue(level.getBlockState(sky.center).is(Blocks.GRASS_BLOCK)
                     && level.getBlockState(sky.center.above()).isAir(), "platform changed");

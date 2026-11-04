@@ -58,6 +58,7 @@ public final class WildRoots {
         MinecraftForge.EVENT_BUS.addListener(BeeEvents::onJoin);
         MinecraftForge.EVENT_BUS.addListener(BeeEvents::onLivingTick);
         MinecraftForge.EVENT_BUS.addListener(StarterPatch::onServerStarted);
+        MinecraftForge.EVENT_BUS.addListener(StarterPatch::onPlayerLoggedIn);
         MinecraftForge.EVENT_BUS.addListener(LocatePatchCommand::onRegisterCommands);
         WrNetwork.register();
         MinecraftForge.EVENT_BUS.addListener(ServerPacketGuard::onLogout);
