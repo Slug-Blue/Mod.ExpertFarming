@@ -117,6 +117,52 @@ public final class StarterPatchGameTests {
         helper.succeed();
     }
 
+    /**
+     * Review M2: near the edge of the loaded area the starter search must
+     * not load a chunk. A platform two chunks inside the edge: its columns
+     * are refused (the nest area would leave the loaded chunks), nothing is
+     * placed, the platform is untouched and the loaded chunk count is the same.
+     */
+    @GameTest(template = FLOOR, batch = "wr152_sky_edge")
+    public static void starterSearchNeverLoadsChunksAtTheEdge(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos start = helper.absolutePos(new BlockPos(8, 0, 8)).atY(SkyPlatform.Y);
+        BlockPos edge = null;
+        for (net.minecraft.core.Direction dir : net.minecraft.core.Direction.Plane.HORIZONTAL) {
+            BlockPos p = start;
+            for (int i = 0; i < 64 && edge == null; i++) {
+                BlockPos next = p.relative(dir, 16);
+                if (level.getChunkSource().getChunkNow(next.getX() >> 4, next.getZ() >> 4) == null) {
+                    // p is in the last loaded chunk in this direction; go back to its inner side
+                    edge = p.relative(dir, -8);
+                }
+                p = next;
+            }
+            if (edge != null) {
+                break;
+            }
+        }
+        helper.assertTrue(edge != null, "no edge of the loaded area found");
+        SkyPlatform sky = SkyPlatform.at(level, edge, 5);
+        try {
+            int loaded = level.getChunkSource().getLoadedChunksCount();
+            BlockPos center = sky.center.offset(-28, 1, 0);
+            SkyPlatform s = sky;
+            StarterPatch.Placement p = StarterPatch.place(level, center,
+                    q -> Math.abs(q.getX() - s.center.getX()) <= 3 && Math.abs(q.getZ() - s.center.getZ()) <= 3
+                            && q.getY() >= SkyPlatform.Y);
+            helper.assertTrue(level.getChunkSource().getLoadedChunksCount() == loaded,
+                    "loaded chunks " + loaded + " -> " + level.getChunkSource().getLoadedChunksCount());
+            helper.assertTrue(p.outcome() == Outcome.NOT_FOUND || p.outcome() == Outcome.MARKED_EXISTING,
+                    "placed at the edge of the loaded area: " + p);
+            helper.assertTrue(level.getBlockState(sky.center).is(Blocks.GRASS_BLOCK)
+                    && level.getBlockState(sky.center.above()).isAir(), "platform changed");
+        } finally {
+            sky.clear();
+        }
+        helper.succeed();
+    }
+
     static int count(List<List<BlockPos>> patches) {
         return patches.stream().mapToInt(List::size).sum();
     }

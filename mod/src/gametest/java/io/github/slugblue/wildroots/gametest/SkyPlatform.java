@@ -36,6 +36,13 @@ final class SkyPlatform {
         return p;
     }
 
+    /** A platform centred on {@code center} (y is {@value #Y}). */
+    static SkyPlatform at(ServerLevel level, BlockPos center, int radius) {
+        SkyPlatform p = new SkyPlatform(level, center.atY(Y), radius);
+        p.fill(Blocks.GRASS_BLOCK.defaultBlockState());
+        return p;
+    }
+
     /** The first air block above the centre (what the heightmap placement gives). */
     BlockPos surface() {
         return center.above();

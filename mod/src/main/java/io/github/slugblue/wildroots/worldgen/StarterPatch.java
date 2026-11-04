@@ -81,6 +81,8 @@ public final class StarterPatch {
     static final int ISLAND_MAX = 160;
     static final int STEP = 4;
     static final int MIN_EXISTING = 5;
+    /** Reach of everything the placement at a column reads or writes (review M2). */
+    static final int AREA = 22;
     static final WildPatchConfig.Stages STAGES = new WildPatchConfig.Stages(0.45f, 0.40f, 0.15f);
 
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -181,7 +183,7 @@ public final class StarterPatch {
             }
             BlockPos origin = LoadedLevelAccess.blockEntity(level, patch.get(0), PlantBlockEntity.class)
                     .map(be -> BlockPos.of(be.data().passport().patchOrigin())).orElse(patch.get(0));
-            config.get().beeNest().ifPresent(n -> {
+            config.get().beeNest().filter(n -> loadedBox(level, origin, AREA)).ifPresent(n -> {
                 SplitMix64 rng = new SplitMix64(Hash64.of(RngKeys.patchSeed(level.getSeed(), origin.asLong()),
                         Hash64.str("starter_nest")));
                 BeeNests.place(level, level.getChunkSource().getGenerator(), origin, n, false, true, rng,
@@ -233,20 +235,23 @@ public final class StarterPatch {
         WildPatchFeature.Options opts = new WildPatchFeature.Options(true, Optional.of(UniformInt.of(10, 14)),
                 Optional.of(STAGES), "meadow", 96);
         for (Column c : sorted) {
-            if (makeGrass) {
-                grassPad(level, c.surface);
-            }
+            List<Map.Entry<BlockPos, BlockState>> pad = makeGrass ? grassPad(level, c.surface) : List.of();
             WildPatchFeature.Result r = ModFeatures.WILD_PATCH.get().placePatch(level,
                     level.getChunkSource().getGenerator(), c.surface.above(), config, opts);
             if (r.placed()) {
                 return Optional.of(new Placement(outcome, c.surface.above(), r.plants().size()));
+            }
+            // the patch did not fit: the terrain goes back as it was (review m1)
+            for (int i = pad.size() - 1; i >= 0; i--) {
+                level.setBlock(pad.get(i).getKey(), pad.get(i).getValue(), 2);
             }
         }
         return Optional.empty();
     }
 
     /** Fallback 2: the 5×5 top becomes grass; on snow podzol, the snow layer goes (worldgen §6.2 item 4). */
-    public static void grassPad(ServerLevel level, BlockPos surface) {
+    public static List<Map.Entry<BlockPos, BlockState>> grassPad(ServerLevel level, BlockPos surface) {
+        List<Map.Entry<BlockPos, BlockState>> changed = new ArrayList<>();
         for (int dx = -2; dx <= 2; dx++) {
             for (int dz = -2; dz <= 2; dz++) {
                 BlockPos col = surface.offset(dx, 0, dz);
@@ -255,20 +260,24 @@ public final class StarterPatch {
                 boolean snow = false;
                 if (level.getBlockState(t).is(Blocks.SNOW)) {
                     // a snow layer counted by the heightmap: it goes, the block under it is the surface
+                    changed.add(Map.entry(t, level.getBlockState(t)));
                     level.setBlock(t, Blocks.AIR.defaultBlockState(), 2);
                     t = t.below();
                     snow = true;
                 }
                 if (level.getBlockState(t.above()).is(Blocks.SNOW)) {
+                    changed.add(Map.entry(t.above(), level.getBlockState(t.above())));
                     level.setBlock(t.above(), Blocks.AIR.defaultBlockState(), 2);
                     snow = true;
                 }
                 snow |= level.getBlockState(t).is(Blocks.SNOW_BLOCK) || level.getBlockState(t).is(Blocks.POWDER_SNOW);
                 if (level.getBlockState(t).getFluidState().isEmpty()) {
+                    changed.add(Map.entry(t, level.getBlockState(t)));
                     level.setBlock(t, (snow ? Blocks.PODZOL : Blocks.GRASS_BLOCK).defaultBlockState(), 2);
                 }
             }
         }
+        return changed;
     }
 
     /** One candidate column: its surface block, score and whether it is already grass. */
@@ -295,10 +304,7 @@ public final class StarterPatch {
     }
 
     static Column column(ServerLevel level, BlockPos at, double dist, SpeciesDef def, WildPatchConfig config) {
-        if (!LoadedLevelAccess.isLoaded(level, at.offset(-8, 0, -8))
-                || !LoadedLevelAccess.isLoaded(level, at.offset(8, 0, 8))
-                || !LoadedLevelAccess.isLoaded(level, at.offset(-8, 0, 8))
-                || !LoadedLevelAccess.isLoaded(level, at.offset(8, 0, -8))) {
+        if (!loadedBox(level, at, AREA)) {
             return null;
         }
         int top = level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, at.getX(), at.getZ()) - 1;
@@ -341,6 +347,24 @@ public final class StarterPatch {
             score += 1;
         }
         return new Column(surface, score, grass, dist);
+    }
+
+    /**
+     * Whether every chunk of the box {@code at ± r} is loaded. The patch,
+     * its nest search (16 + crown 2 + side 1), the lone tree (12 + 3) and the
+     * openness check all read inside {@value #AREA} blocks of the column:
+     * on a {@code ServerLevel} a read of an unloaded chunk would load it
+     * (review M2).
+     */
+    static boolean loadedBox(ServerLevel level, BlockPos at, int r) {
+        for (int cx = (at.getX() - r) >> 4; cx <= (at.getX() + r) >> 4; cx++) {
+            for (int cz = (at.getZ() - r) >> 4; cz <= (at.getZ() + r) >> 4; cz++) {
+                if (level.getChunkSource().getChunkNow(cx, cz) == null) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     /** Openness: within 8 blocks nothing stands 4+ above the surface, except one tree. */
