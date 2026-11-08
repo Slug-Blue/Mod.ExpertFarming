@@ -67,11 +67,11 @@ class BloomIndexTest {
         }
         assertEquals(100_000, idx.size());
         BloomIndex.Sample s = idx.sample(CARROT, new BlockPos(0, 64, 0), 8, 2, 7L);
-        assertTrue(s.visited() <= BloomIndex.MAX_VISITS, "visited " + s.visited());
-        assertEquals(BloomIndex.MAX_VISITS, s.visited());
-        assertTrue(s.count() <= BloomIndex.MAX_CANDIDATES);
+        // the literal of SEC-33, not the constant: a raised constant must fail here (batch 4 mutation M8)
+        assertEquals(1024, s.visited(), "visited " + s.visited());
+        assertTrue(s.count() <= 64);
         int bees = idx.forEachNear(new BlockPos(0, 64, 0), 5, sp -> true, (sp, pos) -> true);
-        assertTrue(bees <= BloomIndex.MAX_VISITS, "bee walk visited " + bees);
+        assertEquals(1024, bees, "bee walk visited " + bees);
     }
 
     @Test

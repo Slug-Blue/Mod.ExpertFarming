@@ -32,10 +32,10 @@ class BloomIndexBoundaryTest {
         assertEquals(5120, idx.size());
         assertEquals(1, idx.chunkCount());
         BloomIndex.Sample s = idx.sample(CARROT, new BlockPos(8, 64, 8), 16, 2, 1L);
-        assertEquals(BloomIndex.MAX_VISITS, s.visited());
+        assertEquals(1024, s.visited());
         assertTrue(s.count() == BloomIndex.MAX_CANDIDATES && s.matched() <= s.visited());
         int bees = idx.forEachNear(new BlockPos(8, 64, 8), 6, sp -> true, (sp, p) -> true);
-        assertEquals(BloomIndex.MAX_VISITS, bees);
+        assertEquals(1024, bees);
         // other species in the same chunk do not use the budget of a carrot query
         BloomIndex mixed = new BloomIndex();
         for (int i = 0; i < 4000; i++) {
