@@ -263,11 +263,20 @@ public final class StarterPatchGameTests {
             helper.assertTrue(d >= 24 && d <= 96, "patch at distance " + d);
             helper.assertTrue(p.plants() >= 10 && p.plants() <= 14, "plants " + p.plants());
             List<BlockPos> plants = StarterPatch.existingPatches(level, p.origin(), 0, 8).get(0);
+            int[] byStage = new int[6];
             for (BlockPos plant : plants) {
                 PlantBlockEntity be = (PlantBlockEntity) level.getBlockEntity(plant);
                 helper.assertTrue(be.data().passport().starter() && !be.data().passport().rich(),
                         "passport " + be.data().passport());
+                byStage[level.getBlockState(plant).getValue(
+                        io.github.slugblue.wildroots.plant.FieldPlantBlock.STAGE)]++;
             }
+            // WR-152: stages 0.45 mature / 0.40 flowering / 0.15 seeding (batch 4 coverage gap)
+            int n = plants.size();
+            helper.assertTrue(n == p.plants(), "plants found " + n + " vs placed " + p.plants());
+            helper.assertTrue(byStage[4] == Math.round(n * 0.40f) && byStage[5] == Math.round(n * 0.15f)
+                    && byStage[3] == n - byStage[4] - byStage[5], "stages " + java.util.Arrays.toString(byStage)
+                    + " of " + n);
             boolean nest = false;
             for (BlockPos q : BlockPos.betweenClosed(p.origin().offset(-16, -1, -16), p.origin().offset(16, 12, 16))) {
                 if (level.getBlockState(q).is(BlockTags.BEEHIVES)) {
