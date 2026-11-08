@@ -35,6 +35,7 @@
   "item.wildroots.seed_pouch": "Seed Pouch",
   "wildroots.tooltip.pouch.fullness": "%s/%s seeds",
   "commands.wildroots.locate_patch.success": "Nearest candidate chunk for %s: %s (%s blocks away)",
+  "commands.wildroots.locate_patch.budget": "No %s candidate found within the search budget (searched %s of %s blocks)",
   "commands.wildroots.locate_patch.not_found": "No candidate chunk for %s within %s blocks",
   "commands.wildroots.locate_patch.unknown": "Unknown species or no wild patches for it: %s"
 }

@@ -35,6 +35,7 @@
   "item.wildroots.seed_pouch": "Мешочек для семян",
   "wildroots.tooltip.pouch.fullness": "Семян: %s из %s",
   "commands.wildroots.locate_patch.success": "Ближайший кандидатный чанк для %s: %s (%s блоков)",
+  "commands.wildroots.locate_patch.budget": "Кандидат %s не найден в пределах бюджета поиска (пройдено %s из %s блоков)",
   "commands.wildroots.locate_patch.not_found": "Для %s нет кандидатного чанка в радиусе %s блоков",
   "commands.wildroots.locate_patch.unknown": "Неизвестный вид или у него нет диких патчей: %s"
 }

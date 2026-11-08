@@ -52,6 +52,10 @@ public final class LocatePatchCommand {
 
     public static final int DEFAULT_RADIUS = 1024;
     public static final int MAX_RADIUS = 6400;
+    /** Cheap biome samples ({@code getNoiseBiome}) one search may take (review 2, T3). */
+    public static final int SAMPLE_BUDGET = 65_536;
+    /** Surface heights ({@code getBaseHeight}, a whole noise column each) one search may take (review 2, T3). */
+    public static final int HEIGHT_BUDGET = 256;
 
     private LocatePatchCommand() {
     }
@@ -93,8 +97,14 @@ public final class LocatePatchCommand {
             return 0;
         }
         BlockPos from = BlockPos.containing(src.getPosition());
-        Optional<Found> f = nearest(src.getLevel(), from, def.get(), bands, radius,
+        Search search = search(src.getLevel(), from, def.get(), bands, radius,
                 TagKey.create(Registries.BIOME, Ids.of(id.getNamespace(), "spawns/" + id.getPath())));
+        Optional<Found> f = search.found();
+        if (f.isEmpty() && search.overBudget()) {
+            src.sendFailure(Component.translatable("commands.wildroots.locate_patch.budget", id.toString(),
+                    search.searched(), radius));
+            return 0;
+        }
         if (f.isEmpty()) {
             src.sendFailure(Component.translatable("commands.wildroots.locate_patch.not_found", id.toString(), radius));
             return 0;
@@ -112,7 +122,7 @@ public final class LocatePatchCommand {
     }
 
     /** The chunk band and climate tolerance of one placed feature of the species. */
-    record Band(ChunkBandPlacement band, double tolerance) {
+    public record Band(ChunkBandPlacement band, double tolerance) {
     }
 
     /** Placed features whose {@code wild_patch} configuration is of {@code species} and that have a chunk band. */
@@ -139,18 +149,43 @@ public final class LocatePatchCommand {
     }
 
     /**
+     * What a search did: the candidate, if any; whether it stopped on the
+     * budget; and its cost (band hits, biome samples, surface heights, the
+     * distance walked in blocks).
+     */
+    public record Search(Optional<Found> found, boolean overBudget, int bandHits, int samples, int heights,
+                         int searched) {
+    }
+
+    /** The nearest candidate within {@code radius} blocks (see {@link #search}). */
+    public static Optional<Found> nearest(ServerLevel level, BlockPos from, SpeciesDef def, List<Band> bands,
+                                          int radius, TagKey<Biome> spawns) {
+        return search(level, from, def, bands, radius, spawns).found();
+    }
+
+    /**
      * The Euclidean nearest candidate chunk within {@code radius} blocks
      * (review 1, m7). Square rings of chunks are walked outwards; after the
      * first hit the walk goes on while a ring can still hold a nearer chunk
-     * (its nearest centre is at least {@code 16·r − 16} blocks away). The
-     * biome is sampled at the surface the noise generator predicts for the
-     * chunk centre ({@code getBaseHeight}, pure noise, no chunk access), at
-     * least at sea level, so cave biomes under hills do not hide a
-     * candidate. Only chunks that pass the band hash (≈ 3.6 % for carrot)
-     * pay for that height.
+     * (its nearest centre is at least {@code 16 r - 16} blocks away).
+     *
+     * <p>Cost, cheapest first (review 2, T3): the band hash of the chunk
+     * (about 3.6 % pass for carrot); then the biome of the chunk centre from
+     * the biome source at three fixed heights (sea level, sea + 64 and near
+     * the build top), one of which must be in the spawn tag; only then the
+     * surface the noise generator predicts ({@code getBaseHeight}, a whole
+     * noise column, no chunk access), at least sea level, where the biome and
+     * the temperature window decide. In the overworld only the depth of the
+     * biome parameters depends on Y, and every surface biome has depth 0, so
+     * a sample above the surface sees the surface biome: the pre-filter does
+     * not hide a candidate there, it only skips the oceans, caves and other
+     * biomes cheaply. The work is bounded by {@value #SAMPLE_BUDGET} biome
+     * samples and {@value #HEIGHT_BUDGET} surface heights; over the budget the
+     * walk stops and reports how far it came (a candidate found by then is
+     * returned, possibly not the nearest).
      */
-    static Optional<Found> nearest(ServerLevel level, BlockPos from, SpeciesDef def, List<Band> bands, int radius,
-                                   TagKey<Biome> spawns) {
+    public static Search search(ServerLevel level, BlockPos from, SpeciesDef def, List<Band> bands, int radius,
+                                TagKey<Biome> spawns) {
         long seed = level.getSeed();
         int cx0 = from.getX() >> 4;
         int cz0 = from.getZ() >> 4;
@@ -160,7 +195,12 @@ public final class LocatePatchCommand {
         var source = generator.getBiomeSource();
         var sampler = randomState.sampler();
         int sea = generator.getSeaLevel();
+        int[] probes = {sea, Math.min(sea + 64, level.getMaxBuildHeight() - 1),
+            Math.max(sea, level.getMaxBuildHeight() - 16)};
         Found best = null;
+        int bandHits = 0;
+        int samples = 0;
+        int heights = 0;
         for (int r = 0; r <= rings; r++) {
             if (best != null && 16L * r - 16 > best.distance()) {
                 break;
@@ -188,9 +228,32 @@ public final class LocatePatchCommand {
                     if (d > radius || (best != null && d >= best.distance())) {
                         continue;
                     }
+                    bandHits++;
+                    boolean maybe = false;
+                    for (int y : probes) {
+                        if (samples >= SAMPLE_BUDGET) {
+                            return new Search(Optional.ofNullable(best), true, bandHits, samples, heights,
+                                    Math.max(0, 16 * r - 16));
+                        }
+                        samples++;
+                        if (source.getNoiseBiome(QuartPos.fromBlock(x), QuartPos.fromBlock(y), QuartPos.fromBlock(z),
+                                sampler).is(spawns)) {
+                            maybe = true;
+                            break;
+                        }
+                    }
+                    if (!maybe) {
+                        continue;
+                    }
+                    if (heights >= HEIGHT_BUDGET) {
+                        return new Search(Optional.ofNullable(best), true, bandHits, samples, heights,
+                                Math.max(0, 16 * r - 16));
+                    }
+                    heights++;
                     int y = Math.max(sea, generator.getBaseHeight(x, z,
                             net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE_WG, level, randomState));
                     BlockPos c = new BlockPos(x, y, z);
+                    samples++;
                     Holder<Biome> biome = source.getNoiseBiome(QuartPos.fromBlock(x), QuartPos.fromBlock(y),
                             QuartPos.fromBlock(z), sampler);
                     if (!biome.is(spawns) || !ClimateWindow.fits(ClimateService.temperature(biome, c), def.tempMin(),
@@ -201,6 +264,6 @@ public final class LocatePatchCommand {
                 }
             }
         }
-        return Optional.ofNullable(best);
+        return new Search(Optional.ofNullable(best), false, bandHits, samples, heights, radius);
     }
 }
