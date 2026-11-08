@@ -131,8 +131,9 @@ public final class BeePollen {
     public void load(CompoundTag t) {
         clear();
         if (t == null || !t.contains("sp", Tag.TAG_STRING) || !t.contains("a", Tag.TAG_LONG_ARRAY)
-                || !t.contains("lh", Tag.TAG_LONG)) {
-            return;
+                || !t.contains("lh", Tag.TAG_LONG) || !t.contains("v", Tag.TAG_ANY_NUMERIC)
+                || !t.contains("age", Tag.TAG_ANY_NUMERIC) || t.getInt("v") < 0 || t.getInt("age") < 0) {
+            return; // malformed counters would otherwise read as 0, which makes stale pollen fresh
         }
         String sp = t.getString("sp");
         long[] a = t.getLongArray("a");
