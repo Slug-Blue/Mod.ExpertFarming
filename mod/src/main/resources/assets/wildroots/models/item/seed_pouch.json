@@ -1,4 +1,14 @@
 {
   "parent": "minecraft:item/generated",
-  "textures": { "layer0": "minecraft:item/bundle" }
+  "textures": {
+    "layer0": "wildroots:item/seed_pouch"
+  },
+  "overrides": [
+    {
+      "predicate": {
+        "wildroots:filled": 1e-07
+      },
+      "model": "wildroots:item/seed_pouch_filled"
+    }
+  ]
 }

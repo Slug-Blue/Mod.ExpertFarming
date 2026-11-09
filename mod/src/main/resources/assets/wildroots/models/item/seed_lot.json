@@ -1,4 +1,6 @@
 {
   "parent": "minecraft:item/generated",
-  "textures": { "layer0": "minecraft:item/wheat_seeds" }
+  "textures": {
+    "layer0": "wildroots:item/seed_lot"
+  }
 }
