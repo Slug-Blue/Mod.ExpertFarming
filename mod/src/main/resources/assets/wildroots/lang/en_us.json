@@ -206,5 +206,7 @@
   "wildroots.tooltip.stage.harvest_ready": "Ready to harvest",
   "wildroots.tooltip.stage.flowering": "Flowering",
   "wildroots.tooltip.stage.seed_ripening": "Ripening seed",
-  "wildroots.tooltip.stage.harvest_ready.wild_carrot": "Root ready"
+  "wildroots.tooltip.stage.harvest_ready.wild_carrot": "Root ready",
+  "wildroots.cultivar.eastern_carrot.variant.yellow": "Yellow root",
+  "wildroots.cultivar.eastern_carrot.variant.purple": "Purple root"
 }

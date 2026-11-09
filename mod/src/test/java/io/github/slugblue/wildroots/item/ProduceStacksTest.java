@@ -34,6 +34,32 @@ class ProduceStacksTest {
         assertEquals(6, variants.size(), variants::toString);
     }
 
+    /** WR-136a: grade × bitter × colour gives at most 12 tags; yellow writes no key, purple {@code wildroots:colour: 1b}. */
+    @Test
+    void colourVariantsAtMostTwelve() {
+        Set<CompoundTag> variants = new HashSet<>();
+        for (int g = -5; g <= 10; g++) {
+            for (boolean b : new boolean[] {false, true}) {
+                for (int c = -1; c <= 3; c++) {
+                    CompoundTag t = ProduceStacks.tag(g, b, c);
+                    assertTrue(Set.of(ProduceStacks.GRADE, ProduceStacks.BITTER, ProduceStacks.COLOUR)
+                            .containsAll(t.getAllKeys()), t::toString);
+                    variants.add(t);
+                }
+            }
+        }
+        assertEquals(12, variants.size(), variants::toString);
+        assertFalse(ProduceStacks.tag(3, false, ProduceStacks.YELLOW).contains(ProduceStacks.COLOUR));
+        assertEquals(1, ProduceStacks.tag(3, false, ProduceStacks.PURPLE).getByte(ProduceStacks.COLOUR));
+        assertEquals(ProduceStacks.tag(3, true), ProduceStacks.tag(3, true, ProduceStacks.YELLOW));
+        assertEquals(ProduceStacks.PURPLE, ProduceStacks.colour(ProduceStacks.tag(2, false, ProduceStacks.PURPLE)));
+        assertEquals(ProduceStacks.YELLOW, ProduceStacks.colour(null));
+        assertEquals(ProduceStacks.PURPLE, ProduceStacks.colourOfVariant(3));
+        for (int v : new int[] {0, 1, 2}) {
+            assertEquals(ProduceStacks.YELLOW, ProduceStacks.colourOfVariant(v));
+        }
+    }
+
     @Test
     void readBackNormalisesAndDefaultsToThree() {
         assertEquals(3, ProduceStacks.grade(null));

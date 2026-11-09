@@ -3,6 +3,7 @@ package io.github.slugblue.wildroots.client;
 import io.github.slugblue.wildroots.WildRoots;
 import io.github.slugblue.wildroots.core.Ids;
 import io.github.slugblue.wildroots.core.registry.ModItems;
+import io.github.slugblue.wildroots.item.ProduceStacks;
 import io.github.slugblue.wildroots.item.SeedPouchItem;
 import net.minecraft.client.renderer.item.ItemProperties;
 import net.minecraft.resources.ResourceLocation;
@@ -20,13 +21,19 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 public final class ClientSetup {
 
     public static final ResourceLocation FILLED = Ids.mod("filled");
+    /** Eastern carrot root colour: 0 yellow, 1 purple (WR-136a). */
+    public static final ResourceLocation ROOT_COLOUR = Ids.mod("root_colour");
 
     private ClientSetup() {
     }
 
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
-        event.enqueueWork(() -> ItemProperties.register(ModItems.SEED_POUCH.get(), FILLED,
-                (stack, level, entity, seed) -> SeedPouchItem.filled(stack) ? 1f : 0f));
+        event.enqueueWork(() -> {
+            ItemProperties.register(ModItems.SEED_POUCH.get(), FILLED,
+                    (stack, level, entity, seed) -> SeedPouchItem.filled(stack) ? 1f : 0f);
+            ItemProperties.register(ModItems.EASTERN_CARROT.get(), ROOT_COLOUR,
+                    (stack, level, entity, seed) -> ProduceStacks.colour(stack.getTag()));
+        });
     }
 }

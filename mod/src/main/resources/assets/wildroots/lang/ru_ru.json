@@ -206,5 +206,7 @@
   "wildroots.tooltip.stage.harvest_ready": "Урожайная зрелость",
   "wildroots.tooltip.stage.flowering": "Цветение",
   "wildroots.tooltip.stage.seed_ripening": "Созревание семян",
-  "wildroots.tooltip.stage.harvest_ready.wild_carrot": "Корнеплод созрел"
+  "wildroots.tooltip.stage.harvest_ready.wild_carrot": "Корнеплод созрел",
+  "wildroots.cultivar.eastern_carrot.variant.yellow": "Жёлтый корень",
+  "wildroots.cultivar.eastern_carrot.variant.purple": "Фиолетовый корень"
 }

@@ -47,6 +47,46 @@ public final class ProduceStacks {
         return s;
     }
 
+    /**
+     * Root colour of colour-variant produce (WR-136a; today only
+     * {@code eastern_carrot}): {@code wildroots:colour: 1b} = purple; yellow
+     * ({@value #YELLOW}) is the default and is not written. Other produce
+     * never carries the key.
+     */
+    public static final String COLOUR = "wildroots:colour";
+    public static final int YELLOW = 0;
+    public static final int PURPLE = 1;
+
+    /** The tag of a colour-variant harvest item: ≤ 6 × 2 = 12 variants. */
+    public static CompoundTag tag(int grade, boolean bitter, int colour) {
+        CompoundTag t = tag(grade, bitter);
+        if (colour == PURPLE) {
+            t.putByte(COLOUR, (byte) PURPLE);
+        }
+        return t;
+    }
+
+    /** A harvest stack; {@code colour} is written only for an item with root colours ({@link ProduceItem#rootColours}). */
+    public static ItemStack create(Item item, int grade, boolean bitter, int colour, int count) {
+        ItemStack s = new ItemStack(item, count);
+        s.setTag(item instanceof ProduceItem p && p.rootColours() ? tag(grade, bitter, colour) : tag(grade, bitter));
+        return s;
+    }
+
+    /** Root colour of a stack: {@value #PURPLE} only with the key, else yellow. */
+    public static int colour(CompoundTag tag) {
+        return tag != null && tag.getByte(COLOUR) == PURPLE ? PURPLE : YELLOW;
+    }
+
+    /**
+     * Root colour from the plant's {@code variant} (the block state the
+     * model draws, {@code GrowthLogic.variant}): 3 purple, anything else
+     * yellow (an orange-rooted eastern carrot counts as yellow).
+     */
+    public static int colourOfVariant(int variant) {
+        return variant == 3 ? PURPLE : YELLOW;
+    }
+
     public static ItemStack create(Item item, int grade, boolean bitter) {
         return create(item, grade, bitter, 1);
     }

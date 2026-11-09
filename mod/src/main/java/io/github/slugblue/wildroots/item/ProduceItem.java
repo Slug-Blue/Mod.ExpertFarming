@@ -27,12 +27,23 @@ public class ProduceItem extends Item {
 
     private final CultivarInfo.FoodReference fallback;
     private final boolean toxic;
+    private final boolean rootColours;
 
     public ProduceItem(Properties properties, CultivarInfo.FoodReference fallback, boolean toxic) {
+        this(properties, fallback, toxic, false);
+    }
+
+    /** {@code rootColours}: the stacks carry a yellow / purple root colour (WR-136a, eastern carrot). */
+    public ProduceItem(Properties properties, CultivarInfo.FoodReference fallback, boolean toxic, boolean rootColours) {
         super(properties.food(new FoodProperties.Builder().nutrition(fallback.nutrition())
                 .saturationMod((float) fallback.saturation()).build()));
         this.fallback = fallback;
         this.toxic = toxic;
+        this.rootColours = rootColours;
+    }
+
+    public boolean rootColours() {
+        return rootColours;
     }
 
     public CultivarInfo.FoodReference reference() {
@@ -52,6 +63,13 @@ public class ProduceItem extends Item {
     @EntryPoint
     public void appendHoverText(ItemStack stack, Level level, List<Component> tooltip, TooltipFlag flag) {
         Guarded.run("produce tooltip", "produce", () -> {
+            if (rootColours) {
+                ResourceLocation id = ForgeRegistries.ITEMS.getKey(this);
+                if (id != null) {
+                    tooltip.add(Component.translatable("wildroots.cultivar." + id.getPath() + ".variant."
+                            + (ProduceStacks.colour(stack.getTag()) == ProduceStacks.PURPLE ? "purple" : "yellow")));
+                }
+            }
             tooltip.add(Component.translatable("wildroots.grade." + ProduceStacks.grade(stack.getTag())));
             if (ProduceStacks.bitter(stack.getTag())) {
                 tooltip.add(Component.translatable("wildroots.grade.bitter"));

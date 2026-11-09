@@ -49,7 +49,7 @@ public final class ModItems {
             () -> new ProduceItem(new Item.Properties(), CARROT_FOOD, false));
     /** Harvest of the landrace {@code eastern_carrot} (step 1). */
     public static final RegistryObject<ProduceItem> EASTERN_CARROT = REGISTER.register("eastern_carrot",
-            () -> new ProduceItem(new Item.Properties(), CARROT_FOOD, false));
+            () -> new ProduceItem(new Item.Properties(), CARROT_FOOD, false, true));
     /** Harvest of the cultivar {@code wildroots:carrot} (step 2). */
     public static final RegistryObject<ProduceItem> CARROT = REGISTER.register("carrot",
             () -> new ProduceItem(new Item.Properties(), CARROT_FOOD, false));
