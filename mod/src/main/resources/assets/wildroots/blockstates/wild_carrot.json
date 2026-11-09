@@ -3,20 +3,197 @@
     "stage=0": {
       "model": "wildroots:block/wild_carrot_stage0"
     },
-    "stage=1": {
-      "model": "wildroots:block/wild_carrot_stage1"
+    "stage=1,size=0,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage1_size0"
     },
-    "stage=2": {
-      "model": "wildroots:block/wild_carrot_stage2"
+    "stage=1,size=0,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage1_size0_ailing"
     },
-    "stage=3": {
-      "model": "wildroots:block/wild_carrot_stage3"
+    "stage=1,size=1,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage1_size1"
     },
-    "stage=4": {
-      "model": "wildroots:block/wild_carrot_stage4"
+    "stage=1,size=1,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage1_size1_ailing"
     },
-    "stage=5": {
-      "model": "wildroots:block/wild_carrot_stage5"
+    "stage=1,size=2,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage1_size2"
+    },
+    "stage=1,size=2,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage1_size2_ailing"
+    },
+    "stage=1,size=3,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage1_size3"
+    },
+    "stage=1,size=3,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage1_size3_ailing"
+    },
+    "stage=2,size=0,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage2_size0"
+    },
+    "stage=2,size=0,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage2_size0_ailing"
+    },
+    "stage=2,size=1,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage2_size1"
+    },
+    "stage=2,size=1,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage2_size1_ailing"
+    },
+    "stage=2,size=2,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage2_size2"
+    },
+    "stage=2,size=2,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage2_size2_ailing"
+    },
+    "stage=2,size=3,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage2_size3"
+    },
+    "stage=2,size=3,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage2_size3_ailing"
+    },
+    "stage=3,size=0,variant=0,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage3_size0_white"
+    },
+    "stage=3,size=0,variant=1,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage3_size0_yellow"
+    },
+    "stage=3,size=0,variant=2,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage3_size0_orange"
+    },
+    "stage=3,size=0,variant=3,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage3_size0_purple"
+    },
+    "stage=3,size=0,variant=0,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage3_size0_white_ailing"
+    },
+    "stage=3,size=0,variant=1,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage3_size0_yellow_ailing"
+    },
+    "stage=3,size=0,variant=2,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage3_size0_orange_ailing"
+    },
+    "stage=3,size=0,variant=3,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage3_size0_purple_ailing"
+    },
+    "stage=3,size=1,variant=0,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage3_size1_white"
+    },
+    "stage=3,size=1,variant=1,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage3_size1_yellow"
+    },
+    "stage=3,size=1,variant=2,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage3_size1_orange"
+    },
+    "stage=3,size=1,variant=3,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage3_size1_purple"
+    },
+    "stage=3,size=1,variant=0,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage3_size1_white_ailing"
+    },
+    "stage=3,size=1,variant=1,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage3_size1_yellow_ailing"
+    },
+    "stage=3,size=1,variant=2,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage3_size1_orange_ailing"
+    },
+    "stage=3,size=1,variant=3,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage3_size1_purple_ailing"
+    },
+    "stage=3,size=2,variant=0,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage3_size2_white"
+    },
+    "stage=3,size=2,variant=1,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage3_size2_yellow"
+    },
+    "stage=3,size=2,variant=2,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage3_size2_orange"
+    },
+    "stage=3,size=2,variant=3,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage3_size2_purple"
+    },
+    "stage=3,size=2,variant=0,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage3_size2_white_ailing"
+    },
+    "stage=3,size=2,variant=1,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage3_size2_yellow_ailing"
+    },
+    "stage=3,size=2,variant=2,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage3_size2_orange_ailing"
+    },
+    "stage=3,size=2,variant=3,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage3_size2_purple_ailing"
+    },
+    "stage=3,size=3,variant=0,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage3_size3_white"
+    },
+    "stage=3,size=3,variant=1,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage3_size3_yellow"
+    },
+    "stage=3,size=3,variant=2,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage3_size3_orange"
+    },
+    "stage=3,size=3,variant=3,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage3_size3_purple"
+    },
+    "stage=3,size=3,variant=0,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage3_size3_white_ailing"
+    },
+    "stage=3,size=3,variant=1,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage3_size3_yellow_ailing"
+    },
+    "stage=3,size=3,variant=2,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage3_size3_orange_ailing"
+    },
+    "stage=3,size=3,variant=3,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage3_size3_purple_ailing"
+    },
+    "stage=4,size=0,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage4_size0"
+    },
+    "stage=4,size=0,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage4_size0_ailing"
+    },
+    "stage=4,size=1,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage4_size1"
+    },
+    "stage=4,size=1,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage4_size1_ailing"
+    },
+    "stage=4,size=2,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage4_size2"
+    },
+    "stage=4,size=2,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage4_size2_ailing"
+    },
+    "stage=4,size=3,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage4_size3"
+    },
+    "stage=4,size=3,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage4_size3_ailing"
+    },
+    "stage=5,size=0,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage5_size0"
+    },
+    "stage=5,size=0,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage5_size0_ailing"
+    },
+    "stage=5,size=1,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage5_size1"
+    },
+    "stage=5,size=1,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage5_size1_ailing"
+    },
+    "stage=5,size=2,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage5_size2"
+    },
+    "stage=5,size=2,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage5_size2_ailing"
+    },
+    "stage=5,size=3,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage5_size3"
+    },
+    "stage=5,size=3,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage5_size3_ailing"
     }
   }
 }

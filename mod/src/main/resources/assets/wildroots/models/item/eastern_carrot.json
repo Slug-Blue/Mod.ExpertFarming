@@ -1,4 +1,14 @@
 {
   "parent": "minecraft:item/generated",
-  "textures": { "layer0": "minecraft:item/carrot" }
+  "textures": {
+    "layer0": "wildroots:item/eastern_carrot_yellow"
+  },
+  "overrides": [
+    {
+      "predicate": {
+        "wildroots:root_colour": 1
+      },
+      "model": "wildroots:item/eastern_carrot_purple"
+    }
+  ]
 }
