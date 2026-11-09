@@ -51,11 +51,11 @@ class JournalDataTest {
     @Test
     void unlockOncePerPlayerAndUpdateKeepsOrderAndMarks() {
         JournalData j = new JournalData();
-        assertEquals(JournalData.Unlock.NEW, j.unlock("hint.welcome", List.of("@species.wild_carrot"), List.of()));
-        assertEquals(JournalData.Unlock.NONE, j.unlock("hint.welcome", List.of("@species.wild_carrot"), List.of()));
+        assertEquals(JournalData.Unlock.NEW, j.unlock("hint.welcome", List.of("\u0001species.wild_carrot"), List.of()));
+        assertEquals(JournalData.Unlock.NONE, j.unlock("hint.welcome", List.of("\u0001species.wild_carrot"), List.of()));
         assertEquals(JournalData.Unlock.NEW, j.unlock("species.wild_carrot", List.of(), List.of()));
         j.apply(rl("species.wild_carrot"), JournalActionPacket.PIN);
-        DispCodec.Line row = DispCodec.Line.of("wildroots.journal.species.found_at", "@biome.minecraft.plains", "10", "-4");
+        DispCodec.Line row = DispCodec.Line.of("wildroots.journal.species.found_at", "\u0001biome.minecraft.plains", "10", "-4");
         assertEquals(JournalData.Unlock.UPDATED, j.unlock("species.wild_carrot", List.of(), List.of(row)));
         JournalData.Entry e = j.entry("species.wild_carrot").orElseThrow();
         assertEquals(1, e.order());
@@ -66,7 +66,7 @@ class JournalDataTest {
     @Test
     void lockedSilhouetteIsReplacedByTheRealEntryButNeverTheOtherWay() {
         JournalData j = new JournalData();
-        assertTrue(j.lock("cultivar.eastern_carrot", List.of("@journal.cultivar.eastern_carrot.goal")));
+        assertTrue(j.lock("cultivar.eastern_carrot", List.of("\u0001journal.cultivar.eastern_carrot.goal")));
         assertFalse(j.has("cultivar.eastern_carrot"));
         assertEquals(JournalData.Unlock.NEW, j.unlock("cultivar.eastern_carrot", List.of("3"), List.of()));
         assertTrue(j.has("cultivar.eastern_carrot"));
@@ -89,7 +89,7 @@ class JournalDataTest {
     void saveLoadRoundTripKeepsEverything() {
         JournalData j = new JournalData();
         j.markGiven();
-        j.unlock("hint.welcome", List.of("@species.wild_carrot"), List.of());
+        j.unlock("hint.welcome", List.of("\u0001species.wild_carrot"), List.of());
         j.unlock("species.wild_carrot", List.of(), List.of(DispCodec.Line.of("wildroots.journal.cultivar.carrot.goal")));
         j.lock("cultivar.carrot", List.of());
         j.apply(rl("hint.welcome"), JournalActionPacket.PIN);

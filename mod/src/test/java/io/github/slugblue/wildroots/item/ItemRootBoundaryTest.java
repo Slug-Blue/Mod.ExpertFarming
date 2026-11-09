@@ -242,7 +242,7 @@ class ItemRootBoundaryTest {
         a.getCompound("g").put("a", new LongArrayTag(new long[0]));
         assertInstanceOf(LotNbt.Inert.class, lot(a));
         CompoundTag ln = rareLot();
-        ln.putString("ln", "🥕".repeat(LotNbt.MAX_LINE_NAME));
+        ln.putString("ln", "\uD835\uDC00".repeat(LotNbt.MAX_LINE_NAME));
         assertInstanceOf(LotNbt.Lot.class, lot(ln), "50 code points");
         ln.putString("ln", "a".repeat(LotNbt.MAX_LINE_NAME + 1));
         assertInstanceOf(LotNbt.Inert.class, lot(ln), "51 code points");

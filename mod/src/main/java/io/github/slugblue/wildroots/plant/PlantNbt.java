@@ -139,6 +139,9 @@ public final class PlantNbt {
             if (ln.codePointCount(0, ln.length()) > MAX_LINE_NAME) {
                 return new Inert("line name too long", false);
             }
+            if (!io.github.slugblue.wildroots.core.safety.PlayerText.isClean(ln, MAX_LINE_NAME)) {
+                return new Inert("line name not clean player text", false);
+            }
             s.lineName = ln;
         }
         s.generation = root.getInt("gen");

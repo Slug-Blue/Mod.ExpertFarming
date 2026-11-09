@@ -19,13 +19,13 @@ import net.minecraft.network.chat.Component;
  * code points without control, format or {@code §} characters; at most
  * {@value #MAX_LINES} lines. A line that breaks a rule is dropped (on write
  * and on read), the others stay. Arguments are shown as
- * {@code Component.literal}, except a <em>key argument</em>: {@value #KEY_ARG}
- * followed by a key without its {@code wildroots.} prefix (as stored lines
- * are), or by a vanilla {@code biome.*} key, which is shown translated (a
- * species name, a scale word; WR-180, WR-183). The short form keeps an
- * inspected lot within its 1 KiB. Player text never starts with {@value #KEY_ARG}: the
- * sanitizer does not allow that character (SEC-07), so a player string is
- * never shown as a key.
+ * {@code Component.literal}, except a <em>key argument</em>: the marker
+ * {@code U+0001} followed by a key without its {@code wildroots.} prefix (as
+ * stored lines are), or by a vanilla {@code biome.*} key, which is shown
+ * translated (a species name, a scale word; WR-180, WR-183). The marker is a
+ * control character and a literal argument may hold no control character at
+ * all, so a literal (a player's line name, whatever its NBT says) is never
+ * read as a key (review 1, m1); a key argument is valid only as a whole.
  *
  * <p>Storage (compact, for the 512 B lot target): {@code disp} is a list of
  * strings, one per line: the key without the {@code wildroots.} prefix,
@@ -43,10 +43,10 @@ public final class DispCodec {
     /** U+001F INFORMATION SEPARATOR ONE: between the key and each argument of a stored line. */
     public static final char SEPARATOR = '\u001F';
     static final String SEPARATOR_NAME = "U+001F";
-    /** Prefix of a key argument: {@code @species.wild_carrot} is shown as {@code wildroots.species.wild_carrot}. */
-    public static final String KEY_ARG = "@";
-    /** Vanilla keys a key argument may name besides the mod's own: biome names ({@code biome.minecraft.plains}). */
-    public static final Pattern BIOME_KEY = Pattern.compile("^biome\\.[a-z0-9_.]{1,96}$");
+    /** Marker of a key argument, U+0001: marker + {@code species.wild_carrot} is shown as {@code wildroots.species.wild_carrot}. */
+    public static final String KEY_ARG = "\u0001";
+    /** Vanilla keys a key argument may name besides the mod's own: biome names as {@code Util.makeDescriptionId} builds them. */
+    public static final Pattern BIOME_KEY = Pattern.compile("^biome\\.[a-z0-9_.\\-]{1,96}$");
 
     /** One tooltip line. */
     public record Line(String key, List<String> args) {
@@ -80,6 +80,9 @@ public final class DispCodec {
     private static boolean validArg(String a) {
         if (a == null || a.codePointCount(0, a.length()) > MAX_ARG_LENGTH) {
             return false;
+        }
+        if (a.startsWith(KEY_ARG)) {
+            return argKey(a) != null;
         }
         return a.codePoints().noneMatch(cp -> switch (Character.getType(cp)) {
             case Character.CONTROL, Character.FORMAT, Character.SURROGATE, Character.PRIVATE_USE,

@@ -151,7 +151,7 @@ public final class JournalGameTests {
         try {
             JournalData j = journal(p);
             j.markGiven();
-            Journals.unlock(p, "hint.welcome", "@species.wild_carrot");
+            Journals.unlock(p, "hint.welcome", "\u0001species.wild_carrot");
             Journals.unlock(p, "hint.bees");
             j.apply(new ResourceLocation("wildroots", "hint.bees"), JournalActionPacket.PIN);
             CompoundTag before = j.save();

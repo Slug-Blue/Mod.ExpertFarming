@@ -76,6 +76,15 @@ public final class PlayerText {
     }
 
     /** Sanitises {@code s}; see the class comment for the rules. */
+    /**
+     * Whether stored player text is exactly what the sanitizer would let
+     * through (review 1, m1): NBT can carry anything, so a line name read
+     * from a lot, a mother root or a plant is checked on read.
+     */
+    public static boolean isClean(String s, int maxCodePoints) {
+        return s != null && sanitize(s, maxCodePoints).text().filter(s::equals).isPresent();
+    }
+
     public static Result sanitize(String s, int maxCodePoints) {
         if (s == null) {
             return Result.refuse(Reason.EMPTY);

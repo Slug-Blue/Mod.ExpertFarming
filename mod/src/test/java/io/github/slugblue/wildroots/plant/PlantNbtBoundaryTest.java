@@ -214,7 +214,7 @@ class PlantNbtBoundaryTest {
         r.getCompound("g").putString("sp", r.getString("sp"));
         assertInstanceOf(PlantNbt.Inert.class, read(r), "species id of 129 characters");
         r = full();
-        r.putString("ln", "🥕".repeat(PlantNbt.MAX_LINE_NAME));
+        r.putString("ln", "\uD835\uDC00".repeat(PlantNbt.MAX_LINE_NAME));
         assertInstanceOf(PlantNbt.Ok.class, read(r), "50 code points (100 chars)");
         r.putString("ln", "a".repeat(PlantNbt.MAX_LINE_NAME + 1));
         assertInstanceOf(PlantNbt.Inert.class, read(r), "51 code points");
@@ -331,5 +331,15 @@ class PlantNbtBoundaryTest {
         Set<String> u = new java.util.HashSet<>(a);
         u.addAll(b);
         return u;
+    }
+
+    /** Review 1, m1: a stored line name must be clean player text. */
+    @org.junit.jupiter.api.Test
+    void dirtyLineNameMakesThePlantInert() {
+        for (String ln : new String[] {"@cultivar.carrot", "\u0001cultivar.carrot", "a\u202Eb"}) {
+            CompoundTag r = full();
+            r.putString("ln", ln);
+            assertInstanceOf(PlantNbt.Inert.class, read(r), ln);
+        }
     }
 }

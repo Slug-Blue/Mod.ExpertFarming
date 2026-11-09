@@ -142,7 +142,8 @@ public final class LotNbt {
         Optional<String> ln = Optional.empty();
         if (root.contains("ln")) {
             String s = root.getString("ln");
-            if (!root.contains("ln", Tag.TAG_STRING) || s.codePointCount(0, s.length()) > MAX_LINE_NAME) {
+            if (!root.contains("ln", Tag.TAG_STRING) || s.codePointCount(0, s.length()) > MAX_LINE_NAME
+                    || !io.github.slugblue.wildroots.core.safety.PlayerText.isClean(s, MAX_LINE_NAME)) {
                 return new Inert("bad line name");
             }
             ln = Optional.of(s);

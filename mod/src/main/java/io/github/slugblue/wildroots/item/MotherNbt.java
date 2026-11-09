@@ -63,7 +63,9 @@ public final class MotherNbt {
             }
             String ln = root.getString("ln");
             if ((root.contains("ln") && !root.contains("ln", Tag.TAG_STRING))
-                    || ln.codePointCount(0, ln.length()) > LotNbt.MAX_LINE_NAME) {
+                    || ln.codePointCount(0, ln.length()) > LotNbt.MAX_LINE_NAME
+                    || (root.contains("ln") && !io.github.slugblue.wildroots.core.safety.PlayerText.isClean(ln,
+                            LotNbt.MAX_LINE_NAME))) {
                 return Optional.empty();
             }
             return Optional.of(new Mother(new GenomeRecord(g.getInt("v"), g.getString("sp"), g.getLong("lh"), a), e,

@@ -19,9 +19,9 @@ class JournalSyncPacketTest {
     @Test
     void roundTrip() {
         JournalSyncPacket p = new JournalSyncPacket(true, true, "Steve", List.of(
-                new JournalData.Entry("hint.welcome", List.of("@species.wild_carrot"), List.of(), 0, 8),
+                new JournalData.Entry("hint.welcome", List.of("\u0001species.wild_carrot"), List.of(), 0, 8),
                 new JournalData.Entry("species.wild_carrot", List.of(), List.of(
-                        DispCodec.Line.of("wildroots.journal.species.found_at", "@biome.minecraft.plains", "1", "2")), 1, 2)));
+                        DispCodec.Line.of("wildroots.journal.species.found_at", "\u0001biome.minecraft.plains", "1", "2")), 1, 2)));
         FriendlyByteBuf b = buf();
         p.encode(b);
         assertEquals(p, JournalSyncPacket.decode(b));
@@ -47,8 +47,8 @@ class JournalSyncPacketTest {
     @Test
     void toastRoundTripAndBadKey() {
         ToastPacket t = new ToastPacket(
-                DispCodec.Line.of("wildroots.message.journal.new_entry", "@journal.hint.bees.title"),
-                DispCodec.Line.of("wildroots.message.toast.bred.body", "@cultivar.eastern_carrot"));
+                DispCodec.Line.of("wildroots.message.journal.new_entry", "\u0001journal.hint.bees.title"),
+                DispCodec.Line.of("wildroots.message.toast.bred.body", "\u0001cultivar.eastern_carrot"));
         FriendlyByteBuf b = buf();
         t.encode(b);
         assertEquals(t, ToastPacket.decode(b));
@@ -60,12 +60,12 @@ class JournalSyncPacketTest {
 
     @Test
     void keyArgumentsAreShortModKeysOrBiomeKeys() {
-        assertEquals("@species.wild_carrot", DispCodec.keyArg("wildroots.species.wild_carrot"));
-        assertEquals("wildroots.species.wild_carrot", DispCodec.argKey("@species.wild_carrot"));
+        assertEquals("\u0001species.wild_carrot", DispCodec.keyArg("wildroots.species.wild_carrot"));
+        assertEquals("wildroots.species.wild_carrot", DispCodec.argKey("\u0001species.wild_carrot"));
         assertEquals("biome.minecraft.plains", DispCodec.argKey(DispCodec.keyArg("biome.minecraft.plains")));
         assertEquals(null, DispCodec.argKey("species.wild_carrot"));
-        assertEquals(null, DispCodec.argKey("@Species"));
-        assertEquals(null, DispCodec.argKey("@a b"));
-        assertEquals(null, DispCodec.argKey("@"));
+        assertEquals(null, DispCodec.argKey("\u0001Species"));
+        assertEquals(null, DispCodec.argKey("\u0001a b"));
+        assertEquals(null, DispCodec.argKey("\u0001"));
     }
 }
