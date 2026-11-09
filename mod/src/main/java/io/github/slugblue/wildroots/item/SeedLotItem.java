@@ -77,6 +77,9 @@ public class SeedLotItem extends Item {
         if (!PlantService.plant(level, pos, lot, stack.getCount(), player == null ? null : player.getUUID())) {
             return InteractionResult.FAIL;
         }
+        if (player instanceof net.minecraft.server.level.ServerPlayer sp) {
+            io.github.slugblue.wildroots.journal.HintTriggers.planted(level, pos, sp);
+        }
         if (player == null || !player.getAbilities().instabuild) {
             stack.shrink(1);
         }

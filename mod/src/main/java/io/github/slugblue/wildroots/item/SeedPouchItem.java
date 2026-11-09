@@ -84,6 +84,18 @@ public class SeedPouchItem extends Item {
         return r instanceof LotNbt.Lot || r instanceof LotNbt.Lazy;
     }
 
+    /** First time in the inventory: the pouch tool page and the {@code seed_pouch} hint (narrative §4.5, §4.6). */
+    @Override
+    @io.github.slugblue.wildroots.core.safety.EntryPoint
+    public void inventoryTick(ItemStack stack, Level level, net.minecraft.world.entity.Entity entity, int slot,
+                              boolean selected) {
+        if (entity instanceof net.minecraft.server.level.ServerPlayer p
+                && !(p instanceof net.minecraftforge.common.util.FakePlayer)) {
+            Guarded.run("pouch tool page", p.getUUID(),
+                    () -> io.github.slugblue.wildroots.journal.HintTriggers.toolInInventory(p, "seed_pouch"));
+        }
+    }
+
     /**
      * Inserts up to the free places of {@code from}; the caller removes
      * exactly the returned number from the source. 0 = nothing changed.

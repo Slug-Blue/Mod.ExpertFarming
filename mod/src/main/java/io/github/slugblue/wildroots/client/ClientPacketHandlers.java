@@ -51,6 +51,18 @@ public final class ClientPacketHandlers {
         }
     }
 
+    /** {@code Toast}: a system toast with the server's title and body lines (WR-182). */
+    public static void toast(io.github.slugblue.wildroots.journal.ToastPacket packet) {
+        if (packet == io.github.slugblue.wildroots.journal.ToastPacket.BROKEN) {
+            return;
+        }
+        Minecraft mc = Minecraft.getInstance();
+        net.minecraft.client.gui.components.toasts.SystemToast.add(mc.getToasts(),
+                net.minecraft.client.gui.components.toasts.SystemToast.SystemToastIds.PERIODIC_NOTIFICATION,
+                io.github.slugblue.wildroots.core.safety.DispCodec.toComponent(packet.title()),
+                io.github.slugblue.wildroots.core.safety.DispCodec.toComponent(packet.body()));
+    }
+
     /** Drops a partial sync; called when the player leaves the server. */
     static void resetAssembler() {
         ASSEMBLER.reset();

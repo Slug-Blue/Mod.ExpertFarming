@@ -36,7 +36,7 @@ public final class JournalData {
     public static final int CURRENT = 1;
     public static final int MAX_ENTRIES = 256;
     public static final int MAX_ROWS = 16;
-    public static final int MAX_COUNTERS = 64;
+    public static final int MAX_COUNTERS = 128;
     /** At most one "new entry" toast in this many ticks (30 s; narrative §4.1). */
     public static final long TOAST_INTERVAL_TICKS = 600;
 
@@ -201,6 +201,26 @@ public final class JournalData {
         }
         revision++;
         return result;
+    }
+
+    /**
+     * Shows an unlocked entry again as new (a per-line hint that fires for
+     * the line once more): it moves to the top of the notes with new
+     * arguments and the "New" mark. {@code false} if the entry is missing.
+     */
+    public boolean refire(String id, List<String> args) {
+        Entry old = entries.get(id);
+        if (inert() || old == null || old.is(LOCKED) || !validArgs(args)) {
+            return false;
+        }
+        entries.put(id, new Entry(id, args, old.rows(), nextOrder, (old.flags() | NEW) & ~READ));
+        if (!fits()) {
+            entries.put(id, old);
+            return false;
+        }
+        nextOrder++;
+        revision++;
+        return true;
     }
 
     static boolean validArgs(List<String> args) {

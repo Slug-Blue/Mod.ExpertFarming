@@ -177,6 +177,11 @@ public final class GrowthLogic {
         }
         BlockState next = look(state.setValue(FieldPlantBlock.STAGE, newStage), live.def(), p.get());
         level.setBlock(pos, next, 2);
+        if (newStage == FieldPlantBlock.HARVEST_STAGE && oldStage < FieldPlantBlock.HARVEST_STAGE) {
+            Phenotype ph = p.get();
+            io.github.slugblue.wildroots.core.safety.Guarded.run("journal matured", pos, () ->
+                    io.github.slugblue.wildroots.journal.HintTriggers.matured(level, pos, live, ph));
+        }
         be.setGrowthChance((float) chance(live.def(), p.get(), env, newStage,
                 dormancyMinutes(live.def(), p.get(), pos, live)));
     }

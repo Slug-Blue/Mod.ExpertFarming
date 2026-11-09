@@ -36,6 +36,17 @@ public class FieldJournalItem extends Item {
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
     }
 
+    /** First time in the inventory: the journal's own tool page (narrative §4.6). */
+    @Override
+    @EntryPoint
+    public void inventoryTick(ItemStack stack, Level level, net.minecraft.world.entity.Entity entity, int slot,
+                              boolean selected) {
+        if (entity instanceof ServerPlayer p && !(p instanceof net.minecraftforge.common.util.FakePlayer)) {
+            Guarded.run("journal tool page", p.getUUID(),
+                    () -> io.github.slugblue.wildroots.journal.HintTriggers.toolInInventory(p, "field_journal"));
+        }
+    }
+
     @Override
     @EntryPoint
     public void appendHoverText(ItemStack stack, Level level, List<Component> tooltip, TooltipFlag flag) {

@@ -92,6 +92,9 @@ public class MotherItem extends Item {
             if (!PlantService.plantMother(level, pos, m.get(), p == null ? null : p.getUUID())) {
                 return InteractionResult.FAIL;
             }
+            if (p instanceof net.minecraft.server.level.ServerPlayer sp) {
+                io.github.slugblue.wildroots.journal.HintTriggers.planted(level, pos, sp);
+            }
             if (p == null || !p.getAbilities().instabuild) {
                 stack.shrink(1);
             }

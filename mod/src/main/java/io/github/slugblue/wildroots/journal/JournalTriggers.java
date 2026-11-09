@@ -102,6 +102,7 @@ public final class JournalTriggers {
         if (first && !j.get().has("hint.welcome")) {
             Journals.unlock(player, "hint.welcome", DispCodec.keyArg(nameKey("species", species)));
         }
+        HintTriggers.harvested(level, pos, state, be.get(), player, j.get());
     }
 
     /** First wild harvest: the journal item (unless the config says no) and the "given" mark. */
