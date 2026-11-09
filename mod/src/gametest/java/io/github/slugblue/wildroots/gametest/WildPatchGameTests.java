@@ -122,16 +122,23 @@ public final class WildPatchGameTests {
         try {
             WildPatchConfig c = carrotConfig(level);
             int sum = 0;
-            int n = 20;
-            for (int i = 0; i < n; i++) {
+            int n = 0;
+            for (int i = 0; i < 20; i++) {
                 sky.fill(Blocks.GRASS_BLOCK.defaultBlockState());
                 BlockPos origin = sky.surface().offset(i % 5 - 2, 0, i / 5 - 2);
                 WildPatchFeature.Result r = place(level, origin, c.withBeeNest(Optional.empty()), TEST);
                 int k = r.plants().size();
-                helper.assertTrue(r.placed() && k >= c.plants().getMinValue() && k <= c.plants().getMaxValue(),
-                        "patch " + i + ": " + k + " plants");
-                sum += k;
+                // a patch far enough from spawn may roll rich (14-20 plants, worldgen §5): where the test
+                // platform lands depends on the GameTest layout and the random world spawn
+                var range = r.rich() ? c.rich().orElseThrow().plants() : c.plants();
+                helper.assertTrue(r.placed() && k >= range.getMinValue() && k <= range.getMaxValue(),
+                        "patch " + i + (r.rich() ? " (rich)" : "") + ": " + k + " plants");
+                if (!r.rich()) {
+                    sum += k;
+                    n++;
+                }
             }
+            helper.assertTrue(n >= 10, "only " + n + " of 20 patches were not rich");
             double mean = sum / (double) n;
             org.slf4j.LoggerFactory.getLogger(WildPatchGameTests.class).info("WR-150 mean plants {}", mean);
             helper.assertTrue(Math.abs(mean - 11) <= 1.5, "mean plants " + mean);
