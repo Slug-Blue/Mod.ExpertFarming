@@ -60,6 +60,13 @@ public final class WildRoots {
         MinecraftForge.EVENT_BUS.addListener(StarterPatch::onServerStarted);
         MinecraftForge.EVENT_BUS.addListener(StarterPatch::onPlayerLoggedIn);
         MinecraftForge.EVENT_BUS.addListener(LocatePatchCommand::onRegisterCommands);
+        modBus.addListener(io.github.slugblue.wildroots.journal.Journals::onRegisterCapabilities);
+        MinecraftForge.EVENT_BUS.addGenericListener(net.minecraft.world.entity.Entity.class,
+                io.github.slugblue.wildroots.journal.Journals::onAttach);
+        MinecraftForge.EVENT_BUS.addListener(io.github.slugblue.wildroots.journal.Journals::onClone);
+        MinecraftForge.EVENT_BUS.addListener(io.github.slugblue.wildroots.journal.Journals::onLogin);
+        MinecraftForge.EVENT_BUS.addListener(EventPriority.LOWEST, false, net.minecraftforge.event.level.BlockEvent.BreakEvent.class,
+                io.github.slugblue.wildroots.journal.JournalTriggers::onBreak);
         WrNetwork.register();
         MinecraftForge.EVENT_BUS.addListener(ServerPacketGuard::onLogout);
         LOGGER.debug("Wild Roots constructed");

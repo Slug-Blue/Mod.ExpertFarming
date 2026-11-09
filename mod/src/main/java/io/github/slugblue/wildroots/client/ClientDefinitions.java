@@ -34,5 +34,6 @@ public final class ClientDefinitions {
     public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
         current = EMPTY;
         ClientPacketHandlers.resetAssembler();
+        ClientJournal.clear();
     }
 }

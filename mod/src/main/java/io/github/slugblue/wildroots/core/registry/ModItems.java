@@ -3,6 +3,7 @@ package io.github.slugblue.wildroots.core.registry;
 import io.github.slugblue.wildroots.WildRoots;
 import io.github.slugblue.wildroots.core.line.LineContent;
 import io.github.slugblue.wildroots.data.CultivarInfo;
+import io.github.slugblue.wildroots.item.FieldJournalItem;
 import io.github.slugblue.wildroots.item.MotherItem;
 import io.github.slugblue.wildroots.item.ProduceItem;
 import io.github.slugblue.wildroots.item.SeedLotItem;
@@ -29,6 +30,10 @@ public final class ModItems {
     /** {@code wildroots:seed_pouch}: 16 seeds, LIFO, like a bundle (WR-138; GDD §5.3, ADR-0007). Core content. */
     public static final RegistryObject<SeedPouchItem> SEED_POUCH = REGISTER.register("seed_pouch",
             () -> new SeedPouchItem(new Item.Properties()));
+
+    /** {@code wildroots:field_journal}: a window onto the journal capability (WR-180; narrative §4.1). Core content. */
+    public static final RegistryObject<FieldJournalItem> FIELD_JOURNAL = REGISTER.register("field_journal",
+            () -> new FieldJournalItem(new Item.Properties()));
 
     /** Carrot line (GDD §7.3, economy §2): food reference 3 / 0.6 like the vanilla carrot. */
     public static final String CARROT_LINE = "carrot";

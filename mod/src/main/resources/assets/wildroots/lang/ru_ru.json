@@ -37,5 +37,11 @@
   "commands.wildroots.locate_patch.success": "Ближайший кандидатный чанк для %s: %s (%s блоков)",
   "commands.wildroots.locate_patch.budget": "Кандидат %s не найден в пределах бюджета поиска (пройдено %s из %s блоков)",
   "commands.wildroots.locate_patch.not_found": "Для %s нет кандидатного чанка в радиусе %s блоков",
-  "commands.wildroots.locate_patch.unknown": "Неизвестный вид или у него нет диких патчей: %s"
+  "commands.wildroots.locate_patch.unknown": "Неизвестный вид или у него нет диких патчей: %s",
+  "item.wildroots.field_journal": "Полевой журнал",
+  "item.wildroots.field_journal.desc": "Записки натуралиста. ПКМ — открыть.",
+  "wildroots.message.journal.received": "Теперь с собой полевой журнал.",
+  "wildroots.journal.hint.welcome.title": "Первая запись",
+  "wildroots.journal.hint.welcome": "Найден вид: %s. Растения в одном месте не одинаковые. Если сажать семена лучших, потомство, похоже, пойдёт в них.",
+  "wildroots.journal.species.found_at": "%1$s · %2$s, %3$s"
 }

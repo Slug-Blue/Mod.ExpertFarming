@@ -1,0 +1,9 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    { "item": "minecraft:book" },
+    { "item": "wildroots:seed_lot" }
+  ],
+  "result": { "item": "wildroots:field_journal" }
+}

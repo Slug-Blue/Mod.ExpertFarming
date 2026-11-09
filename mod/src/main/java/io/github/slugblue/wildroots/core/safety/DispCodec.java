@@ -19,7 +19,13 @@ import net.minecraft.network.chat.Component;
  * code points without control, format or {@code §} characters; at most
  * {@value #MAX_LINES} lines. A line that breaks a rule is dropped (on write
  * and on read), the others stay. Arguments are shown as
- * {@code Component.literal}.
+ * {@code Component.literal}, except a <em>key argument</em>: {@value #KEY_ARG}
+ * followed by a key without its {@code wildroots.} prefix (as stored lines
+ * are), or by a vanilla {@code biome.*} key, which is shown translated (a
+ * species name, a scale word; WR-180, WR-183). The short form keeps an
+ * inspected lot within its 1 KiB. Player text never starts with {@value #KEY_ARG}: the
+ * sanitizer does not allow that character (SEC-07), so a player string is
+ * never shown as a key.
  *
  * <p>Storage (compact, for the 512 B lot target): {@code disp} is a list of
  * strings, one per line: the key without the {@code wildroots.} prefix,
@@ -37,6 +43,10 @@ public final class DispCodec {
     /** U+001F INFORMATION SEPARATOR ONE: between the key and each argument of a stored line. */
     public static final char SEPARATOR = '\u001F';
     static final String SEPARATOR_NAME = "U+001F";
+    /** Prefix of a key argument: {@code @species.wild_carrot} is shown as {@code wildroots.species.wild_carrot}. */
+    public static final String KEY_ARG = "@";
+    /** Vanilla keys a key argument may name besides the mod's own: biome names ({@code biome.minecraft.plains}). */
+    public static final Pattern BIOME_KEY = Pattern.compile("^biome\\.[a-z0-9_.]{1,96}$");
 
     /** One tooltip line. */
     public record Line(String key, List<String> args) {
@@ -123,9 +133,33 @@ public final class DispCodec {
         return valid(l) ? Optional.of(l) : Optional.empty();
     }
 
-    /** Tooltip component: the key, arguments as literals (never parsed as JSON). */
+    /** A key argument for {@code key} (the server writes it; see the class comment). */
+    public static String keyArg(String key) {
+        return KEY_ARG + (key.startsWith(KEY_PREFIX) ? key.substring(KEY_PREFIX.length()) : key);
+    }
+
+    /** The translation key a key argument names, or {@code null} if {@code a} is a literal. */
+    public static String argKey(String a) {
+        if (a == null || !a.startsWith(KEY_ARG)) {
+            return null;
+        }
+        String rest = a.substring(KEY_ARG.length());
+        if (BIOME_KEY.matcher(rest).matches()) {
+            return rest;
+        }
+        String key = KEY_PREFIX + rest;
+        return KEY.matcher(key).matches() ? key : null;
+    }
+
+    /** Tooltip component: the key, arguments as literals or key arguments translated (never parsed as JSON). */
     public static Component toComponent(Line line) {
-        Object[] args = line.args().stream().map(Component::literal).toArray();
+        Object[] args = line.args().stream().map(DispCodec::argComponent).toArray();
         return Component.translatable(line.key(), args);
+    }
+
+    /** One argument: a valid key argument translated, anything else literal. */
+    public static Component argComponent(String a) {
+        String key = argKey(a);
+        return key != null ? Component.translatable(key) : Component.literal(a);
     }
 }

@@ -50,6 +50,17 @@ public class SeedPouchItem extends Item {
         return PouchContents.read(pouch.getTag() == null ? null : pouch.getTag().get(PouchContents.KEY));
     }
 
+    /**
+     * Cheap check for the {@code wildroots:filled} model predicate: the
+     * pouch tag has a non-empty entry list. No parse, no budget measure; a
+     * damaged pouch may still show "filled" (display only, never logic).
+     */
+    public static boolean filled(ItemStack pouch) {
+        CompoundTag t = pouch.getTag();
+        return t != null && t.get(PouchContents.KEY) instanceof CompoundTag c
+                && !c.getList("e", net.minecraft.nbt.Tag.TAG_COMPOUND).isEmpty();
+    }
+
     static void store(ItemStack pouch, PouchContents c) {
         if (c.used() == 0 && c.write().size() <= 2) {
             CompoundTag t = pouch.getTag();

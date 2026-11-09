@@ -37,5 +37,11 @@
   "commands.wildroots.locate_patch.success": "Nearest candidate chunk for %s: %s (%s blocks away)",
   "commands.wildroots.locate_patch.budget": "No %s candidate found within the search budget (searched %s of %s blocks)",
   "commands.wildroots.locate_patch.not_found": "No candidate chunk for %s within %s blocks",
-  "commands.wildroots.locate_patch.unknown": "Unknown species or no wild patches for it: %s"
+  "commands.wildroots.locate_patch.unknown": "Unknown species or no wild patches for it: %s",
+  "item.wildroots.field_journal": "Field Journal",
+  "item.wildroots.field_journal.desc": "A naturalist's notes. Use to open.",
+  "wildroots.message.journal.received": "You now carry a field journal.",
+  "wildroots.journal.hint.welcome.title": "First Entry",
+  "wildroots.journal.hint.welcome": "New species: %s. Plants from one spot are not alike. Sow seed from the best, and the offspring seem to take after them.",
+  "wildroots.journal.species.found_at": "%1$s · %2$s, %3$s"
 }

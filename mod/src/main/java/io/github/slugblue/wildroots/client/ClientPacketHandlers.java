@@ -37,6 +37,15 @@ public final class ClientPacketHandlers {
         }
     }
 
+    /** {@code JournalSync}: store the entries; open the screen if the journal was used (WR-181). */
+    public static void journalSync(io.github.slugblue.wildroots.journal.JournalSyncPacket packet) {
+        if (packet == io.github.slugblue.wildroots.journal.JournalSyncPacket.BROKEN) {
+            LOGGER.warn("Wild Roots: a journal sync did not decode; kept the previous copy");
+            return;
+        }
+        ClientJournal.apply(packet);
+    }
+
     /** Drops a partial sync; called when the player leaves the server. */
     static void resetAssembler() {
         ASSEMBLER.reset();
