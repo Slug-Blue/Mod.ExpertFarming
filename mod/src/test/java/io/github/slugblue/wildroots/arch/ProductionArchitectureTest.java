@@ -27,6 +27,14 @@ class ProductionArchitectureTest {
                 .importPackages(ROOT);
     }
 
+    /** WR-181: the journal screen and every later screen are client classes. */
+    @Test
+    void screensOnlyInClient() {
+        ArchRules.screensOnlyInClient(ROOT).check(production);
+        org.junit.jupiter.api.Assertions.assertTrue(production.contain(ROOT + ".client.JournalScreen"),
+                "the journal screen is not where the rule looks");
+    }
+
     @Test
     void noClientCodeOutsideClientPackage() {
         ArchRules.noClientCodeOutsideClientPackage(ROOT, ArchRules.CLIENT_PLUGIN_ANNOTATIONS).check(production);

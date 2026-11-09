@@ -59,6 +59,21 @@ public final class ArchRules {
                 .because("client code lives in ..client.. (docs/05-architecture.md §15)");
     }
 
+    /**
+     * WR-181 (§15): screens ({@code net.minecraft.client.gui.screens.Screen}
+     * subclasses) and screen helpers named {@code *Screen} live in
+     * {@code ..client..} only.
+     */
+    public static ArchRule screensOnlyInClient(String root) {
+        return classes()
+                .that().resideInAPackage(root + "..")
+                .and().areAssignableTo("net.minecraft.client.gui.screens.Screen")
+                .or().haveSimpleNameEndingWith("Screen").and().resideInAPackage(root + "..")
+                .should().resideInAPackage(root + "..client..")
+                .allowEmptyShould(true)
+                .because("screens are client code (docs/05-architecture.md §15)");
+    }
+
     /** Only {@code compat} imports {@code compat} and other mods (§3). */
     public static ArchRule compatIsolated(String root, List<String> foreignModPackages) {
         List<String> targets = new ArrayList<>();

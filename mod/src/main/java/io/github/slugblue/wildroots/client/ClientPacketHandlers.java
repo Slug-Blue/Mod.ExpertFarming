@@ -44,6 +44,11 @@ public final class ClientPacketHandlers {
             return;
         }
         ClientJournal.apply(packet);
+        if (packet.open()) {
+            JournalScreen.openOrRefresh();
+        } else if (Minecraft.getInstance().screen instanceof JournalScreen s) {
+            s.rebuild();
+        }
     }
 
     /** Drops a partial sync; called when the player leaves the server. */
