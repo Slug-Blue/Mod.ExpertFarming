@@ -107,6 +107,30 @@ public final class LotStacks {
         return LotNbt.write(lot, disp(lot));
     }
 
+    /**
+     * Hand lens (WR-183): the same lot with {@code inspected} and a
+     * {@code disp} of the base lines plus {@code tierOne}, written into
+     * {@code stack}. If the lot would pass its 1 KiB, tier-1 lines are
+     * dropped from the end until it fits. {@code false} if not even the
+     * base lines fit (nothing is written).
+     */
+    public static boolean inspect(ItemStack stack, LotNbt.Lot lot, List<DispCodec.Line> tierOne) {
+        LotNbt.Lot marked = new LotNbt.Lot(lot.lotId(), lot.species(), lot.cultivar(), lot.mother(), lot.fathers(),
+                lot.pOut(), lot.generation(), lot.lineName(), lot.flags() | LotFlags.INSPECTED, lot.rare(),
+                lot.seedlingNoise());
+        List<DispCodec.Line> base = disp(marked);
+        for (int keep = Math.min(tierOne.size(), DispCodec.MAX_LINES - base.size()); keep >= 0; keep--) {
+            List<DispCodec.Line> d = new ArrayList<>(base);
+            d.addAll(tierOne.subList(0, keep));
+            CompoundTag root = LotNbt.write(marked, d);
+            if (NbtLimits.lot(root).ok()) {
+                stack.getOrCreateTag().put(LotNbt.KEY, root);
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static float clampPOut(float p) {
         return Float.isFinite(p) ? Math.max(0, Math.min(1, p)) : 0;
     }

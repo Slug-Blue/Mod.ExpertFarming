@@ -4,6 +4,7 @@ import io.github.slugblue.wildroots.WildRoots;
 import io.github.slugblue.wildroots.core.line.LineContent;
 import io.github.slugblue.wildroots.data.CultivarInfo;
 import io.github.slugblue.wildroots.item.FieldJournalItem;
+import io.github.slugblue.wildroots.item.HandLensItem;
 import io.github.slugblue.wildroots.item.MotherItem;
 import io.github.slugblue.wildroots.item.ProduceItem;
 import io.github.slugblue.wildroots.item.SeedLotItem;
@@ -34,6 +35,10 @@ public final class ModItems {
     /** {@code wildroots:field_journal}: a window onto the journal capability (WR-180; narrative §4.1). Core content. */
     public static final RegistryObject<FieldJournalItem> FIELD_JOURNAL = REGISTER.register("field_journal",
             () -> new FieldJournalItem(new Item.Properties()));
+
+    /** {@code wildroots:hand_lens}: tier 1 (WR-183; GDD §10). Core content. */
+    public static final RegistryObject<HandLensItem> HAND_LENS = REGISTER.register("hand_lens",
+            () -> new HandLensItem(new Item.Properties()));
 
     /** Carrot line (GDD §7.3, economy §2): food reference 3 / 0.6 like the vanilla carrot. */
     public static final String CARROT_LINE = "carrot";
