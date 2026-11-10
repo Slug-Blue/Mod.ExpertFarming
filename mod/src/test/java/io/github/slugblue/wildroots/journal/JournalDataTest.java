@@ -215,6 +215,40 @@ class JournalDataTest {
         assertFalse(JournalData.load(j.save()).inert(), "saved journal loads inert");
     }
 
+    /**
+     * T3: a delta the client dropped as broken leaves its copy stale; the
+     * next open after {@link JournalData#REPAIR_INTERVAL_TICKS} sends a full
+     * sync, earlier opens and opens with no delta since the last full sync
+     * send only "open".
+     */
+    @Test
+    void openRepairsAClientCopyThatMayHaveMissedADelta() {
+        JournalData j = new JournalData();
+        assertTrue(j.openNeedsFull(0), "never synced");
+        j.markFullSynced(100);
+        assertFalse(j.openNeedsFull(100), "fresh full sync");
+        assertFalse(j.openNeedsFull(100_000), "no delta since: never a repair");
+        j.unlock("hint.welcome", List.of(), List.of());
+        j.markDeltaSynced();
+        assertTrue(j.synced());
+        assertFalse(j.openNeedsFull(100 + JournalData.REPAIR_INTERVAL_TICKS - 1), "inside the repair interval");
+        assertTrue(j.openNeedsFull(100 + JournalData.REPAIR_INTERVAL_TICKS), "repair at the interval");
+        j.markFullSynced(100 + JournalData.REPAIR_INTERVAL_TICKS);
+        assertFalse(j.openNeedsFull(100 + 10L * JournalData.REPAIR_INTERVAL_TICKS), "repaired: no further full sync");
+        // a change that never reached the client always gets a full sync
+        j.markGiven();
+        assertTrue(j.openNeedsFull(100 + JournalData.REPAIR_INTERVAL_TICKS));
+        // deltas without any full sync yet, and a server tick counter that went backwards
+        JournalData k = new JournalData();
+        k.unlock("hint.welcome", List.of(), List.of());
+        k.markDeltaSynced();
+        assertTrue(k.openNeedsFull(0), "deltas only, never a full sync");
+        k.markFullSynced(5000);
+        k.unlock("hint.lone_plant", List.of(), List.of());
+        k.markDeltaSynced();
+        assertTrue(k.openNeedsFull(10), "clock went backwards: repair rather than wait");
+    }
+
     /** A journal of filler entries a little under 64 KiB (rows of long literal arguments). */
     static JournalData nearlyFull() {
         return fill(new JournalData());

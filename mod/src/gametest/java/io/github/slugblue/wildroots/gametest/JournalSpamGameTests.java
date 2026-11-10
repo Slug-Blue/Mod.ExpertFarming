@@ -4,6 +4,7 @@ import io.github.slugblue.wildroots.WildRoots;
 import io.github.slugblue.wildroots.core.registry.ModItems;
 import io.github.slugblue.wildroots.item.FieldJournalItem;
 import io.github.slugblue.wildroots.item.HandLensItem;
+import io.github.slugblue.wildroots.journal.JournalData;
 import io.github.slugblue.wildroots.journal.JournalSyncPacket;
 import io.github.slugblue.wildroots.journal.Journals;
 import io.netty.buffer.Unpooled;
@@ -106,5 +107,53 @@ public final class JournalSpamGameTests {
             p.discard();
         }
         helper.succeed();
+    }
+    /**
+     * T3: a client that dropped a delta (decoded as broken) has a stale copy.
+     * The server does not know, so it repairs on open: a delta since the
+     * last full sync makes the first open after
+     * {@link JournalData#REPAIR_INTERVAL_TICKS} ticks a full sync; earlier
+     * opens, later opens and a burst of uses stay "open"-only. Each segment
+     * records synchronously (the sender is global to the batch).
+     */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "wr18x_journal_repair",
+            timeoutTicks = JournalData.REPAIR_INTERVAL_TICKS + 100)
+    public static void openRepairsAMissedDeltaAtMostOncePerInterval(GameTestHelper helper) {
+        ServerPlayer p = JournalGameTests.survival(helper, "wr18x_repair");
+        ItemStack book = new ItemStack(ModItems.FIELD_JOURNAL.get());
+        JournalGameTests.Recorder rec = new JournalGameTests.Recorder();
+        try {
+            Journals.syncFull(p, false); // what login sends
+            Journals.unlock(p, "note.repair_probe"); // a delta the client may have dropped
+            rec.syncs.clear();
+            for (int i = 0; i < 50; i++) {
+                use(p, book);
+            }
+            helper.assertTrue(rec.syncs.size() == 1 && !rec.syncs.get(0).full() && rec.syncs.get(0).open(),
+                    "inside the interval: " + rec.syncs);
+        } finally {
+            rec.close();
+        }
+        helper.runAfterDelay(JournalData.REPAIR_INTERVAL_TICKS + 1, () -> {
+            JournalGameTests.Recorder r2 = new JournalGameTests.Recorder();
+            try {
+                p.getCooldowns().removeCooldown(ModItems.FIELD_JOURNAL.get());
+                for (int i = 0; i < 50; i++) {
+                    use(p, book);
+                }
+                helper.assertTrue(r2.syncs.size() == 1 && r2.syncs.get(0).full() && r2.syncs.get(0).open(),
+                        "repair open: " + r2.syncs);
+                helper.assertTrue(r2.syncs.get(0).entries().stream().anyMatch(e -> e.id().equals("note.repair_probe")),
+                        "repair carries the missed entry");
+                r2.syncs.clear();
+                p.getCooldowns().removeCooldown(ModItems.FIELD_JOURNAL.get());
+                use(p, book);
+                helper.assertTrue(r2.syncs.size() == 1 && !r2.syncs.get(0).full(), "after the repair: " + r2.syncs);
+            } finally {
+                r2.close();
+                p.discard();
+            }
+            helper.succeed();
+        });
     }
 }

@@ -37,6 +37,12 @@ public final class JournalData {
     public static final int MAX_ENTRIES = 256;
     public static final int MAX_ROWS = 16;
     public static final int MAX_COUNTERS = 128;
+    /**
+     * T3: a client copy that missed a delta (it did not decode there) is
+     * repaired by a full sync on the next open, at most once per this many
+     * ticks, so opening cannot be turned into a stream of full syncs.
+     */
+    public static final int REPAIR_INTERVAL_TICKS = 200;
     /** At most one "new entry" toast in this many ticks (30 s; narrative §4.1). */
     public static final long TOAST_INTERVAL_TICKS = 600;
 
@@ -90,6 +96,10 @@ public final class JournalData {
     private int revision;
     /** Transient: the revision the client last received (full sync or delta); -1 = never. */
     private int syncedRevision = -1;
+    /** Transient (T3): a delta went out since the last full sync, so the client copy may have missed one. */
+    private boolean deltaSinceFull;
+    /** Transient (T3): server tick of the last full sync; {@code Long.MIN_VALUE} = never. */
+    private long lastFullSync = Long.MIN_VALUE;
     /**
      * Transient (T1): an upper bound of the live NBT size in bytes, exact
      * right after a full measure, -1 when unknown. {@link #setCounter} keeps
@@ -142,8 +152,33 @@ public final class JournalData {
         return syncedRevision == revision;
     }
 
-    public void markSynced() {
+    /** A full sync of this revision went out at server tick {@code now}. */
+    public void markFullSynced(long now) {
         syncedRevision = revision;
+        deltaSinceFull = false;
+        lastFullSync = now;
+    }
+
+    /** A delta of this revision went out; the client holds it unless the delta failed there (T3). */
+    public void markDeltaSynced() {
+        syncedRevision = revision;
+        deltaSinceFull = true;
+    }
+
+    /**
+     * Whether opening the journal at server tick {@code now} sends a full
+     * sync rather than only "open": when the client does not hold this
+     * revision, or (T3, repair) a delta went out since the last full sync and
+     * that was at least {@value #REPAIR_INTERVAL_TICKS} ticks ago. A client
+     * that dropped a delta as broken is so repaired on a later open without
+     * a request of its own.
+     */
+    public boolean openNeedsFull(long now) {
+        if (!synced()) {
+            return true;
+        }
+        return deltaSinceFull && (lastFullSync == Long.MIN_VALUE || now < lastFullSync
+                || now - lastFullSync >= REPAIR_INTERVAL_TICKS);
     }
 
     public long counter(String key) {

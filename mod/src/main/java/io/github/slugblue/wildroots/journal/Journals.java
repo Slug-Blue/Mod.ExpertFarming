@@ -187,13 +187,18 @@ public final class Journals {
                 ? n.substring(0, n.offsetByCodePoints(0, JournalSyncPacket.MAX_OWNER)) : n;
     }
 
+    /** Server tick for the sync repair interval (T3). */
+    static long now(ServerPlayer player) {
+        return player.getServer() == null ? 0 : player.getServer().getTickCount();
+    }
+
     // ------------------------------------------------------------------ entries
 
     /** Sends the whole journal; {@code open} opens the screen. */
     public static void syncFull(ServerPlayer player, boolean open) {
         of(player).ifPresent(j -> {
             sender.sync(player, new JournalSyncPacket(true, open, owner(player), j.ordered()));
-            j.markSynced();
+            j.markFullSynced(now(player));
         });
     }
 
@@ -201,15 +206,18 @@ public final class Journals {
      * The journal was used (review 1, M2): the client already holds every
      * entry (full sync at login, a delta for every change), so only "open"
      * goes out, an empty delta; a full sync only if something changed
-     * without reaching the client.
+     * without reaching the client, or (T3) to repair a client copy that may
+     * have dropped a delta, at most once per
+     * {@value JournalData#REPAIR_INTERVAL_TICKS} ticks
+     * ({@link JournalData#openNeedsFull}).
      */
     public static void open(ServerPlayer player) {
         // (cooldown in FieldJournalItem)
         of(player).ifPresent(j -> {
-            if (j.synced()) {
-                sender.sync(player, new JournalSyncPacket(false, true, owner(player), List.of()));
-            } else {
+            if (j.openNeedsFull(now(player))) {
                 syncFull(player, true);
+            } else {
+                sender.sync(player, new JournalSyncPacket(false, true, owner(player), List.of()));
             }
         });
     }
@@ -218,7 +226,7 @@ public final class Journals {
     static void delta(ServerPlayer player, JournalData j, JournalData.Entry e) {
         // every visible change goes out as such a delta, so the client holds this revision afterwards
         sender.sync(player, new JournalSyncPacket(false, false, owner(player), List.of(e)));
-        j.markSynced();
+        j.markDeltaSynced();
     }
 
     /**
