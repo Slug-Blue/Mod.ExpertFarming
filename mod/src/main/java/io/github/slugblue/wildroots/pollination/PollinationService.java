@@ -157,10 +157,12 @@ public final class PollinationService {
         String species = live.get().def().id();
         boolean donor = p.fresh() && species.equals(p.species()) && p.source() != pos.asLong();
         be.get().beeVisit(donor ? p.genome() : null, (float) Defaults.BEE_DONOR_WEIGHT);
-        io.github.slugblue.wildroots.journal.HintTriggers.beeVisited(level, be.get());
         p.collect(species, pos.asLong(), live.get().genetics().encode(live.get().genome()).toFather());
         p.nectarFromUs = true;
         bee.setHasNectar(true); // package-private in 1.20.1, opened by the access transformer (S2)
+        // the journal hook runs last and isolated: a failure never leaves the visit half done (review 1, M3)
+        io.github.slugblue.wildroots.core.safety.Guarded.run("journal bee visit", pos,
+                () -> io.github.slugblue.wildroots.journal.HintTriggers.beeVisited(level, be.get()));
         return donor ? Visit.DONOR : Visit.VISITED;
     }
 }

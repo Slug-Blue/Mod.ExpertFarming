@@ -155,10 +155,24 @@ public final class Journals {
         return player.getCapability(JournalCapability.CAPABILITY).resolve();
     }
 
+    /** Tests: players the planter lookup also finds (GameTest players are not in the player list). */
+    private static volatile java.util.function.Function<UUID, ServerPlayer> extraOnline = id -> null;
+
+    /** Replaces the extra lookup (tests) and returns the previous one; {@code null} restores none. */
+    public static java.util.function.Function<UUID, ServerPlayer> setExtraOnline(
+            java.util.function.Function<UUID, ServerPlayer> f) {
+        java.util.function.Function<UUID, ServerPlayer> old = extraOnline;
+        extraOnline = f == null ? id -> null : f;
+        return old;
+    }
+
     /** The online player {@code id} of {@code server} (the planter of a plant), if any. */
     public static Optional<ServerPlayer> online(MinecraftServer server, UUID id) {
-        return id == null || server == null ? Optional.empty()
-                : Optional.ofNullable(server.getPlayerList().getPlayer(id));
+        if (id == null || server == null) {
+            return Optional.empty();
+        }
+        ServerPlayer p = server.getPlayerList().getPlayer(id);
+        return Optional.ofNullable(p != null ? p : extraOnline.apply(id));
     }
 
     static String owner(ServerPlayer player) {

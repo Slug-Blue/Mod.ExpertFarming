@@ -92,11 +92,12 @@ public class MotherItem extends Item {
             if (!PlantService.plantMother(level, pos, m.get(), p == null ? null : p.getUUID())) {
                 return InteractionResult.FAIL;
             }
-            if (p instanceof net.minecraft.server.level.ServerPlayer sp) {
-                io.github.slugblue.wildroots.journal.HintTriggers.planted(level, pos, sp);
-            }
             if (p == null || !p.getAbilities().instabuild) {
                 stack.shrink(1);
+            }
+            // a side hook never changes the planting (review 1, M3)
+            if (p instanceof net.minecraft.server.level.ServerPlayer sp) {
+                Guarded.run("journal planted", pos, () -> io.github.slugblue.wildroots.journal.HintTriggers.planted(level, pos, sp));
             }
             return InteractionResult.CONSUME;
         }, InteractionResult.FAIL);
