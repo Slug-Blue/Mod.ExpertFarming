@@ -112,7 +112,7 @@ public final class HandLensGameTests {
                     "the lot changed beyond the flag and disp");
             List<DispCodec.Line> disp = LotNbt.disp(LotNbt.root(after.getTag()));
             helper.assertTrue(disp.size() > dispBefore, "disp not rewritten: " + disp);
-            helper.assertTrue(disp.stream().anyMatch(l -> l.key().equals(LensReading.TRAIT)), "no tier-1 trait lines");
+            helper.assertTrue(disp.stream().anyMatch(l -> l.key().equals(io.github.slugblue.wildroots.lens.LensRow.KEY)), "no tier-1 row");
             helper.assertTrue(io.github.slugblue.wildroots.core.safety.NbtLimits.lot(LotNbt.root(after.getTag())).ok(),
                     "inspected lot over its limit");
             // the tier stays: save and load the stack, split it, the lines are still there
@@ -125,6 +125,69 @@ public final class HandLensGameTests {
             helper.assertTrue(Lens.inspectLot(lazy, level, p), "lazy lot not inspected");
             helper.assertTrue(LotStacks.read(lazy) instanceof LotNbt.Lot l && (l.flags() & LotFlags.INSPECTED) != 0,
                     "lazy lot not realised and marked");
+        } finally {
+            rec.close();
+            p.discard();
+        }
+        helper.succeed();
+    }
+
+    /**
+     * Review 1, M1: the worst lot (4 fathers, a 50-character CJK line name,
+     * pollen flags) keeps every tier-1 line: all 7 traits, bitterness,
+     * pollination, inbreeding and "looks like", within 1 KiB, nothing left out.
+     */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "wr18x_journal")
+    public static void worstCaseLotKeepsTheWholeTierOne(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        var gs = io.github.slugblue.wildroots.data.Definitions.current().genetics();
+        List<io.github.slugblue.wildroots.item.LotFathersNbt.Father> fathers = new java.util.ArrayList<>();
+        for (int i = 0; i < io.github.slugblue.wildroots.core.safety.NbtLimits.LOT_MAX_FATHERS; i++) {
+            fathers.add(new io.github.slugblue.wildroots.item.LotFathersNbt.Father(
+                    gs.encode(PlantFixtures.genome(700 + i)).toFather(), 2f, i == 0));
+        }
+        String name = "漢".repeat(io.github.slugblue.wildroots.core.safety.PlayerText.LINE_NAME_MAX);
+        LotStacks.Parent mother = new LotStacks.Parent(PlantFixtures.SP, java.util.Optional.empty(),
+                gs.encode(PlantFixtures.genome(699)), java.util.Optional.of(name), 41, LotFlags.FROM_WILD);
+        ItemStack stack = LotStacks.stack(LotStacks.seedsTag(mother, fathers, 0.75f, LotFlags.BEES, 123456789L,
+                LotStacks.RareClaim.NONE), 9);
+        LotNbt.Lot lot = (LotNbt.Lot) LotStacks.read(stack);
+        helper.assertTrue(lot.fathers().size() == 4 && lot.lineName().equals(java.util.Optional.of(name)), "fixture");
+        String traits = "s5*y5g5f5Wc5h5d5";
+        io.github.slugblue.wildroots.lens.LensRow row = new io.github.slugblue.wildroots.lens.LensRow(traits, 'd', 'B',
+                true, java.util.Optional.of("eastern_carrot"), false);
+        helper.assertTrue(LotStacks.inspect(stack, lot, row.degradations().stream()
+                .map(io.github.slugblue.wildroots.lens.LensRow::line).toList()), "not inspected");
+        var root = LotNbt.root(stack.getTag());
+        var budget = io.github.slugblue.wildroots.core.safety.NbtLimits.lot(root);
+        helper.assertTrue(budget.ok(), "over the limit: " + budget);
+        List<DispCodec.Line> disp = LotNbt.disp(root);
+        var kept = disp.stream().map(io.github.slugblue.wildroots.lens.LensRow::parse).flatMap(java.util.Optional::stream)
+                .findFirst().orElseThrow();
+        helper.assertTrue(kept.equals(row), "tier 1 shortened: " + kept + " (lot " + budget.bytes() + " B)");
+        helper.assertTrue(kept.expand(PlantFixtures.SP).size() == 7 + 4, "expanded lines " + kept.expand(PlantFixtures.SP));
+        org.slf4j.LoggerFactory.getLogger(HandLensGameTests.class).info("WR-183 worst inspected lot: {} B", budget.bytes());
+        helper.succeed();
+    }
+
+    /** Review 1, M1: the real lens path writes one compact row and the tooltip expands every trait. */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "wr18x_journal")
+    public static void inspectedLotTooltipShowsEveryTrait(GameTestHelper helper) {
+        JournalGameTests.Recorder rec = new JournalGameTests.Recorder();
+        ServerPlayer p = JournalGameTests.survival(helper, "wr183_tooltip");
+        try {
+            ItemStack lot = PlantingGameTests.lot(helper.getLevel(), 2);
+            helper.assertTrue(Lens.inspectLot(lot, helper.getLevel(), p), "not inspected");
+            List<net.minecraft.network.chat.Component> tip = new java.util.ArrayList<>();
+            lot.getItem().appendHoverText(lot, helper.getLevel(), tip, net.minecraft.world.item.TooltipFlag.NORMAL);
+            long traitLines = tip.stream().filter(c -> c.getContents()
+                    instanceof net.minecraft.network.chat.contents.TranslatableContents t
+                    && t.getKey().equals(LensReading.TRAIT)).count();
+            int quant = PlantFixtures.carrot().def().quantitative().size();
+            helper.assertTrue(traitLines == quant, "tooltip trait lines " + traitLines + " of " + quant + ": " + tip);
+            helper.assertTrue(tip.stream().noneMatch(c -> c.getContents()
+                    instanceof net.minecraft.network.chat.contents.TranslatableContents t
+                    && t.getKey().equals(io.github.slugblue.wildroots.lens.LensRow.MORE_KEY)), "'and more' on a normal lot");
         } finally {
             rec.close();
             p.discard();

@@ -96,8 +96,16 @@ public class SeedLotItem extends Item {
                 tooltip.add(Component.translatable("wildroots.tooltip.lot.damaged"));
                 return;
             }
+            String species = r instanceof LotNbt.Lot l ? l.species() : r instanceof LotNbt.Lazy z ? z.species() : "";
             for (DispCodec.Line line : LotNbt.disp(LotNbt.root(stack.getTag()))) {
-                tooltip.add(DispCodec.toComponent(line));
+                // the compact tier-1 row of the lens expands into its lines (review 1, M1)
+                java.util.Optional<io.github.slugblue.wildroots.lens.LensRow> row =
+                        io.github.slugblue.wildroots.lens.LensRow.parse(line);
+                if (row.isPresent()) {
+                    tooltip.addAll(row.get().expand(species));
+                } else {
+                    tooltip.add(DispCodec.toComponent(line));
+                }
             }
         });
     }

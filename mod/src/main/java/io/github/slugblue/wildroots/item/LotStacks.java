@@ -109,19 +109,20 @@ public final class LotStacks {
 
     /**
      * Hand lens (WR-183): the same lot with {@code inspected} and a
-     * {@code disp} of the base lines plus {@code tierOne}, written into
-     * {@code stack}. If the lot would pass its 1 KiB, tier-1 lines are
-     * dropped from the end until it fits. {@code false} if not even the
-     * base lines fit (nothing is written).
+     * {@code disp} of the base lines plus one compact tier-1 row
+     * ({@code lens.LensRow}), written into {@code stack}. {@code rows} are
+     * the candidates from the full row to the smallest (each smaller one says
+     * "and more", review 1, M1): the first that keeps the lot within 1 KiB is
+     * written. {@code false} if none fits (nothing is written).
      */
-    public static boolean inspect(ItemStack stack, LotNbt.Lot lot, List<DispCodec.Line> tierOne) {
+    public static boolean inspect(ItemStack stack, LotNbt.Lot lot, List<DispCodec.Line> rows) {
         LotNbt.Lot marked = new LotNbt.Lot(lot.lotId(), lot.species(), lot.cultivar(), lot.mother(), lot.fathers(),
                 lot.pOut(), lot.generation(), lot.lineName(), lot.flags() | LotFlags.INSPECTED, lot.rare(),
                 lot.seedlingNoise());
         List<DispCodec.Line> base = disp(marked);
-        for (int keep = Math.min(tierOne.size(), DispCodec.MAX_LINES - base.size()); keep >= 0; keep--) {
+        for (DispCodec.Line row : rows) {
             List<DispCodec.Line> d = new ArrayList<>(base);
-            d.addAll(tierOne.subList(0, keep));
+            d.add(row);
             CompoundTag root = LotNbt.write(marked, d);
             if (NbtLimits.lot(root).ok()) {
                 stack.getOrCreateTag().put(LotNbt.KEY, root);

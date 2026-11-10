@@ -145,11 +145,10 @@ public final class Lens {
         if (p.isEmpty()) {
             return false;
         }
-        List<DispCodec.Line> lines = new ArrayList<>();
         int tier = lot.cultivar().flatMap(snap::cultivar).map(c -> c.def().tier()).orElse(0);
-        Optional<CultivarDef> looks = tierOne(lines, snap, def, e.get().info(), p.get(), lotPollination(lot),
-                lot.cultivar(), tier);
-        if (!LotStacks.inspect(stack, lot, lines)) {
+        Optional<CultivarDef> looks = LensReading.looksLike(snap, def, p.get(), lot.cultivar(), tier);
+        LensRow row = LensRow.of(def, e.get().info(), p.get(), lotPollination(lot), looks);
+        if (!LotStacks.inspect(stack, lot, row.degradations().stream().map(LensRow::line).toList())) {
             return false;
         }
         if (player != null) {
