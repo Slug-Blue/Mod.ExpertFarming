@@ -48,13 +48,45 @@ public final class JournalTriggers {
         return entry("cultivar", cultivarId);
     }
 
+    /** Longest part of an entry id after the kind (JournalData.ID). */
+    static final int MAX_REST = 64;
+    private static final io.github.slugblue.wildroots.core.safety.LogThrottle ID_WARN =
+            new io.github.slugblue.wildroots.core.safety.LogThrottle(System::currentTimeMillis, 5 * 60 * 1000L);
+
+    /**
+     * Entry id of a data id (review 1, m2): {@code /} becomes {@code .},
+     * {@code -} becomes {@code _}; a rest over {@value #MAX_REST} characters
+     * is cut to 47 and gets a hash, so any species of a data pack still has
+     * a page (its name key may then not resolve on the client: one throttled
+     * warning in the log).
+     */
     static String entry(String kind, String id) {
         ResourceLocation rl = ResourceLocation.tryParse(id);
         if (rl == null) {
             return kind + ".unknown";
         }
-        return kind + "." + (rl.getNamespace().equals("wildroots") ? rl.getPath()
-                : rl.getNamespace() + "." + rl.getPath());
+        String rest = (rl.getNamespace().equals("wildroots") ? rl.getPath() : rl.getNamespace() + "." + rl.getPath())
+                .replace('/', '.').replace('-', '_');
+        if (rest.length() > MAX_REST) {
+            if (ID_WARN.allow(id)) {
+                org.slf4j.LoggerFactory.getLogger(JournalTriggers.class)
+                        .warn("Wild Roots: id {} is too long for a journal entry, shortened", id);
+            }
+            rest = rest.substring(0, 47) + "." + String.format("%016x",
+                    io.github.slugblue.wildroots.genetics.random.Hash64.str(id));
+        }
+        return kind + "." + rest;
+    }
+
+    /** A name as a key argument; a literal of the id if the key is too long for an argument. */
+    static String nameArg(String kind, String id) {
+        String a = DispCodec.keyArg(nameKey(kind, id));
+        if (DispCodec.valid(DispCodec.Line.of("wildroots.journal", a))) {
+            return a;
+        }
+        String lit = id.codePointCount(0, id.length()) > DispCodec.MAX_ARG_LENGTH
+                ? id.substring(0, id.offsetByCodePoints(0, DispCodec.MAX_ARG_LENGTH)) : id;
+        return DispCodec.valid(DispCodec.Line.of("wildroots.journal", lit)) ? lit : "?";
     }
 
     /** Translation key behind an entry id: {@code species.wild_carrot} → {@code wildroots.species.wild_carrot}. */
@@ -97,10 +129,10 @@ public final class JournalTriggers {
             giveJournal(player, j.get());
         }
         boolean first = !j.get().has(speciesEntry(species));
-        discoverSpecies(player, species, wild ? Optional.of(foundAt(level, pos, BlockPos.of(passport.patchOrigin())))
+        discoverSpecies(player, species, wild ? foundAt(level, pos, BlockPos.of(passport.patchOrigin()))
                 : Optional.empty());
         if (first && !j.get().has("hint.welcome")) {
-            Journals.unlock(player, "hint.welcome", DispCodec.keyArg(nameKey("species", species)));
+            Journals.unlock(player, "hint.welcome", nameArg("species", species));
         }
         HintTriggers.harvested(level, pos, state, be.get(), player, j.get());
     }
@@ -120,11 +152,42 @@ public final class JournalTriggers {
     }
 
     /** A found-at row: biome of the harvested plant (a loaded cell), x and z of its patch (narrative §4.3, §9.7). */
-    static DispCodec.Line foundAt(ServerLevel level, BlockPos plant, BlockPos patch) {
-        String biome = level.getBiome(plant).unwrapKey().map(ResourceKey::location)
-                .map(rl -> "biome." + rl.getNamespace() + "." + rl.getPath()).orElse("biome.minecraft.plains");
-        return DispCodec.Line.of("wildroots.journal.species.found_at", DispCodec.keyArg(biome),
+    static Optional<DispCodec.Line> foundAt(ServerLevel level, BlockPos plant, BlockPos patch) {
+        return foundAtRow(level.getBiome(plant).unwrapKey().map(ResourceKey::location)
+                .orElse(new ResourceLocation("minecraft", "plains")), patch);
+    }
+
+    /**
+     * The found-at row of a biome and a patch, with the vanilla description
+     * key ({@code Util.makeDescriptionId}); empty if the key is too long for
+     * a row argument (the species page still opens, without this row).
+     */
+    public static Optional<DispCodec.Line> foundAtRow(ResourceLocation biome, BlockPos patch) {
+        DispCodec.Line l = DispCodec.Line.of("wildroots.journal.species.found_at",
+                DispCodec.keyArg(net.minecraft.Util.makeDescriptionId("biome", biome)),
                 Integer.toString(patch.getX()), Integer.toString(patch.getZ()));
+        return DispCodec.valid(l) ? Optional.of(l) : Optional.empty();
+    }
+
+    /**
+     * Rows of a species page (review 1, m2): at most
+     * {@value JournalData#MAX_ROWS} - {@value #MAX_FOUND_AT} goals, then the
+     * found-at rows; invalid rows are left out, never the whole page.
+     */
+    public static List<DispCodec.Line> speciesRows(List<String> cultivars, List<DispCodec.Line> found) {
+        List<DispCodec.Line> rows = new ArrayList<>();
+        for (String cv : cultivars) {
+            DispCodec.Line g = DispCodec.Line.of(goalKey(cv));
+            if (rows.size() < JournalData.MAX_ROWS - MAX_FOUND_AT && DispCodec.valid(g)) {
+                rows.add(g);
+            }
+        }
+        for (DispCodec.Line f : found) {
+            if (rows.size() < JournalData.MAX_ROWS && DispCodec.valid(f)) {
+                rows.add(f);
+            }
+        }
+        return rows;
     }
 
     /**
@@ -148,22 +211,19 @@ public final class JournalTriggers {
         while (found.size() > MAX_FOUND_AT) {
             found.remove(0);
         }
-        List<DispCodec.Line> rows = new ArrayList<>();
         List<String> cultivars = snap.cultivars().values().stream()
                 .filter(c -> c.def().species().equals(species))
                 .sorted(java.util.Comparator.comparingInt((DefinitionsSnapshot.CultivarEntry c) -> c.def().tier())
                         .thenComparing(c -> c.def().id().toString()))
                 .map(c -> c.def().id().toString()).toList();
-        for (String cv : cultivars) {
-            rows.add(DispCodec.Line.of(goalKey(cv)));
-        }
-        rows.addAll(found);
+        List<DispCodec.Line> rows = speciesRows(cultivars, found);
         JournalData.Unlock u = Journals.unlock(player, id, List.of(), rows);
         if (u == JournalData.Unlock.NEW) {
             for (String cv : cultivars) {
-                if (j.get().lock(cultivarEntry(cv), List.of(DispCodec.keyArg(goalKey(cv))))) {
-                    j.get().entry(cultivarEntry(cv)).ifPresent(e -> Journals.sender().sync(player,
-                            new JournalSyncPacket(false, false, Journals.owner(player), List.of(e))));
+                String goal = DispCodec.keyArg(goalKey(cv));
+                List<String> args = DispCodec.valid(DispCodec.Line.of("wildroots.journal", goal)) ? List.of(goal) : List.of();
+                if (j.get().lock(cultivarEntry(cv), args)) {
+                    j.get().entry(cultivarEntry(cv)).ifPresent(e -> Journals.delta(player, j.get(), e));
                 }
             }
         }

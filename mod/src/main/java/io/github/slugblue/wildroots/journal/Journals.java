@@ -245,10 +245,19 @@ public final class Journals {
         return u;
     }
 
+    /**
+     * The "new entry" toast; runs after the entry is committed and can never
+     * undo it (review 1, m2): a title too long for an argument falls back to
+     * the generic one, and a failing send is isolated.
+     */
     static void newEntryToast(ServerPlayer player, JournalData j, String id, long gameTime) {
         if (j.takeToast(gameTime)) {
-            sender.toast(player, new ToastPacket(DispCodec.Line.of(NEW_ENTRY_KEY, DispCodec.keyArg(titleKey(id))),
-                    DispCodec.Line.of(NEW_ENTRY_BODY_KEY)));
+            DispCodec.Line title = DispCodec.Line.of(NEW_ENTRY_KEY, DispCodec.keyArg(titleKey(id)));
+            if (!DispCodec.valid(title)) {
+                title = DispCodec.Line.of(NEW_ENTRY_KEY, DispCodec.keyArg("wildroots.journal.tab.notes"));
+            }
+            ToastPacket t = new ToastPacket(title, DispCodec.Line.of(NEW_ENTRY_BODY_KEY));
+            Guarded.run("journal toast", player.getUUID(), () -> sender.toast(player, t));
         }
     }
 

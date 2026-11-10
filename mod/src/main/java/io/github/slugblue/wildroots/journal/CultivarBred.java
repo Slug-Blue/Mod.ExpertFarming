@@ -58,8 +58,10 @@ public final class CultivarBred {
         if (u != JournalData.Unlock.NEW) {
             return false;
         }
-        Journals.toast(player, new ToastPacket(DispCodec.Line.of(d.tier() >= 2 ? CULTIVAR_TITLE : LANDRACE_TITLE),
-                DispCodec.Line.of(BODY, DispCodec.keyArg(JournalTriggers.nameKey("cultivar", cv)))));
+        // the page is committed: the toast cannot undo it (a long id gets a literal name, review 1, m2)
+        ToastPacket t = new ToastPacket(DispCodec.Line.of(d.tier() >= 2 ? CULTIVAR_TITLE : LANDRACE_TITLE),
+                DispCodec.Line.of(BODY, JournalTriggers.nameArg("cultivar", cv)));
+        io.github.slugblue.wildroots.core.safety.Guarded.run("bred toast", player.getUUID(), () -> Journals.toast(player, t));
         HintTriggers.hint(player, d.tier() >= 2 ? "first_cultivar" : "first_landrace");
         return true;
     }
