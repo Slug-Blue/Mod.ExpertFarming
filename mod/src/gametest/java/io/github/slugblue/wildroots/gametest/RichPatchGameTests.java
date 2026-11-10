@@ -50,7 +50,7 @@ public final class RichPatchGameTests {
         try {
             BlockPos origin = sky.surface();
             WildPatchFeature.Result r = WildPatchGameTests.place(level, origin, alwaysRich(level, 0),
-                    WildPatchGameTests.TEST);
+                    WildPatchGameTests.RICH);
             helper.assertTrue(r.placed() && r.rich(), "rich patch not placed: " + r);
             helper.assertTrue(allRich(level, r, true), "a plant without the rich flag");
             helper.assertTrue(r.plants().size() >= 14 && r.plants().size() <= 20,
@@ -83,7 +83,7 @@ public final class RichPatchGameTests {
             for (int i = 0; i < 5; i++) {
                 sky.fill(Blocks.GRASS_BLOCK.defaultBlockState());
                 WildPatchFeature.Result r = WildPatchGameTests.place(level, sky.surface().offset(i - 2, 0, 0), c,
-                        WildPatchGameTests.TEST);
+                        WildPatchGameTests.RICH);
                 int k = r.plants().size();
                 helper.assertTrue(r.placed() && r.rich() && k >= 14 && k <= 20, "rich patch " + i + ": " + k);
             }
@@ -99,8 +99,9 @@ public final class RichPatchGameTests {
         ServerLevel level = helper.getLevel();
         SkyPlatform sky = SkyPlatform.build(helper, 8);
         try {
+            // the rule itself (AUTO), chance 1: every reachable test position is closer than 1 000 000 blocks
             WildPatchFeature.Result r = WildPatchGameTests.place(level, sky.surface(), alwaysRich(level, 1_000_000),
-                    WildPatchGameTests.TEST);
+                    WildPatchGameTests.RULE);
             helper.assertTrue(r.placed() && !r.rich() && allRich(level, r, false), "rich near spawn: " + r);
         } finally {
             sky.clear();
@@ -148,7 +149,7 @@ public final class RichPatchGameTests {
             for (int i = 0; i < 24; i++) {
                 sky.fill(Blocks.GRASS_BLOCK.defaultBlockState());
                 BlockPos origin = sky.surface().offset(i % 5 - 2, 0, i / 5 - 2);
-                WildPatchFeature.Result r = WildPatchGameTests.place(level, origin, c, WildPatchGameTests.TEST);
+                WildPatchFeature.Result r = WildPatchGameTests.place(level, origin, c, WildPatchGameTests.RICH);
                 helper.assertTrue(r.placed() && r.rich(), "rich patch " + i + " not placed");
                 for (BlockPos p : r.plants()) {
                     helper.assertTrue(level.getBlockState(p).getBlock() instanceof io.github.slugblue.wildroots.plant.FieldPlantBlock,

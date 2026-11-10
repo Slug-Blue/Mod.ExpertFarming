@@ -34,9 +34,17 @@ public final class WildPatchGameTests {
     static final String FLOOR = SmokeGameTests.FLOOR_3X3X3;
     static final ResourceLocation CARROT_PATCH = new ResourceLocation("wildroots", "wild_patch/wild_carrot");
 
-    /** Category falls back to meadow when the test biome is in none of the carrot categories. */
+    /**
+     * An ordinary patch: category falls back to meadow when the test biome is
+     * in none of the carrot categories, and the patch is never rich, wherever
+     * the GameTest layout and the random world spawn put the platform.
+     */
     static final WildPatchFeature.Options TEST = new WildPatchFeature.Options(false, Optional.empty(),
-            Optional.empty(), "meadow", 0);
+            Optional.empty(), "meadow", 0, WildPatchFeature.Rich.NEVER);
+    /** A rich patch, wherever the platform lands. */
+    static final WildPatchFeature.Options RICH = TEST.withRich(WildPatchFeature.Rich.ALWAYS);
+    /** The rule of worldgen §5 itself; only for tests whose outcome does not depend on the spawn distance. */
+    static final WildPatchFeature.Options RULE = TEST.withRich(WildPatchFeature.Rich.AUTO);
 
     private WildPatchGameTests() {
     }
@@ -122,23 +130,16 @@ public final class WildPatchGameTests {
         try {
             WildPatchConfig c = carrotConfig(level);
             int sum = 0;
-            int n = 0;
-            for (int i = 0; i < 20; i++) {
+            int n = 20;
+            for (int i = 0; i < n; i++) {
                 sky.fill(Blocks.GRASS_BLOCK.defaultBlockState());
                 BlockPos origin = sky.surface().offset(i % 5 - 2, 0, i / 5 - 2);
                 WildPatchFeature.Result r = place(level, origin, c.withBeeNest(Optional.empty()), TEST);
                 int k = r.plants().size();
-                // a patch far enough from spawn may roll rich (14-20 plants, worldgen §5): where the test
-                // platform lands depends on the GameTest layout and the random world spawn
-                var range = r.rich() ? c.rich().orElseThrow().plants() : c.plants();
-                helper.assertTrue(r.placed() && k >= range.getMinValue() && k <= range.getMaxValue(),
-                        "patch " + i + (r.rich() ? " (rich)" : "") + ": " + k + " plants");
-                if (!r.rich()) {
-                    sum += k;
-                    n++;
-                }
+                helper.assertTrue(r.placed() && k >= c.plants().getMinValue() && k <= c.plants().getMaxValue(),
+                        "patch " + i + ": " + k + " plants");
+                sum += k;
             }
-            helper.assertTrue(n >= 10, "only " + n + " of 20 patches were not rich");
             double mean = sum / (double) n;
             org.slf4j.LoggerFactory.getLogger(WildPatchGameTests.class).info("WR-150 mean plants {}", mean);
             helper.assertTrue(Math.abs(mean - 11) <= 1.5, "mean plants " + mean);
@@ -224,6 +225,27 @@ public final class WildPatchGameTests {
         boolean climate = placed.placement().stream().anyMatch(m -> m instanceof SpeciesClimatePlacement s
                 && s.species().equals(PlantFixtures.SP));
         helper.assertTrue(band && climate, "placement chain " + placed.placement());
+        helper.succeed();
+    }
+
+    /**
+     * The rich override is Java-only: worldgen and the starter patch use the
+     * rule (AUTO); the feature codec is the patch config alone, so a data
+     * pack or a command cannot set it.
+     */
+    @GameTest(template = FLOOR)
+    public static void naturalPlacementUsesTheRichRule(GameTestHelper helper) {
+        helper.assertTrue(WildPatchFeature.Options.NATURAL.rich() == WildPatchFeature.Rich.AUTO, "NATURAL is not AUTO");
+        helper.assertTrue(new WildPatchFeature.Options(true, Optional.empty(), Optional.empty(), "", 0).rich()
+                == WildPatchFeature.Rich.AUTO, "the old constructor is not AUTO");
+        var ops = net.minecraft.resources.RegistryOps.create(com.mojang.serialization.JsonOps.INSTANCE,
+                helper.getLevel().registryAccess());
+        var json = WildPatchConfig.CODEC.encodeStart(ops, carrotConfig(helper.getLevel()));
+        helper.assertTrue(json.result().isPresent(), "patch config does not encode: " + json.error());
+        String text = json.result().get().toString();
+        for (String r : new String[] {"AUTO", "NEVER", "ALWAYS"}) {
+            helper.assertTrue(!text.contains(r), "the patch config carries a rich override: " + text);
+        }
         helper.succeed();
     }
 }

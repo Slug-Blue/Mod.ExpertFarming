@@ -68,11 +68,36 @@ public class WildPatchFeature extends Feature<WildPatchConfig> {
         static final Result NONE = new Result(false, List.of(), "", false, BeeNests.Result.NONE);
     }
 
-    /** Overrides of the starter patch (worldgen §6.2 item 5); {@link #NATURAL} for worldgen. */
-    public record Options(boolean starter, Optional<IntProvider> plants, Optional<WildPatchConfig.Stages> stages,
-                          String fallbackCategory, int tries) {
+    /**
+     * Whether a patch is rich: {@link #AUTO} rolls the rule of worldgen §5
+     * (chance and distance from spawn); {@link #NEVER} and {@link #ALWAYS}
+     * fix it. Java callers only (GameTests): {@link Options} is no part of
+     * the feature codec, data packs and commands cannot set it, and worldgen
+     * always uses {@link Options#NATURAL} (AUTO).
+     */
+    public enum Rich {
+        AUTO, NEVER, ALWAYS
+    }
 
-        public static final Options NATURAL = new Options(false, Optional.empty(), Optional.empty(), "", 0);
+    /** Overrides of the starter patch (worldgen §6.2 item 5) and tests; {@link #NATURAL} for worldgen. */
+    public record Options(boolean starter, Optional<IntProvider> plants, Optional<WildPatchConfig.Stages> stages,
+                          String fallbackCategory, int tries, Rich rich) {
+
+        public static final Options NATURAL = new Options(false, Optional.empty(), Optional.empty(), "", 0, Rich.AUTO);
+
+        public Options {
+            rich = rich == null ? Rich.AUTO : rich;
+        }
+
+        /** The rich rule of worldgen §5 (AUTO). */
+        public Options(boolean starter, Optional<IntProvider> plants, Optional<WildPatchConfig.Stages> stages,
+                       String fallbackCategory, int tries) {
+            this(starter, plants, stages, fallbackCategory, tries, Rich.AUTO);
+        }
+
+        public Options withRich(Rich r) {
+            return new Options(starter, plants, stages, fallbackCategory, tries, r);
+        }
     }
 
     public WildPatchFeature() {
@@ -112,9 +137,12 @@ public class WildPatchFeature extends Feature<WildPatchConfig> {
         }
         double roll = rng.nextDouble();
         BlockPos spawn = new BlockPos(level.getLevelData().getXSpawn(), 0, level.getLevelData().getZSpawn());
-        boolean rich = config.rich().isPresent() && RichRules.rich(roll, config.rich().get().chance(),
-                options.starter(), origin.getX() - spawn.getX(), origin.getZ() - spawn.getZ(),
-                config.rich().get().minFromSpawn());
+        boolean rich = config.rich().isPresent() && switch (options.rich()) {
+            case AUTO -> RichRules.rich(roll, config.rich().get().chance(), options.starter(),
+                    origin.getX() - spawn.getX(), origin.getZ() - spawn.getZ(), config.rich().get().minFromSpawn());
+            case NEVER -> false;
+            case ALWAYS -> true;
+        };
         IntProvider plants = options.plants().orElse(rich ? config.rich().get().plants() : config.plants());
         int target = Math.min(WildPatchConfig.MAX_PLANTS, plants.sample(random));
         int tries = options.tries() > 0 ? options.tries() : config.tries();

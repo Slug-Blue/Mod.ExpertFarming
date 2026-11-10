@@ -28,8 +28,9 @@ public final class BeeNestGameTests {
 
     static final String FLOOR = SmokeGameTests.FLOOR_3X3X3;
     static final ResourceLocation LONE_BIRCH = new ResourceLocation("wildroots", "lone_birch_bees");
+    /** The starter patch with the rich rule (AUTO): the rule never makes a starter patch rich, at any distance. */
     static final WildPatchFeature.Options STARTER = new WildPatchFeature.Options(true, Optional.empty(),
-            Optional.empty(), "meadow", 0);
+            Optional.empty(), "meadow", 0, WildPatchFeature.Rich.AUTO);
 
     private BeeNestGameTests() {
     }
@@ -183,10 +184,7 @@ public final class BeeNestGameTests {
             WildPatchFeature.Result r = WildPatchGameTests.place(level, sky.surface(),
                     withNest(level, List.of("tree", "lone_tree")), WildPatchGameTests.TEST);
             helper.assertTrue(r.placed(), "patch not placed");
-            // far from the random world spawn a patch may roll rich (worldgen §5), and a rich patch
-            // may plant a lone tree for its nest; only an ordinary patch must stay without one
-            helper.assertTrue(r.nest().kind() == BeeNests.Kind.NONE
-                    || (r.rich() && r.nest().kind() == BeeNests.Kind.LONE_TREE), "nest " + r.nest() + ", rich " + r.rich());
+            helper.assertTrue(r.nest().kind() == BeeNests.Kind.NONE, "nest " + r.nest());
         } finally {
             sky.clear();
         }
