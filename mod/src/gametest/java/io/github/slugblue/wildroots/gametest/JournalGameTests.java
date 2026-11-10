@@ -68,7 +68,27 @@ public final class JournalGameTests {
         ServerPlayer p = new ServerPlayer(level.getServer(), level, new GameProfile(UUID.randomUUID(), name));
         p.setPos(Vec3.atCenterOf(helper.absolutePos(PlantFixtures.PLANT)).add(1, 0, 0));
         p.gameMode.changeGameModeForPlayer(GameType.SURVIVAL);
+        mute(p);
         return p;
+    }
+
+    /**
+     * A play listener over a channel-less connection that drops every packet:
+     * cooldowns, chat and menu sync send packets, and the player is not in
+     * the player list (nothing reaches a socket).
+     */
+    static void mute(ServerPlayer p) {
+        new net.minecraft.server.network.ServerGamePacketListenerImpl(p.getServer(),
+                new net.minecraft.network.Connection(net.minecraft.network.protocol.PacketFlow.SERVERBOUND), p) {
+            @Override
+            public void send(net.minecraft.network.protocol.Packet<?> packet) {
+            }
+
+            @Override
+            public void send(net.minecraft.network.protocol.Packet<?> packet,
+                             net.minecraft.network.PacketSendListener listener) {
+            }
+        };
     }
 
     static JournalData journal(ServerPlayer p) {
@@ -165,6 +185,7 @@ public final class JournalGameTests {
 
             // death: Forge clones the player
             respawned = new ServerPlayer(level.getServer(), level, p.getGameProfile());
+            mute(respawned);
             MinecraftForge.EVENT_BUS.post(new PlayerEvent.Clone(respawned, p, true));
             helper.assertTrue(journal(respawned).save().equals(before), "death lost the journal");
 

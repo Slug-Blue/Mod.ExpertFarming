@@ -22,6 +22,9 @@ import net.minecraft.world.level.Level;
  */
 public class FieldJournalItem extends Item {
 
+    /** Ticks between two uses (review 1, M2). */
+    public static final int COOLDOWN_TICKS = 10;
+
     public FieldJournalItem(Properties properties) {
         super(properties.stacksTo(1));
     }
@@ -30,8 +33,10 @@ public class FieldJournalItem extends Item {
     @EntryPoint
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
+        // 10 ticks between uses; ServerPlayerGameMode#useItem enforces the cooldown on the server (review 1, M2)
+        player.getCooldowns().addCooldown(this, COOLDOWN_TICKS);
         if (player instanceof ServerPlayer sp) {
-            Guarded.run("journal open", sp.getUUID(), () -> Journals.syncFull(sp, true));
+            Guarded.run("journal open", sp.getUUID(), () -> Journals.open(sp));
         }
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
     }

@@ -34,6 +34,9 @@ public class HandLensItem extends Item {
     public static final String NOTHING = "wildroots.message.lens.nothing";
     public static final String INSPECTED = "wildroots.message.lens.inspected";
 
+    /** Ticks between two uses (review 1, M2): the server enforces it in {@code ServerPlayerGameMode}. */
+    public static final int COOLDOWN_TICKS = 10;
+
     public HandLensItem(Properties properties) {
         super(properties.stacksTo(1));
     }
@@ -41,6 +44,9 @@ public class HandLensItem extends Item {
     @Override
     @EntryPoint
     public InteractionResult useOn(UseOnContext ctx) {
+        if (ctx.getPlayer() != null) {
+            ctx.getPlayer().getCooldowns().addCooldown(this, COOLDOWN_TICKS);
+        }
         if (!(ctx.getLevel() instanceof ServerLevel level) || !(ctx.getPlayer() instanceof ServerPlayer player)) {
             return InteractionResult.SUCCESS;
         }
@@ -59,6 +65,7 @@ public class HandLensItem extends Item {
     @EntryPoint
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack lens = player.getItemInHand(hand);
+        player.getCooldowns().addCooldown(this, COOLDOWN_TICKS);
         if (!(level instanceof ServerLevel server) || !(player instanceof ServerPlayer sp)) {
             return InteractionResultHolder.success(lens);
         }

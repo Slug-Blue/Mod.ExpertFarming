@@ -88,6 +88,8 @@ public final class JournalData {
     private int nextOrder;
     /** Transient: number of applied changes since creation (sync and tests). */
     private int revision;
+    /** Transient: the revision the client last received (full sync or delta); -1 = never. */
+    private int syncedRevision = -1;
     private CompoundTag inertRaw;
     private String inertReason;
 
@@ -124,6 +126,15 @@ public final class JournalData {
 
     public int revision() {
         return revision;
+    }
+
+    /** Whether the client holds this revision (nothing changed since the last full sync or delta). */
+    public boolean synced() {
+        return syncedRevision == revision;
+    }
+
+    public void markSynced() {
+        syncedRevision = revision;
     }
 
     public long counter(String key) {

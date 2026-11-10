@@ -103,8 +103,7 @@ public final class Journals {
         Guarded.run("journal action", player.getUUID(), () -> of(player).ifPresent(j -> {
             int before = j.revision();
             if (j.apply(msg.entry(), msg.action()) && j.revision() != before) {
-                j.entry(msg.entry().getPath()).ifPresent(e -> sender.sync(player,
-                        new JournalSyncPacket(false, false, owner(player), List.of(e))));
+                j.entry(msg.entry().getPath()).ifPresent(e -> delta(player, j, e));
             }
         }));
     }
@@ -182,9 +181,36 @@ public final class Journals {
 
     // ------------------------------------------------------------------ entries
 
-    /** Sends the whole journal; {@code open} opens the screen (the item was used). */
+    /** Sends the whole journal; {@code open} opens the screen. */
     public static void syncFull(ServerPlayer player, boolean open) {
-        of(player).ifPresent(j -> sender.sync(player, new JournalSyncPacket(true, open, owner(player), j.ordered())));
+        of(player).ifPresent(j -> {
+            sender.sync(player, new JournalSyncPacket(true, open, owner(player), j.ordered()));
+            j.markSynced();
+        });
+    }
+
+    /**
+     * The journal was used (review 1, M2): the client already holds every
+     * entry (full sync at login, a delta for every change), so only "open"
+     * goes out, an empty delta; a full sync only if something changed
+     * without reaching the client.
+     */
+    public static void open(ServerPlayer player) {
+        // (cooldown in FieldJournalItem)
+        of(player).ifPresent(j -> {
+            if (j.synced()) {
+                sender.sync(player, new JournalSyncPacket(false, true, owner(player), List.of()));
+            } else {
+                syncFull(player, true);
+            }
+        });
+    }
+
+    /** One changed entry to the client; the client is then up to date with this revision. */
+    static void delta(ServerPlayer player, JournalData j, JournalData.Entry e) {
+        // every visible change goes out as such a delta, so the client holds this revision afterwards
+        sender.sync(player, new JournalSyncPacket(false, false, owner(player), List.of(e)));
+        j.markSynced();
     }
 
     /**
@@ -211,8 +237,7 @@ public final class Journals {
         }
         JournalData.Unlock u = j.get().unlock(id, args, rows);
         if (u != JournalData.Unlock.NONE) {
-            j.get().entry(id).ifPresent(e -> sender.sync(player,
-                    new JournalSyncPacket(false, false, owner(player), List.of(e))));
+            j.get().entry(id).ifPresent(e -> delta(player, j.get(), e));
         }
         if (u == JournalData.Unlock.NEW) {
             newEntryToast(player, j.get(), id, gameTime);
@@ -264,8 +289,7 @@ public final class Journals {
             if (!j.get().refire(id, args)) {
                 return false;
             }
-            j.get().entry(id).ifPresent(e -> sender.sync(player,
-                    new JournalSyncPacket(false, false, owner(player), List.of(e))));
+            j.get().entry(id).ifPresent(e -> delta(player, j.get(), e));
             newEntryToast(player, j.get(), id, now);
             return true;
         }
