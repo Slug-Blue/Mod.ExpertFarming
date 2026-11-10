@@ -101,7 +101,10 @@ public final class JournalTriggers {
      */
     @EntryPoint
     public static void onBreak(BlockEvent.BreakEvent event) {
+        // a cancelled break, a fake player and a creative break (no drops) are no harvest (review 1, m5);
+        // a cancel by another LOWEST listener that runs after this one is not seen
         if (event.isCanceled() || !(event.getPlayer() instanceof ServerPlayer player) || player instanceof FakePlayer
+                || player.isCreative()
                 || !(event.getLevel() instanceof ServerLevel level)
                 || !(event.getState().getBlock() instanceof FieldPlantBlock)) {
             return;
