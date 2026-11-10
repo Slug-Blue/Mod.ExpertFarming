@@ -7,6 +7,7 @@
 | Версия | Дата | Автор | Изменения |
 |---|---|---|---|
 | 0.1 | 2026-10-28 | Narrative Designer | Первая редакция: журнал, исторические справки, достижения, названия, тултипы, ключи |
+| 0.4 | 2026-11-10 | Narrative Designer | WR-192: строки волны 1 в `en_us`/`ru_ru` после ревью ND; итог и отличия от таблиц — §9.10; сняты `[ПРЕДЛОЖЕНИЕ]` служебных строк §9.6 |
 | 0.3 | 2026-10-29 | Narrative Designer | Под GDD v0.3 (промежуточная v0.2 не выпускалась отдельно): 8 новых линий (тыква, арбуз, картофель, свёкла, тростник, какао, малина, яблоня), урожай — предмет мода с одним классом «грубый / простой / добротный / отборный» и согласованием по роду, переработка с качеством, мешочек для семян, клоны и прививка, сорт яблони с именем игрока, селекционер и его записки, волны выпуска, «Analyser», 6 новых триггеров; закрытые вопросы убраны |
 
 **Решения, на которых стоит документ** (бывшие допущения Д1–Д3 закрыты):
@@ -180,6 +181,8 @@
 |---|---|---|
 | `wildroots.cultivar.eastern_carrot.variant.yellow` | yellow | жёлтая |
 | `wildroots.cultivar.eastern_carrot.variant.purple` | purple | фиолетовая |
+
+В волне 1 (WR-192) ключи моркови показываются отдельной строкой тултипа урожая, а не уточнением в скобках, поэтому строки полные: `variant.yellow` = «Корень жёлтый или оранжевый» / "Yellow or orange root", `variant.purple` = «Корень фиолетовый» / "Purple root". У предмета `eastern_carrot` два цвета (`wildroots:colour`), и оранжевый корень восточной моркови попадает в «жёлтый» вариант; строка не должна врать (§9.10).
 | `wildroots.cultivar.head_cabbage.variant.red` | red | краснокочанная |
 | `wildroots.cultivar.maize.variant.yellow` / `primitive_maize.variant.yellow` | yellow-kernelled | желтозёрная |
 | `wildroots.cultivar.maize.variant.red` / `primitive_maize.variant.red` | red-kernelled | краснозёрная |
@@ -1421,10 +1424,10 @@ root (Дикие корни)
 | `player_text.forbidden_character` | журнал, наковальня | The name has characters that can't be used | В имени есть недопустимые знаки |
 | `load_problems` | чат, только операторам | Wild Roots: data pack errors: %1$s; species skipped: %2$s, cultivars skipped: %3$s. See the server log. | Wild Roots: ошибок в датапаках: %1$s; пропущено видов: %2$s, сортов: %3$s. Подробности — в логе сервера. |
 | `sync_too_large` | чат, только операторам | Wild Roots: data pack species left out of the client sync: %s. See the server log. | Wild Roots: видов из датапаков не отправлено клиентам: %s. Подробности — в логе сервера. |
-| `sync_failed` | экран отключения | Wild Roots could not read the server's plant data. Check that the client and the server run the same version of the mod. | Wild Roots не смог прочитать данные о растениях с сервера. Проверьте, что у клиента и сервера одна версия мода. |
+| `sync_failed` | экран отключения | Wild Roots could not read the server's plant data. Check that the client and the server run the same version of the mod. | Wild Roots: не удалось прочитать данные о растениях с сервера. Проверьте, что у клиента и сервера одна версия мода. |
 | `packet_flood` | экран отключения | Disconnected: too many requests to Wild Roots | Соединение разорвано: слишком много запросов к Wild Roots |
 
-Строки `player_text.*` (отказ санитайзера, SEC-07), `load_problems` (сводка загрузки для операторов, SEC-27), `packet_flood` (SEC-02), `sync_too_large` и `sync_failed` (SEC-31) добавлены в фазе 5 (WR-122, WR-126…WR-128) `[ПРЕДЛОЖЕНИЕ]`, ждут ревью ND. Служебные ключи вне таблиц: `itemGroup.wildroots` (креативная вкладка) и `wildroots.pack.line.<линия>` (название встроенного пакета линии в `/datapack list`).
+Строки `player_text.*` (отказ санитайзера, SEC-07), `load_problems` (сводка загрузки для операторов, SEC-27), `packet_flood` (SEC-02), `sync_too_large` и `sync_failed` (SEC-31) добавлены в фазе 5 (WR-122, WR-126…WR-128); ревью ND пройдено в WR-192 (в `sync_failed` ru — безличное «не удалось» вместо «Wild Roots не смог»: у названия мода нет рода). Служебные ключи вне таблиц: `itemGroup.wildroots` (креативная вкладка) и `wildroots.pack.line.<линия>` (название встроенного пакета линии в `/datapack list`).
 
 `lens.header` — первая строка осмотра растения: «Дикая морковь · Цветение» или «Восточная морковь (жёлтая) · Урожайная зрелость». Остальные строки осмотра — те же, что тир 1 тултипа (§7.2).
 
@@ -1479,6 +1482,31 @@ root (Дикие корни)
 | `block.wildroots.sorting_table` | Sorting Table | Сортировочный стол |
 
 Уровни торговли — ванильные ключи `merchant.level.1`–`5` (Новичок, Ученик, Подмастерье, Эксперт, Мастер — по ванильному `ru_ru` `[ПРОВЕРИТЬ]`); отдельных имён уровней для одной профессии ванильный интерфейс не поддерживает, и мод их не вводит. Названия уровней в GDD §9.6 — рабочие, для таблицы торгов. Реплики селекционера живут на его товарах (§4.7) и в записках, потому что у ванильной сделки нет поля описания.
+
+### 9.10 Строки волны 1 в lang-файлах (WR-192)
+
+Итог ревью ND строк волны 1 (`mod/src/main/resources/assets/wildroots/lang/`). Где код волны 1 использует свои ключи вместо ключей таблиц выше, источник истины — lang-файл; ниже — эти ключи и решения. Аргументы всех существовавших ключей сохранены (число, порядок, форма `%s` / `%n$s`); в новых ключах вместо `%d` из таблиц — `%s` (Minecraft понимает только `%s`, `%n$s`, `%%`).
+
+**Решения.**
+
+| Ключ | en_us | ru_ru | Почему |
+|---|---|---|---|
+| `wildroots.grade.1`…`.4` | Grade: coarse / plain / fine / choice | Класс: грубый / простой / добротный / отборный | Код волны 1 выводит класс отдельной строкой одним ключом для всех предметов, без `wildroots.grammar.*`. «Грубый» рядом с «Морковь» (ж. р.) — ошибка; «Класс: …» согласуется с самим словом «класс» и верно для любого рода. Английские слова — по §7.6 (fine, choice), а не черновые Sound / Select |
+| `wildroots.grade.bitter` | Bitter | Горчит | §7.6: глагол не требует рода |
+| `wildroots.tooltip.name_grade`, `wildroots.tooltip.grade.<n>.<m\|f\|n\|pl>`, `wildroots.grammar.*` | §7.6, §9.8 | §7.6, §9.8 | Добавлены для строки «Морковь · добротная», когда код перейдёт на неё. Род волны 1: `wild_carrot_root` m, `eastern_carrot` f, `carrot` f, `mother_root` m, `minecraft:golden_carrot` f. Ключи `wildroots.grammar.*` есть и в `en_us` (те же значения): JUnit требует одинаковых множеств ключей; английский код их не читает |
+| `wildroots.cultivar.eastern_carrot.variant.yellow` | Yellow or orange root | Корень жёлтый или оранжевый | У предмета два цвета: фиолетовый и «остальной». Оранжевый корень восточной моркови получает «жёлтый» вариант; «жёлтый или оранжевый» верно для обоих. Если нужен отдельный оранжевый вариант — это код и текстура (вопрос GD/SD) |
+| `wildroots.tooltip.lens.more` | …and more than fits on the packet | …и ещё кое-что: на пакетике не уместилось | Флаг `+` ставится, когда строка лупы не влезла в лот или признак без кода; повторный осмотр даёт то же самое, так что совет «осмотрите снова» был неправдой (T4) |
+| `wildroots.tooltip.looks_like`, `wildroots.journal.hint.looks_like` | Looks like %s. Worth testing the offspring. | Похоже на сорт «%s». Стоит проверить потомство. | `%s` — имя сорта в именительном падеже; «похоже на сорт «…»» не требует склонять имя. Совет вместо приказа (§1.1) |
+| `wildroots.tooltip.lot.line_name`, `wildroots.journal.cultivar.line`, `hint.stagnation`, `hint.missing_allele` | Line "%s" … | Линия «%s» … | Имя линии — имя игрока, в кавычках (§6.2) |
+| `wildroots.tooltip.lot.generation` | Generation: %s | Поколение: %s | §1.2 п. 5 |
+| `wildroots.tooltip.lot.seedling` | Dug-up sprout: grows the same plant | Выкопанный всход: вырастет то же растение | Это выкопанное молодое растение (SEC-26), а не сеянец; «росток» глоссарий запрещает (§9.1) |
+| `wildroots.tooltip.lot.pollination.*` (уровень 0) | Bees visited the flowers / Pollen moved by brush / Self-pollinated / Pollinated by neighbours | Цветы навещали пчёлы / Пыльцу переносили кистью / Самоопыление / Опыляли соседи | Строка лота не должна повторять строку лупы «Опыление: …» и согласуется с «Семена» без рода |
+| `item.wildroots.seed_lot` | Seeds | Семена | §7.2, глоссарий: в имени — «семена» |
+| `item.wildroots.mother_root` | Mother Root | Маточный корень | §7.4 |
+| `wildroots.message.journal.new_entry.body` | Read it in the field journal | Прочитать можно в полевом журнале | Совет, а не приказ |
+| `commands.wildroots.locate_patch.*` | … (distance in blocks: %s) … | … (расстояние в блоках: %s) … | Без «%s блоков» (§1.2 п. 5); «заросли» вместо «патчей» в ru (§9.1). Команда операторская, `%s` — id вида |
+
+**Новые ключи волны 1:** `wildroots.species.unknown` (§3.1); `wildroots.tooltip.stage.dormant`, `.woody` (§3.4); `item.wildroots.wild_carrot_root.desc`, `item.wildroots.eastern_carrot.desc` (§7.5–7.6; у восточной моркови — «жёлтая, оранжевая или фиолетовая»), `item.wildroots.mother_root.hint` (§7.4); мешочек `wildroots.tooltip.pouch.entry`, `.last`, `.more`, `.empty`, `wildroots.message.pouch.full`, `.not_seeds` (§7.3; заполнение — существующий `pouch.fullness`); `wildroots.message.species_discovered` (§9.6); анализатор `block.wildroots.seed_analyser` = Seed Analyser / Анализатор семян, `.desc`, `wildroots.journal.tool.seed_analyser`, `wildroots.message.analyser.needs_bone_meal`, `.done`, `wildroots.tooltip.analysis.*` (§9.5, без `assessed_by` — селекционер не в волне 1; `trait_realised` ru — «на деле», в пару к «по наследству»), `wildroots.tooltip.qual.bitterness`, `.color_y1`, `.color_y2`, `.color_p`; запись `wildroots.journal.hint.vavilov` (§8.3); достижения волны 1 `advancements.wildroots.<id>.title` / `.description` (§8.3; столбец «В» = 1 в §8.2).
 
 ## 10. Передача и открытые вопросы
 
