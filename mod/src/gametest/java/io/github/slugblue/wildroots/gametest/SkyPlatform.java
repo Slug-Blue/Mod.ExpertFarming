@@ -62,6 +62,21 @@ final class SkyPlatform {
         }
     }
 
+    /**
+     * Whether the sky light under the cleared platform is back (centre and
+     * corners at the platform level read 15). The light engine runs behind
+     * {@code setBlock}; a test batch that starts under a fresh shadow sees
+     * crops pop ({@code CropBlock#canSurvive} needs light), WR-195.
+     */
+    boolean lightSettled() {
+        for (int[] o : new int[][] {{0, 0}, {radius, radius}, {-radius, radius}, {radius, -radius}, {-radius, -radius}}) {
+            if (level.getBrightness(net.minecraft.world.level.LightLayer.SKY, center.offset(o[0], 0, o[1])) < 15) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     /** Everything back to air. */
     void clear() {
         for (int dx = -radius; dx <= radius; dx++) {

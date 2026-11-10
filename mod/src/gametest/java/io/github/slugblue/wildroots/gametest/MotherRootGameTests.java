@@ -195,6 +195,11 @@ public final class MotherRootGameTests {
                 var expected = gsNew.migrateNoise(new io.github.slugblue.wildroots.genetics.phenotype.NoiseVector(noise),
                         oldLayout, newDef, io.github.slugblue.wildroots.plant.PlantService.noiseMigrationKey(abs, PlantFixtures.SP))
                         .orElseThrow();
+                // WR-195: name what is in the cell when the plant is gone (order-dependent failure)
+                helper.assertTrue(helper.getBlockEntity(c.getKey()) instanceof PlantBlockEntity, "no plant at "
+                        + c.getKey() + " right after planting: " + level.getBlockState(abs) + " on "
+                        + level.getBlockState(abs.below()) + ", light " + level.getRawBrightness(abs, 0) + ", sky "
+                        + level.canSeeSky(abs));
                 var live = ((PlantBlockEntity) helper.getBlockEntity(c.getKey())).live(level).orElseThrow();
                 helper.assertTrue(live.noise().equals(expected), "noise not migrated at " + c.getKey());
                 helper.assertTrue(live.noise().size() == newDef.quantitative().size(), "noise length");

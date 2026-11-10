@@ -201,7 +201,7 @@ public final class M1aGateGameTests {
             } finally {
                 close();
             }
-            helper.succeed();
+            succeedWhenLit(helper, sky, 0);
         }
     }
 
@@ -290,13 +290,28 @@ public final class M1aGateGameTests {
                             linesN, gens, ok, 100 * ok / linesN, Arrays.toString(okGens), median(okGens),
                             Arrays.toString(eGens), median(eGens), Arrays.toString(orange), Arrays.toString(secs));
                     sky.clear();
-                    helper.succeed();
+                    succeedWhenLit(helper, sky, 0);
                     return;
                 }
             }
             helper.runAfterDelay(1, () -> step[0].run()); // a new Runnable: the tick map is keyed by it
         };
         helper.runAfterDelay(1, () -> step[0].run()); // a new Runnable: the tick map is keyed by it
+    }
+
+    /**
+     * Succeeds once the sky light under the removed platform is back (at
+     * most 200 ticks), so the next batch does not start in its shadow.
+     */
+    static void succeedWhenLit(GameTestHelper helper, SkyPlatform sky, int waited) {
+        if (sky.lightSettled() || waited >= 200) {
+            if (waited > 0) {
+                LOG.info("WR-195 sky light back after {} ticks (settled {})", waited, sky.lightSettled());
+            }
+            helper.succeed();
+            return;
+        }
+        helper.runAfterDelay(1, () -> succeedWhenLit(helper, sky, waited + 1));
     }
 
     static double median(int[] sorted) {
