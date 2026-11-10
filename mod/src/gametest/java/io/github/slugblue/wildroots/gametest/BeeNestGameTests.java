@@ -183,7 +183,10 @@ public final class BeeNestGameTests {
             WildPatchFeature.Result r = WildPatchGameTests.place(level, sky.surface(),
                     withNest(level, List.of("tree", "lone_tree")), WildPatchGameTests.TEST);
             helper.assertTrue(r.placed(), "patch not placed");
-            helper.assertTrue(r.nest().kind() == BeeNests.Kind.NONE, "nest " + r.nest());
+            // far from the random world spawn a patch may roll rich (worldgen §5), and a rich patch
+            // may plant a lone tree for its nest; only an ordinary patch must stay without one
+            helper.assertTrue(r.nest().kind() == BeeNests.Kind.NONE
+                    || (r.rich() && r.nest().kind() == BeeNests.Kind.LONE_TREE), "nest " + r.nest() + ", rich " + r.rich());
         } finally {
             sky.clear();
         }
