@@ -139,10 +139,11 @@ public final class PlantNbt {
             if (ln.codePointCount(0, ln.length()) > MAX_LINE_NAME) {
                 return new Inert("line name too long", false);
             }
-            if (!io.github.slugblue.wildroots.core.safety.PlayerText.isClean(ln, MAX_LINE_NAME)) {
-                return new Inert("line name not clean player text", false);
+            // T2: a name that is not clean player text is cosmetic damage only; it
+            // is read as absent (and so not written back), the plant stays live
+            if (io.github.slugblue.wildroots.core.safety.PlayerText.isClean(ln, MAX_LINE_NAME)) {
+                s.lineName = ln;
             }
-            s.lineName = ln;
         }
         s.generation = root.getInt("gen");
         if (s.generation < 0 || s.generation > NbtLimits.LOT_MAX_GENERATION) {

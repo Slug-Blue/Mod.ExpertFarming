@@ -28,11 +28,23 @@ class LineNameKeyArgTest {
         return root;
     }
 
+    /**
+     * T2: a stored line name that is not clean player text is cosmetic
+     * damage only. It is read as absent: the lot stays live, has no line
+     * name, and the display rebuilt from it carries no line-name row (so the
+     * dirty text is never shown, translated or not).
+     */
     @ParameterizedTest
-    @ValueSource(strings = {"@cultivar.carrot", "\u0001cultivar.carrot", "\u0001biome.minecraft.plains", "a\u0001b",
+    @ValueSource(strings = {"@cultivar.carrot", "cultivar.carrot", "biome.minecraft.plains", "ab",
         "bad§cname", "  spaced", "x‮y"})
-    void aLineNameThatIsNotCleanPlayerTextMakesTheLotDamaged(String ln) {
-        assertInstanceOf(LotNbt.Inert.class, LotNbt.read(lotWithLine(ln)), ln);
+    void aLineNameThatIsNotCleanPlayerTextIsDropped(String ln) {
+        LotNbt.Lot lot = assertInstanceOf(LotNbt.Lot.class, LotNbt.read(lotWithLine(ln)), ln);
+        assertEquals(Optional.empty(), lot.lineName(), ln);
+        assertTrue(LotStacks.disp(lot).stream().noneMatch(l -> l.key().equals("wildroots.tooltip.lot.line_name")),
+                "no line-name row for " + ln);
+        assertTrue(LotStacks.disp(lot).stream().flatMap(l -> l.args().stream()).noneMatch(a -> a.contains(ln)),
+                "dirty text in no argument");
+        assertFalse(LotNbt.write(lot, LotStacks.disp(lot)).contains("ln"), "written back without the name");
     }
 
     @Test
@@ -54,10 +66,15 @@ class LineNameKeyArgTest {
         assertEquals("biome.some-pack.hot.dunes", DispCodec.argKey(DispCodec.keyArg("biome.some-pack.hot.dunes")));
     }
 
-    @Test
-    void motherAndPlantRefuseADirtyLineName() {
+    @ParameterizedTest
+    @ValueSource(strings = {"@cultivar.carrot", "cultivar.carrot", "a‮b", "  spaced"})
+    void aMotherRootWithADirtyLineNameStaysReadableWithoutIt(String ln) {
         CompoundTag m = ItemRootBoundaryTest.fullMother();
-        m.putString("ln", "@cultivar.carrot");
-        assertTrue(MotherNbt.read(m).isEmpty(), "mother root with a key-like line name");
+        m.putString("ln", ln);
+        MotherNbt.Mother mother = MotherNbt.read(m).orElseThrow(() -> new AssertionError("unreadable: " + ln));
+        assertEquals(Optional.empty(), mother.lineName(), ln);
+        assertFalse(MotherNbt.write(mother).contains("ln"), "written back without the name");
+        m.putString("ln", "Golden Line");
+        assertEquals(Optional.of("Golden Line"), MotherNbt.read(m).orElseThrow().lineName());
     }
 }

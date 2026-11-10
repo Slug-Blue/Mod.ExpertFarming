@@ -333,13 +333,17 @@ class PlantNbtBoundaryTest {
         return u;
     }
 
-    /** Review 1, m1: a stored line name must be clean player text. */
+    /** T2 (was review 1, m1): a dirty stored line name is dropped; the plant stays live. */
     @org.junit.jupiter.api.Test
-    void dirtyLineNameMakesThePlantInert() {
-        for (String ln : new String[] {"@cultivar.carrot", "\u0001cultivar.carrot", "a\u202Eb"}) {
+    void dirtyLineNameIsDroppedAndThePlantStaysLive() {
+        for (String ln : new String[] {"@cultivar.carrot", "cultivar.carrot", "a‮b", "  spaced"}) {
             CompoundTag r = full();
             r.putString("ln", ln);
-            assertInstanceOf(PlantNbt.Inert.class, read(r), ln);
+            PlantNbt.Ok ok = assertInstanceOf(PlantNbt.Ok.class, read(r), ln);
+            org.junit.jupiter.api.Assertions.assertNull(ok.state().lineName, ln);
+            org.junit.jupiter.api.Assertions.assertNotNull(ok.state().genome, "genome kept for " + ln);
+            org.junit.jupiter.api.Assertions.assertFalse(PlantNbt.write(ok.state()).contains("ln"),
+                    "written back without the name");
         }
     }
 }
