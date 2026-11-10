@@ -90,6 +90,15 @@ public final class JournalData {
     private int revision;
     /** Transient: the revision the client last received (full sync or delta); -1 = never. */
     private int syncedRevision = -1;
+    /**
+     * Transient (T1): an upper bound of the live NBT size in bytes, exact
+     * right after a full measure, -1 when unknown. {@link #setCounter} keeps
+     * it up to date from the exact size of a counter and measures the whole
+     * journal only when the bound passes 64 KiB.
+     */
+    private long sizeBound = -1;
+    /** Transient: number of full measures (tests). */
+    private int fullMeasures;
     private CompoundTag inertRaw;
     private String inertReason;
 
@@ -153,6 +162,7 @@ public final class JournalData {
             return false;
         }
         given = true;
+        grow(SMALL_FIELD_BOUND);
         revision++;
         return true;
     }
@@ -265,6 +275,7 @@ public final class JournalData {
         }
         if (f != e.flags()) {
             entries.put(id, e.withFlags(f));
+            grow(SMALL_FIELD_BOUND);
             revision++;
         }
         return true;
@@ -283,6 +294,7 @@ public final class JournalData {
             return false;
         }
         lastToast = gameTime;
+        grow(SMALL_FIELD_BOUND);
         return true;
     }
 
@@ -298,20 +310,35 @@ public final class JournalData {
         if (inert() || key == null || !COUNTER.matcher(key).matches()) {
             return false;
         }
+        boolean hadCounters = !counters.isEmpty();
         Long old = counters.remove(key);
+        if (old != null) {
+            shrink(counterBytes(key));
+        }
         if (value == 0) {
             return true;
         }
         while (counters.size() >= MAX_COUNTERS) {
             evictOldestCounter();
         }
+        if (!hadCounters) {
+            grow(COUNTERS_TAG_BYTES); // the bound never takes these bytes back, so it stays an upper bound
+        }
         counters.put(key, value);
+        grow(counterBytes(key));
+        if (sizeBound >= 0 && sizeBound <= NbtLimits.JOURNAL_MAX_BYTES) {
+            return true; // T1: the bound fits, no need to serialise the journal
+        }
         while (!fits()) {
             if (counters.size() <= 1) {
                 counters.remove(key);
-                if (old != null && fits()) {
+                if (old != null) {
                     counters.put(key, old);
+                    if (!fits()) {
+                        counters.remove(key);
+                    }
                 }
+                sizeBound = -1;
                 return false;
             }
             evictOldestCounter();
@@ -319,16 +346,44 @@ public final class JournalData {
         return true;
     }
 
+    /** Exact NBT bytes of one counter: type byte, u16 key length, the ASCII key ({@link #COUNTER}), a long. */
+    static long counterBytes(String key) {
+        return 1 + 2 + key.length() + 8;
+    }
+
+    /** NBT bytes of the {@code c} compound itself: type byte, u16 name length, "c", TAG_End. */
+    static final long COUNTERS_TAG_BYTES = 1 + 2 + 1 + 1;
+    /** Upper bound of what a flag, the "given" byte or the toast time adds to the NBT. */
+    static final long SMALL_FIELD_BOUND = 16;
+
+    private void grow(long bytes) {
+        if (sizeBound >= 0) {
+            sizeBound += bytes;
+        }
+    }
+
+    private void shrink(long bytes) {
+        if (sizeBound >= 0) {
+            sizeBound = Math.max(0, sizeBound - bytes);
+        }
+    }
+
     private void evictOldestCounter() {
         java.util.Iterator<String> it = counters.keySet().iterator();
-        it.next();
+        shrink(counterBytes(it.next()));
         it.remove();
     }
 
     /** Removes counters whose key starts with {@code prefix} (a finished day window). */
     public void clearCounters(String prefix) {
         if (!inert()) {
-            counters.keySet().removeIf(k -> k.startsWith(prefix));
+            counters.keySet().removeIf(k -> {
+                if (k.startsWith(prefix)) {
+                    shrink(counterBytes(k));
+                    return true;
+                }
+                return false;
+            });
         }
     }
 
@@ -345,11 +400,25 @@ public final class JournalData {
         nextOrder = c.nextOrder;
         inertRaw = c.inertRaw;
         inertReason = c.inertReason;
+        sizeBound = -1;
         revision++;
     }
 
     private boolean fits() {
-        return NbtLimits.journal(writeLive()).ok();
+        fullMeasures++;
+        NbtBudget.Result r = NbtLimits.journal(writeLive());
+        sizeBound = r.ok() ? r.bytes() : -1;
+        return r.ok();
+    }
+
+    /** The running size bound, -1 = unknown (tests, T1). */
+    long sizeBound() {
+        return sizeBound;
+    }
+
+    /** Number of full NBT measures so far (tests, T1). */
+    int fullMeasures() {
+        return fullMeasures;
     }
 
     // ------------------------------------------------------------------ NBT

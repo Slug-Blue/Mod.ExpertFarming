@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.slugblue.wildroots.core.safety.DispCodec;
+import io.github.slugblue.wildroots.core.safety.NbtBudget;
 import io.github.slugblue.wildroots.core.safety.NbtLimits;
 import io.github.slugblue.wildroots.network.c2s.JournalActionPacket;
 import java.util.ArrayList;
@@ -212,6 +213,105 @@ class JournalDataTest {
             assertTrue(NbtLimits.journal(j.save()).ok(), "over the limit after counter " + i);
         }
         assertFalse(JournalData.load(j.save()).inert(), "saved journal loads inert");
+    }
+
+    /** A journal of filler entries a little under 64 KiB (rows of long literal arguments). */
+    static JournalData nearlyFull() {
+        return fill(new JournalData());
+    }
+
+    static JournalData fill(JournalData j) {
+        String arg = "x".repeat(DispCodec.MAX_ARG_LENGTH);
+        List<DispCodec.Line> rows = new ArrayList<>();
+        for (int i = 0; i < JournalData.MAX_ROWS; i++) {
+            rows.add(DispCodec.Line.of("wildroots.journal.species.found_at", arg, arg, arg, arg));
+        }
+        int n = 0;
+        while (j.unlock("note.filler_" + n, List.of(arg, arg, arg, arg), rows) == JournalData.Unlock.NEW) {
+            n++;
+        }
+        // a smaller entry tops it up so the last bytes are close to the limit
+        int m = 0;
+        while (j.unlock("note.small_" + m, List.of(arg), List.of()) == JournalData.Unlock.NEW) {
+            m++;
+        }
+        return j;
+    }
+
+    static String randomCounterKey(java.util.Random r) {
+        int len = 1 + r.nextInt(80);
+        String alphabet = "abcdefghijklmnopqrstuvwxyz0123456789_.";
+        StringBuilder b = new StringBuilder(len);
+        for (int i = 0; i < len; i++) {
+            b.append(alphabet.charAt(r.nextInt(alphabet.length())));
+        }
+        return b.toString();
+    }
+
+    /**
+     * T1: {@code setCounter} keeps a running upper bound of the NBT size
+     * instead of serialising the whole journal on every call. Under 10 000
+     * random sets (new keys, rewrites, zeroes, interleaved with toasts,
+     * pins and unlocks) on a journal a few hundred bytes under the limit,
+     * the saved journal never passes 64 KiB, the bound is never below the
+     * real size, and it reloads live.
+     */
+    @Test
+    void the64KiBBoundHoldsUnder10000RandomCounterSets() {
+        JournalData j = nearlyFull();
+        java.util.Random r = new java.util.Random(0x5EED_0001L);
+        List<String> seen = new ArrayList<>();
+        for (int i = 0; i < 10_000; i++) {
+            String key = !seen.isEmpty() && r.nextInt(3) == 0 ? seen.get(r.nextInt(seen.size())) : randomCounterKey(r);
+            seen.add(key);
+            long value = r.nextInt(10) == 0 ? 0 : r.nextLong();
+            j.setCounter(key, value);
+            switch (r.nextInt(50)) {
+                case 0 -> j.takeToast(i * 1000L);
+                case 1 -> j.markGiven();
+                case 2 -> j.apply(new net.minecraft.resources.ResourceLocation("wildroots", "note.filler_0"),
+                        r.nextBoolean() ? io.github.slugblue.wildroots.network.c2s.JournalActionPacket.PIN
+                                : io.github.slugblue.wildroots.network.c2s.JournalActionPacket.UNPIN);
+                case 3 -> j.unlock("note.late_" + i, List.of("y".repeat(r.nextInt(DispCodec.MAX_ARG_LENGTH) + 1)), List.of());
+                case 4 -> j.clearCounters(key.substring(0, 1));
+                default -> { }
+            }
+            NbtBudget.Result size = NbtLimits.journal(j.save());
+            assertTrue(size.ok(), "over 64 KiB after set " + i + ": " + size.reason());
+            if (j.sizeBound() >= 0) {
+                assertTrue(j.sizeBound() >= size.bytes(), "bound " + j.sizeBound() + " < real " + size.bytes() + " at " + i);
+            }
+        }
+        assertFalse(JournalData.load(j.save()).inert(), "saved journal loads inert");
+        assertTrue(j.counters().size() <= JournalData.MAX_COUNTERS);
+    }
+
+    /** T1: on a journal far from the limit, counter sets do not serialise it at all after the first measure. */
+    @Test
+    void counterSetsOnASmallJournalMeasureItAtMostOnce() {
+        JournalData j = new JournalData();
+        j.unlock("hint.welcome", List.of(), List.of());
+        int before = j.fullMeasures();
+        java.util.Random r = new java.util.Random(7);
+        for (int i = 0; i < 10_000; i++) {
+            j.setCounter(randomCounterKey(r), r.nextLong() | 1);
+        }
+        assertTrue(j.fullMeasures() - before <= 1, "full measures: " + (j.fullMeasures() - before));
+        assertTrue(NbtLimits.journal(j.save()).ok());
+    }
+
+    /** T1: near the limit the bound is exact for counters, so rewrites and same-size churn do not measure either. */
+    @Test
+    void counterRewritesNearTheLimitDoNotMeasure() {
+        JournalData j = new JournalData();
+        assertTrue(j.setCounter("lp.a", 1));
+        fill(j); // the last refused unlock leaves the bound unknown
+        int before = j.fullMeasures();
+        for (int i = 0; i < 1000; i++) {
+            assertTrue(j.setCounter("lp.a", i + 2));
+        }
+        assertTrue(j.fullMeasures() - before <= 1, "rewrites measured " + (j.fullMeasures() - before) + " times");
+        assertEquals(1001L, j.counter("lp.a"));
     }
 
     /** Review 1, m4: a key with the wrong tag type makes the journal inert instead of silently empty. */
