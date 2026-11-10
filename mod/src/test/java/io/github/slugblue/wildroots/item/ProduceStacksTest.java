@@ -80,4 +80,38 @@ class ProduceStacksTest {
             assertEquals(s[g] / 2, ProduceStacks.saturation(0.6, g, true), 1e-6);
         }
     }
+    /**
+     * Batch 5 test pass, owner decision (2 colours, orange counts as yellow):
+     * a forged colour key reads as purple only for the value 1; 2b, -1b, a
+     * string, a list or a compound read as yellow; every block-state variant
+     * maps to one of the two colours.
+     */
+    @Test
+    void forgedColourKeysReadAsYellowUnlessOne() {
+        CompoundTag t = new CompoundTag();
+        for (byte b : new byte[] {0, 2, -1, Byte.MAX_VALUE, Byte.MIN_VALUE}) {
+            t.putByte(ProduceStacks.COLOUR, b);
+            assertEquals(ProduceStacks.YELLOW, ProduceStacks.colour(t), "byte " + b);
+        }
+        t.putByte(ProduceStacks.COLOUR, (byte) 1);
+        assertEquals(ProduceStacks.PURPLE, ProduceStacks.colour(t));
+        t.putString(ProduceStacks.COLOUR, "1");
+        assertEquals(ProduceStacks.YELLOW, ProduceStacks.colour(t), "string");
+        t.put(ProduceStacks.COLOUR, new net.minecraft.nbt.ListTag());
+        assertEquals(ProduceStacks.YELLOW, ProduceStacks.colour(t), "list");
+        t.put(ProduceStacks.COLOUR, new CompoundTag());
+        assertEquals(ProduceStacks.YELLOW, ProduceStacks.colour(t), "compound");
+        // a numeric tag of another width is read as its byte value (vanilla getByte), so only 1 is purple
+        t.putInt(ProduceStacks.COLOUR, 2);
+        assertEquals(ProduceStacks.YELLOW, ProduceStacks.colour(t), "int 2");
+        for (int v = -4; v <= 8; v++) {
+            int c = ProduceStacks.colourOfVariant(v);
+            assertTrue(c == ProduceStacks.YELLOW || c == ProduceStacks.PURPLE, "variant " + v);
+            assertEquals(v == 3 ? ProduceStacks.PURPLE : ProduceStacks.YELLOW, c, "variant " + v);
+        }
+        // the tag builder writes only purple, whatever colour number it is given
+        for (int c : new int[] {Integer.MIN_VALUE, -1, 0, 2, 3, Integer.MAX_VALUE}) {
+            assertFalse(ProduceStacks.tag(3, false, c).contains(ProduceStacks.COLOUR), "colour " + c);
+        }
+    }
 }

@@ -67,4 +67,22 @@ public final class RootColourGameTests {
         helper.assertTrue(be != null, "plant");
         helper.succeed();
     }
+    /**
+     * Owner decision (two eastern-carrot textures): an orange-rooted eastern
+     * carrot (variant 2) and a white-variant one (0) are yellow items, write
+     * no colour key and stack with the yellow harvest.
+     */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
+    public static void orangeAndWhiteVariantEasternCarrotsAreYellowAndStackWithYellow(GameTestHelper helper) {
+        Player player = helper.makeMockSurvivalPlayer();
+        ItemStack yellow = harvest(helper, player, 620, 1);
+        for (int variant : new int[] {0, 2}) {
+            ItemStack other = harvest(helper, player, 620, variant);
+            helper.assertTrue(other.getTag() != null && !other.getTag().contains(ProduceStacks.COLOUR),
+                    "variant " + variant + " writes a colour: " + other.getTag());
+            helper.assertTrue(ProduceStacks.colour(other.getTag()) == ProduceStacks.YELLOW, "variant " + variant);
+            helper.assertTrue(ItemStack.isSameItemSameTags(yellow, other), "variant " + variant + " does not stack with yellow");
+        }
+        helper.succeed();
+    }
 }
