@@ -91,6 +91,9 @@ public final class JournalPages {
         return out;
     }
 
+    static final String GOAL_PREFIX = "wildroots.journal.cultivar.";
+    static final String GOAL_SUFFIX = ".goal";
+
     static Block species(JournalData.Entry e) {
         String id = rest(e);
         List<Component> l = new ArrayList<>();
@@ -103,11 +106,14 @@ public final class JournalPages {
             l.add(heading("wildroots.journal.ui.section.found_at"));
             found.forEach(r -> l.add(line(r)));
         }
-        List<DispCodec.Line> goals = e.rows().stream().filter(r -> r.key().endsWith(".goal")).toList();
+        // only goal rows of the form the server writes; any other key would cut a negative range (batch 5 test pass)
+        List<DispCodec.Line> goals = e.rows().stream().filter(r -> r.key().startsWith(GOAL_PREFIX)
+                && r.key().endsWith(GOAL_SUFFIX) && r.key().length() > GOAL_PREFIX.length() + GOAL_SUFFIX.length())
+                .toList();
         if (!goals.isEmpty()) {
             l.add(heading("wildroots.journal.ui.section.goals"));
             for (DispCodec.Line g : goals) {
-                String cv = g.key().substring("wildroots.journal.cultivar.".length(), g.key().length() - ".goal".length());
+                String cv = g.key().substring(GOAL_PREFIX.length(), g.key().length() - GOAL_SUFFIX.length());
                 l.add(Component.translatable("wildroots.cultivar." + cv).withStyle(s -> s.withItalic(true)));
                 l.add(line(g));
             }
