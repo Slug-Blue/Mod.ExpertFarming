@@ -167,4 +167,80 @@ class JournalDataTest {
         assertTrue(fresh.has("hint.welcome"));
         assertEquals(old.save(), fresh.save());
     }
+
+    /** Review 1, m3: 40 named lines (4+ counters each) never lock out other counters; LRU eviction. */
+    @Test
+    void countersEvictTheOldestSoLineHintsKeepWorking() {
+        JournalData j = new JournalData();
+        for (int line = 0; line < 40; line++) {
+            String key = LineProgress.lineKey("Line " + line);
+            for (int gen = 1; gen <= 3; gen++) {
+                LineProgress.observe(j, key, gen, 0.3);
+            }
+            assertTrue(LineProgress.mayFire(j, "stagnation", key, 5), "line " + line);
+        }
+        assertTrue(j.counters().size() <= JournalData.MAX_COUNTERS, "counters " + j.counters().size());
+        assertTrue(j.setCounter("sq.wild_carrot.n", 3), "select_quarter counter refused");
+        assertEquals(3, j.counter("sq.wild_carrot.n"));
+        // the newest line still has its state; the oldest was evicted
+        String newest = LineProgress.lineKey("Line 39");
+        assertTrue(j.counter("lp." + newest + ".n") != 0);
+        assertEquals(0, j.counter("lp." + LineProgress.lineKey("Line 0") + ".n"));
+        // setting an existing counter makes it the newest
+        j.setCounter("sq.wild_carrot.n", 4);
+        assertEquals("sq.wild_carrot.n", j.counters().keySet().stream().reduce((a, b) -> b).orElseThrow());
+    }
+
+    /** Review 1, m3: a counter never takes the journal over 64 KiB; old counters make room. */
+    @Test
+    void countersRespectThe64KiBLimit() {
+        JournalData j = new JournalData();
+        String arg = "x".repeat(DispCodec.MAX_ARG_LENGTH);
+        List<DispCodec.Line> rows = new ArrayList<>();
+        for (int i = 0; i < JournalData.MAX_ROWS; i++) {
+            rows.add(DispCodec.Line.of("wildroots.journal.species.found_at", arg, arg, arg, arg));
+        }
+        for (int i = 0; i < JournalData.MAX_COUNTERS; i++) {
+            j.setCounter("c.k" + i, i + 1);
+        }
+        int n = 0;
+        while (j.unlock("note.filler_" + n, List.of(arg, arg, arg, arg), rows) == JournalData.Unlock.NEW) {
+            n++;
+        }
+        for (int i = 0; i < 300; i++) {
+            j.setCounter("z.counter_with_a_rather_long_name_" + i, Long.MAX_VALUE - i);
+            assertTrue(NbtLimits.journal(j.save()).ok(), "over the limit after counter " + i);
+        }
+        assertFalse(JournalData.load(j.save()).inert(), "saved journal loads inert");
+    }
+
+    /** Review 1, m4: a key with the wrong tag type makes the journal inert instead of silently empty. */
+    @Test
+    void wrongTagTypesMakeTheJournalInert() {
+        JournalData ok = new JournalData();
+        ok.unlock("hint.welcome", List.of("a"), List.of(DispCodec.Line.of("wildroots.journal.ui.empty")));
+        CompoundTag base = ok.save();
+        List<java.util.function.Consumer<CompoundTag>> breaks = List.of(
+                t -> t.putString("e", "not a list"),
+                t -> t.putString("c", "not a compound"),
+                t -> t.putString("given", "yes"),
+                t -> t.putInt("toast", 3),
+                t -> { ListTag l = new ListTag(); l.add(net.minecraft.nbt.StringTag.valueOf("x")); t.put("e", l); },
+                t -> t.getList("e", 10).getCompound(0).putInt("a", 1),
+                t -> { ListTag l = new ListTag(); l.add(net.minecraft.nbt.IntTag.valueOf(1));
+                    t.getList("e", 10).getCompound(0).put("a", l); },
+                t -> t.getList("e", 10).getCompound(0).putString("r", "row"),
+                t -> { ListTag l = new ListTag(); l.add(net.minecraft.nbt.StringTag.valueOf("not a row key"));
+                    t.getList("e", 10).getCompound(0).put("r", l); },
+                t -> t.getList("e", 10).getCompound(0).putString("o", "first"),
+                t -> t.getList("e", 10).getCompound(0).putInt("id", 5));
+        for (int i = 0; i < breaks.size(); i++) {
+            CompoundTag t = base.copy();
+            breaks.get(i).accept(t);
+            JournalData d = JournalData.load(t);
+            assertTrue(d.inert(), "break " + i + " loaded live: " + t);
+            assertEquals(t, d.save(), "break " + i + ": raw tag not kept");
+        }
+        assertFalse(JournalData.load(base).inert());
+    }
 }

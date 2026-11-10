@@ -286,18 +286,43 @@ public final class JournalData {
         return true;
     }
 
-    /** Sets a trigger counter; refused for a bad key or past {@value #MAX_COUNTERS} keys. */
+    /**
+     * Sets a trigger counter (review 1, m3). Counters are kept in the order
+     * they were last set; a new key past {@value #MAX_COUNTERS} evicts the
+     * least recently set one, and so does a change that would take the
+     * journal over 64 KiB, so line hints keep working however many lines a
+     * player names. Refused only for a bad key, an inert journal, or a
+     * counter that does not fit even alone.
+     */
     public boolean setCounter(String key, long value) {
-        if (inert() || key == null || !COUNTER.matcher(key).matches()
-                || (!counters.containsKey(key) && counters.size() >= MAX_COUNTERS)) {
+        if (inert() || key == null || !COUNTER.matcher(key).matches()) {
             return false;
         }
+        Long old = counters.remove(key);
         if (value == 0) {
-            counters.remove(key);
-        } else {
-            counters.put(key, value);
+            return true;
+        }
+        while (counters.size() >= MAX_COUNTERS) {
+            evictOldestCounter();
+        }
+        counters.put(key, value);
+        while (!fits()) {
+            if (counters.size() <= 1) {
+                counters.remove(key);
+                if (old != null && fits()) {
+                    counters.put(key, old);
+                }
+                return false;
+            }
+            evictOldestCounter();
         }
         return true;
+    }
+
+    private void evictOldestCounter() {
+        java.util.Iterator<String> it = counters.keySet().iterator();
+        it.next();
+        it.remove();
     }
 
     /** Removes counters whose key starts with {@code prefix} (a finished day window). */
@@ -387,6 +412,12 @@ public final class JournalData {
             return inert(root, "version " + root.getInt("v") + " from the future");
         }
         try {
+            // a key present with the wrong type is damage, not "empty" (review 1, m4)
+            if (wrongType(root, "given", Tag.TAG_BYTE) || wrongType(root, "toast", Tag.TAG_LONG)
+                    || wrongType(root, "next", Tag.TAG_INT) || wrongType(root, "e", Tag.TAG_LIST)
+                    || wrongType(root, "c", Tag.TAG_COMPOUND) || !listOf(root, "e", Tag.TAG_COMPOUND)) {
+                return inert(root, "wrong tag type");
+            }
             d.given = root.getBoolean("given");
             d.lastToast = root.contains("toast", Tag.TAG_LONG) ? root.getLong("toast") : Long.MIN_VALUE;
             d.nextOrder = Math.max(0, root.getInt("next"));
@@ -396,6 +427,11 @@ public final class JournalData {
             }
             for (int i = 0; i < list.size(); i++) {
                 CompoundTag t = list.getCompound(i);
+                if (!t.contains("id", Tag.TAG_STRING) || wrongType(t, "a", Tag.TAG_LIST) || !listOf(t, "a", Tag.TAG_STRING)
+                        || wrongType(t, "r", Tag.TAG_LIST) || !listOf(t, "r", Tag.TAG_STRING)
+                        || wrongType(t, "o", Tag.TAG_INT) || wrongType(t, "f", Tag.TAG_BYTE)) {
+                    return inert(root, "wrong tag type in entry " + i);
+                }
                 String id = t.getString("id");
                 ListTag a = t.getList("a", Tag.TAG_STRING);
                 List<String> args = new ArrayList<>(a.size());
@@ -403,6 +439,9 @@ public final class JournalData {
                     args.add(a.getString(k));
                 }
                 List<DispCodec.Line> rows = DispCodec.decode(t.get("r"));
+                if (rows.size() != t.getList("r", Tag.TAG_STRING).size()) {
+                    return inert(root, "bad row in entry " + i);
+                }
                 if (!validId(id) || !validArgs(args) || rows.size() > MAX_ROWS || d.entries.containsKey(id)) {
                     return inert(root, "bad entry " + i);
                 }
@@ -424,6 +463,18 @@ public final class JournalData {
             return inert(root, "damaged: " + e.getClass().getSimpleName());
         }
         return d;
+    }
+
+    static boolean wrongType(CompoundTag t, String key, int type) {
+        return t.contains(key) && !t.contains(key, type);
+    }
+
+    /** {@code key} is absent, an empty list, or a list of {@code type}. */
+    static boolean listOf(CompoundTag t, String key, int type) {
+        if (!(t.get(key) instanceof ListTag l)) {
+            return true;
+        }
+        return l.isEmpty() || l.getElementType() == type;
     }
 
     private static JournalData inert(CompoundTag raw, String reason) {
