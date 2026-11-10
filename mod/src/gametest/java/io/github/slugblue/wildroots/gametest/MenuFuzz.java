@@ -85,7 +85,10 @@ public final class MenuFuzz {
     private MenuFuzz() {
     }
 
-    /** Seeds per lotId in a set of stacks; pouches count their entries; {@code pouches[0]} counts pouches. */
+    /**
+     * Seeds per lotId in a set of stacks; pouches count their entries; {@code pouches[0]} counts pouches.
+     * A pouch that does not read back or holds more than {@link PouchContents#CAPACITY} goes to {@code foreign}.
+     */
     static Map<Long, Integer> seeds(List<ItemStack> stacks, int[] pouches, List<String> foreign) {
         Map<Long, Integer> m = new TreeMap<>();
         for (ItemStack s : stacks) {
@@ -98,6 +101,11 @@ public final class MenuFuzz {
                 if (c == null) {
                     foreign.add("unreadable pouch " + s.getTag());
                     continue;
+                }
+                // a pouch never holds more than its capacity, nor more than its NBT budget (SEC-14)
+                if (c.used() > PouchContents.CAPACITY
+                        || !io.github.slugblue.wildroots.core.safety.NbtLimits.pouch(c.write()).ok()) {
+                    foreign.add("pouch over its limit: " + c.used() + " seeds");
                 }
                 for (CompoundTag e : c.entries()) {
                     m.merge(e.getLong("id"), 1, Integer::sum);
