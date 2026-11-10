@@ -32,7 +32,8 @@ class JournalHintsTest {
         }
         for (String id : new String[] {"shattering", "brush_for_wheat", "teosinte_case", "cabbage_roads",
             "toxic_tomato", "hand_pollination", "forced_self", "genotype_lab", "clone", "graft", "red_flesh",
-            "village_seeds", "breeder_met", "no_such_hint"}) {
+            "village_seeds", "breeder_met", "no_such_hint", "tradeoff", "limit", "grades", "bitter_grade",
+            "graded_by_hand"}) {
             assertFalse(JournalHints.enabled("hint." + id), id);
         }
         assertTrue(JournalHints.enabled("species.wild_carrot"), "non-hint entries are not gated");

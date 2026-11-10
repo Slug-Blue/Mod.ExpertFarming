@@ -26,6 +26,8 @@ public final class JournalHints {
     public static final String LAB = "feature:genotype_lab";
     public static final String CLONES = "feature:clones";
     public static final String VILLAGE = "feature:village";
+    /** Wave-1 hints without a trigger and text yet: off until they get both (review 1, m7). */
+    public static final String PENDING = "feature:pending";
 
     public static final int REPEAT_GENERATIONS = 3;
 
@@ -57,7 +59,7 @@ public final class JournalHints {
         core("looks_like", "first_landrace", "first_cultivar", "mutation", "carrier", "half_fixed");
         line(LAB, "genotype_lab");
         // trade-offs and quality
-        core("tradeoff", "limit", "grades", "bitter_grade", "graded_by_hand");
+        line(PENDING, "tradeoff", "limit", "grades", "bitter_grade", "graded_by_hand");
         line("wheat", "bread_grade");
         line("cane", "rough_paper", "no_sugar", "cane_tropics");
         // clones, grafts, perennials
