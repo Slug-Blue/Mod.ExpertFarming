@@ -37,6 +37,11 @@ public final class JournalCapability {
             return CAPABILITY.orEmpty(cap, self);
         }
 
+        /** Called when the player entity goes (review 1, nit): no stale holder keeps the data. */
+        public void invalidate() {
+            self.invalidate();
+        }
+
         @Override
         public CompoundTag serializeNBT() {
             return data.save();

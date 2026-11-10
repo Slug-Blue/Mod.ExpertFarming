@@ -14,6 +14,10 @@ import io.github.slugblue.wildroots.genetics.random.Hash64;
  *   again no sooner than {@value JournalHints#REPEAT_GENERATIONS} generations
  *   later.</li>
  * </ul>
+ * A generation is closed when the first plant of the next one is
+ * harvested, so a stall is reported at the harvest after the third stalled
+ * generation (one generation "late" by design: a generation is only judged
+ * once it is over).
  * The score is what the caller measures (the mean {@code G_eff} of the
  * target profile's traits); the line is a player name, so counters use a
  * hash of it ({@link #lineKey}).

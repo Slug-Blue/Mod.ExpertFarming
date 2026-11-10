@@ -60,9 +60,10 @@ public final class RootColourGameTests {
         // only colour-variant items carry the key: a wild root of a purple wild plant does not
         PlantBlockEntity be = PlantFixtures.plant(PlantFixtures.place(helper, PlantFixtures.PLANT, 3), 611);
         helper.setBlock(PlantFixtures.PLANT, helper.getBlockState(PlantFixtures.PLANT).setValue(FieldPlantBlock.VARIANT, 3));
-        MotherRootGameTests.drops(helper, PlantFixtures.PLANT, player).stream()
-                .filter(s -> s.is(ModItems.WILD_CARROT_ROOT.get()))
-                .forEach(s -> helper.assertTrue(!s.getTag().contains(ProduceStacks.COLOUR), "wild root got a colour"));
+        List<ItemStack> wild = MotherRootGameTests.drops(helper, PlantFixtures.PLANT, player).stream()
+                .filter(s -> s.is(ModItems.WILD_CARROT_ROOT.get())).toList();
+        helper.assertTrue(!wild.isEmpty(), "no wild root dropped");
+        wild.forEach(s -> helper.assertTrue(!s.getTag().contains(ProduceStacks.COLOUR), "wild root got a colour"));
         helper.assertTrue(be != null, "plant");
         helper.succeed();
     }

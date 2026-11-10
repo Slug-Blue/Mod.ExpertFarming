@@ -218,7 +218,7 @@ public final class HarvestGameTests {
 
     /** ADR-0007 invariant (WR-136, WR-136a): a segregating 5×5 bed gives ≤ 6 distinct stacks per harvest item, ≤ 12 with root colours. */
     @GameTest(template = SmokeGameTests.FLOOR_3X3X3, timeoutTicks = 200)
-    public static void segregatingBedGivesAtMostSixStackVariants(GameTestHelper helper) {
+    public static void segregatingBedStaysWithinTheStackVariantBound(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Player player = helper.makeMockSurvivalPlayer();
         ItemStack lot = PlantingGameTests.lot(level, 25);

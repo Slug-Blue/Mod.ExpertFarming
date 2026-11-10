@@ -1,0 +1,12 @@
+{
+  v: 1,
+  given: 1b,
+  toast: 1234L,
+  next: 3,
+  e: [
+    {id: "hint.welcome", a: ["species.wild_carrot"], o: 0, f: 3b},
+    {id: "species.wild_carrot", r: ["journal.cultivar.eastern_carrot.goal", "journal.species.found_atbiome.minecraft.plains10-4"], o: 1},
+    {id: "cultivar.carrot", a: ["journal.cultivar.carrot.goal"], o: 2, f: 4b}
+  ],
+  c: {"sq.wild_carrot.n": 5L, "lp.l0123456789abcdef.n": 4L}
+}

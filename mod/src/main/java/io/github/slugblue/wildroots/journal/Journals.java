@@ -119,8 +119,11 @@ public final class Journals {
     @EntryPoint
     public static void onAttach(AttachCapabilitiesEvent<Entity> event) {
         if (event.getObject() instanceof Player) {
-            Guarded.run("journal attach", "player",
-                    () -> event.addCapability(JournalCapability.ID, new JournalCapability.Provider()));
+            Guarded.run("journal attach", "player", () -> {
+                JournalCapability.Provider provider = new JournalCapability.Provider();
+                event.addCapability(JournalCapability.ID, provider);
+                event.addListener(provider::invalidate);
+            });
         }
     }
 
@@ -176,7 +179,12 @@ public final class Journals {
 
     static String owner(ServerPlayer player) {
         String n = player.getGameProfile().getName();
-        return n == null ? "" : n.length() > JournalSyncPacket.MAX_OWNER ? n.substring(0, JournalSyncPacket.MAX_OWNER) : n;
+        if (n == null) {
+            return "";
+        }
+        // cut by code points, never inside a surrogate pair
+        return n.codePointCount(0, n.length()) > JournalSyncPacket.MAX_OWNER
+                ? n.substring(0, n.offsetByCodePoints(0, JournalSyncPacket.MAX_OWNER)) : n;
     }
 
     // ------------------------------------------------------------------ entries
