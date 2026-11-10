@@ -334,13 +334,22 @@ public final class StarterPatchGameTests {
             WildPatchFeature.Result r = WildPatchGameTests.place(level, origin, WildPatchGameTests.carrotConfig(level),
                     WildPatchGameTests.TEST);
             helper.assertTrue(r.placed() && r.plants().size() >= 5, "test patch not placed");
-            // spawn so that the ring edge (24) runs through the patch: some plants are nearer than 24
-            BlockPos center = origin.offset(-24, 0, 0); // 24 = StarterPatch.RING_MIN
-            long inner = r.plants().stream().filter(q -> q.distSqr(new BlockPos(center.getX(), q.getY(), center.getZ()))
-                    < 24L * 24).count();
-            long outer = r.plants().size() - inner;
-            helper.assertTrue(inner > 0 && outer >= 5 /* MIN_EXISTING */,
-                    "patch does not straddle the ring edge: inner " + inner + ", outer " + outer);
+            // spawn so that the ring edge (24 = RING_MIN) runs through the patch: some plants nearer than 24,
+            // at least 5 (MIN_EXISTING) farther; the patch shape depends on the world seed, so the offset is searched
+            BlockPos center = null;
+            String tried = "";
+            for (int dx = -14; dx >= -40 && center == null; dx--) {
+                BlockPos c = origin.offset(dx, 0, 0);
+                long inner = r.plants().stream().filter(q -> q.distSqr(new BlockPos(c.getX(), q.getY(), c.getZ()))
+                        < 24L * 24).count();
+                long outer = r.plants().stream().filter(q -> q.distSqr(new BlockPos(c.getX(), q.getY(), c.getZ()))
+                        <= 128L * 128).count() - inner;
+                tried += " " + dx + ":" + inner + "/" + outer;
+                if (inner > 0 && outer >= 5) {
+                    center = c;
+                }
+            }
+            helper.assertTrue(center != null, "no spawn makes the patch straddle the ring edge:" + tried);
             StarterPatch.Placement p = StarterPatch.place(level, center);
             helper.assertTrue(p.outcome() == Outcome.MARKED_EXISTING, "outcome " + p);
             List<BlockPos> unmarked = r.plants().stream().filter(q -> !starter(level, q)).toList();
