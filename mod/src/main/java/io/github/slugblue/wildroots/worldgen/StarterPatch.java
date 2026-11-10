@@ -358,11 +358,23 @@ public final class StarterPatch {
                 .filter(l -> area.test(l.get(0))).toList();
         if (!existing.isEmpty()) {
             List<BlockPos> patch = existing.get(0);
+            BlockPos origin = LoadedLevelAccess.blockEntity(level, patch.get(0), PlantBlockEntity.class)
+                    .map(be -> BlockPos.of(be.data().passport().patchOrigin())).orElse(patch.get(0));
+            // the ring search sees only the plants 24–128 from spawn; a patch on the inner edge of the
+            // ring has more plants nearer spawn: the whole patch (same patch origin) is marked
+            List<BlockPos> whole = new ArrayList<>(patch);
+            for (List<BlockPos> g : existingPatches(level, origin, 0, AREA)) {
+                for (BlockPos q : g) {
+                    if (!whole.contains(q) && LoadedLevelAccess.blockEntity(level, q, PlantBlockEntity.class)
+                            .map(be -> be.data().passport().patchOrigin() == origin.asLong()).orElse(false)) {
+                        whole.add(q);
+                    }
+                }
+            }
+            patch = whole;
             for (BlockPos p : patch) {
                 LoadedLevelAccess.blockEntity(level, p, PlantBlockEntity.class).ifPresent(PlantBlockEntity::markStarter);
             }
-            BlockPos origin = LoadedLevelAccess.blockEntity(level, patch.get(0), PlantBlockEntity.class)
-                    .map(be -> BlockPos.of(be.data().passport().patchOrigin())).orElse(patch.get(0));
             config.get().beeNest().filter(n -> loadedBox(level, origin, AREA)).ifPresent(n -> {
                 SplitMix64 rng = new SplitMix64(Hash64.of(RngKeys.patchSeed(level.getSeed(), origin.asLong()),
                         Hash64.str("starter_nest")));

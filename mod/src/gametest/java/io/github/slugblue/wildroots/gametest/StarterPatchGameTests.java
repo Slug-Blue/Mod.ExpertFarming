@@ -320,6 +320,40 @@ public final class StarterPatchGameTests {
     }
 
     /**
+     * Batch 5 flake (seed-dependent, {@code realSearchOnLoadedTerrainPlacesOrMarks}):
+     * an existing patch on the inner edge of the 24–128 ring was marked only
+     * where its plants were 24 or more from spawn; the plants nearer spawn
+     * stayed plain wild. The whole patch (same patch origin) is marked.
+     */
+    @GameTest(template = FLOOR, batch = "wr152_sky_existing_edge")
+    public static void existingPatchOnTheInnerRingEdgeIsMarkedWhole(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        SkyPlatform sky = SkyPlatform.build(helper, 14);
+        try {
+            BlockPos origin = sky.surface();
+            WildPatchFeature.Result r = WildPatchGameTests.place(level, origin, WildPatchGameTests.carrotConfig(level),
+                    WildPatchGameTests.TEST);
+            helper.assertTrue(r.placed() && r.plants().size() >= 5, "test patch not placed");
+            // spawn so that the ring edge (24) runs through the patch: some plants are nearer than 24
+            BlockPos center = origin.offset(-24, 0, 0); // 24 = StarterPatch.RING_MIN
+            long inner = r.plants().stream().filter(q -> q.distSqr(new BlockPos(center.getX(), q.getY(), center.getZ()))
+                    < 24L * 24).count();
+            long outer = r.plants().size() - inner;
+            helper.assertTrue(inner > 0 && outer >= 5 /* MIN_EXISTING */,
+                    "patch does not straddle the ring edge: inner " + inner + ", outer " + outer);
+            StarterPatch.Placement p = StarterPatch.place(level, center);
+            helper.assertTrue(p.outcome() == Outcome.MARKED_EXISTING, "outcome " + p);
+            List<BlockPos> unmarked = r.plants().stream().filter(q -> !starter(level, q)).toList();
+            helper.assertTrue(unmarked.isEmpty(), unmarked.size() + " of " + r.plants().size()
+                    + " plants of the marked patch are not starter: " + unmarked);
+            helper.assertTrue(p.plants() == r.plants().size(), "plants " + p.plants() + " of " + r.plants().size());
+        } finally {
+            sky.clear();
+        }
+        helper.succeed();
+    }
+
+    /**
      * Review M2: near the edge of the loaded area the starter search must
      * not load a chunk. A platform two chunks inside the edge: its columns
      * are refused (the nest area would leave the loaded chunks), nothing is
