@@ -18,6 +18,9 @@ import net.minecraftforge.fml.common.Mod;
 @Mod.EventBusSubscriber(modid = WildRoots.MOD_ID)
 public final class CaptureLeakGuard {
 
+    private static final org.slf4j.Logger LOG = org.slf4j.LoggerFactory.getLogger(CaptureLeakGuard.class);
+    private static boolean announced;
+
     private CaptureLeakGuard() {
     }
 
@@ -25,6 +28,10 @@ public final class CaptureLeakGuard {
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.START || event.getServer() == null) {
             return;
+        }
+        if (!announced) {
+            announced = true;
+            LOG.info("CaptureLeakGuard: checking Forge block snapshot capture every tick");
         }
         for (ServerLevel level : event.getServer().getAllLevels()) {
             check(level);
