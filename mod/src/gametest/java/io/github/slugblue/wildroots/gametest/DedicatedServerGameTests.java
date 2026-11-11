@@ -7,7 +7,11 @@ import java.util.TreeSet;
 import javax.management.ObjectName;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.gametest.framework.GameTestServer;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.event.server.ServerStoppingEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
@@ -17,20 +21,26 @@ import org.slf4j.LoggerFactory;
 /**
  * WR-198 (docs/05-architecture.md §15, {@code 00-vision.md} metric 5): on the
  * dedicated server ({@code runGameTestServer}, as in CI) no class of the
- * mod's {@code client} package is loaded — at server start and after every
- * batch that ran before this one (its own batch {@code wr198}; batch order
- * follows the hash order of the names, {@code WILDROOTS_ORDER_SALT} moves
- * it). A client class loaded on a real dedicated server crashes it (§15), so
- * every run of the suite that passes is the strong check; this test names
- * the class instead of a crash, also where the joined dev jar would let it
- * load. Read from
- * the JVM's own list of loaded classes ({@code VM.class_hierarchy} through
- * the {@code DiagnosticCommand} MBean), not from a class loader we would
- * have to open. ArchUnit {@code modClientOnlyFromLambdas} keeps the code
- * shape that makes this true; this test checks the running server.
+ * mod's {@code client} package and no vanilla client or render class
+ * ({@code net.minecraft.client}, {@code com.mojang.blaze3d}) is loaded.
+ *
+ * <p>Checked twice: by the GameTest in its own batch {@code wr198} (it sees
+ * whatever the batches before it loaded; batch order is the hash order of
+ * the names, {@code WILDROOTS_ORDER_SALT} moves it) and once more when the
+ * GameTest server stops, after every batch ({@link #onStopping}). The stop
+ * check cannot fail a test any more, so on a finding it logs the classes
+ * and ends the JVM with exit code 1: {@code runGameTestServer} and CI go red.
+ *
+ * <p>The list is the JVM's own ({@code VM.class_hierarchy} through the
+ * {@code DiagnosticCommand} MBean), not a class loader we would have to
+ * open. Limitation: the hierarchy lists classes and the interfaces loaded
+ * classes implement; an interface no loaded class implements is not listed.
+ * ArchUnit {@code modClientOnlyFromLambdas} keeps the code shape; this test
+ * checks the running server.
  */
 @GameTestHolder(WildRoots.MOD_ID)
 @PrefixGameTestTemplate(false)
+@Mod.EventBusSubscriber(modid = WildRoots.MOD_ID)
 public final class DedicatedServerGameTests {
 
     static final Logger LOG = LoggerFactory.getLogger(DedicatedServerGameTests.class);
@@ -64,30 +74,56 @@ public final class DedicatedServerGameTests {
         }
     }
 
+    /** Client classes loaded so far (the mod's and vanilla's); empty is the expected result. */
+    static Set<String> clientClassesLoaded(Set<String> loaded) {
+        Set<String> found = new TreeSet<>();
+        for (String n : loaded) {
+            if (n.startsWith(MOD_CLIENT) || n.startsWith("net.minecraft.client.") || n.startsWith("com.mojang.blaze3d.")) {
+                found.add(n);
+            }
+        }
+        return found;
+    }
+
+    /** The list must see the mod's common classes, or an empty result means nothing. */
+    static boolean listSeesTheMod(Set<String> loaded) {
+        return loaded.contains("io.github.slugblue.wildroots.journal.Journals")
+                && loaded.contains("io.github.slugblue.wildroots.network.ServerPacketGuard");
+    }
+
     @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "wr198")
-    public static void dedicatedServerLoadsNoModClientClass(GameTestHelper helper) {
+    public static void dedicatedServerLoadsNoClientClass(GameTestHelper helper) {
         if (FMLEnvironment.dist != Dist.DEDICATED_SERVER) {
-            // GameTests in runClient: the client package is loaded there by design
+            // GameTests in runClient: client classes are loaded there by design
             LOG.info("[WR-198] not a dedicated server ({}), client class check skipped", FMLEnvironment.dist);
             helper.succeed();
             return;
         }
         Set<String> loaded = loadedClasses();
-        helper.assertTrue(loaded.contains("io.github.slugblue.wildroots.journal.Journals")
-                        && loaded.contains("io.github.slugblue.wildroots.network.ServerPacketGuard"),
+        helper.assertTrue(listSeesTheMod(loaded),
                 "the loaded-class list misses the mod's common classes (" + loaded.size() + " names)");
-        Set<String> ours = new TreeSet<>();
-        int vanillaClient = 0;
-        for (String n : loaded) {
-            if (n.startsWith(MOD_CLIENT)) {
-                ours.add(n);
-            } else if (n.startsWith("net.minecraft.client.") || n.startsWith("com.mojang.blaze3d.")) {
-                vanillaClient++;
-            }
-        }
-        LOG.info("[WR-198] dedicated server: {} classes loaded, {} of the mod's client package, {} vanilla client/blaze3d",
-                loaded.size(), ours.size(), vanillaClient);
-        helper.assertTrue(ours.isEmpty(), "client classes loaded on the dedicated server: " + ours);
+        Set<String> found = clientClassesLoaded(loaded);
+        LOG.info("[WR-198] dedicated server: {} classes loaded, {} client classes", loaded.size(), found.size());
+        helper.assertTrue(found.isEmpty(), "client classes loaded on the dedicated server: " + found);
         helper.succeed();
+    }
+
+    /** Forge bus: the same check after the last batch, on the GameTest server only. */
+    @SubscribeEvent
+    public static void onStopping(ServerStoppingEvent event) {
+        if (FMLEnvironment.dist != Dist.DEDICATED_SERVER || !(event.getServer() instanceof GameTestServer)) {
+            return;
+        }
+        Set<String> loaded = loadedClasses();
+        Set<String> found = clientClassesLoaded(loaded);
+        if (listSeesTheMod(loaded) && found.isEmpty()) {
+            LOG.info("[WR-198] end of run: {} classes loaded, no client class", loaded.size());
+            return;
+        }
+        LOG.error("[WR-198] end of run: client classes loaded on the dedicated server (or the list is broken, {} names): {}",
+                loaded.size(), found);
+        org.apache.logging.log4j.LogManager.shutdown();
+        // System.exit would wait for the server shutdown hook, which waits for this thread
+        Runtime.getRuntime().halt(1);
     }
 }
