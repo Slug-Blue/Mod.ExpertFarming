@@ -58,7 +58,14 @@ public final class JournalHookSafetyGameTests {
                         "planting failed because of the journal");
             } catch (IllegalStateException e) {
                 helper.assertTrue(io.github.slugblue.wildroots.core.safety.Guarded.shared().strict(), "thrown: " + e);
+                // the rethrow left Forge's ForgeHooks.onPlaceItemIntoWorld half way: block snapshot capture
+                // stays on for the whole level (deferred block updates, stale snapshots posted with the next
+                // placement) until someone places an item again; reset it as that method would
+                helper.getLevel().captureBlockSnapshots = false;
+                helper.getLevel().capturedBlockSnapshots.clear();
             }
+            helper.assertTrue(!helper.getLevel().captureBlockSnapshots && helper.getLevel().capturedBlockSnapshots.isEmpty(),
+                    "block snapshot capture left on for the level");
             helper.assertTrue(lot.getCount() == 4, "seeds left " + lot.getCount() + ", expected 4");
             helper.assertTrue(PlantFixtures.stage(helper, PlantFixtures.PLANT) == 0, "no plant");
         } finally {
