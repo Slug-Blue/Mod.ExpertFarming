@@ -12,6 +12,7 @@ import io.github.slugblue.wildroots.genetics.codec.GenomeCodec;
 import io.github.slugblue.wildroots.genetics.codec.GenomeRecord;
 import io.github.slugblue.wildroots.genetics.model.GenomeLayout;
 import io.github.slugblue.wildroots.item.LotNbt;
+import io.github.slugblue.wildroots.item.LotNbtTestAccess;
 import io.github.slugblue.wildroots.item.LotStacks;
 import io.github.slugblue.wildroots.item.MotherNbt;
 import io.github.slugblue.wildroots.item.PouchContents;
@@ -37,7 +38,7 @@ import org.junit.jupiter.api.Test;
  * exception, and the result is either valid (then saving and reading it
  * again gives a valid result) or inert.
  *
- * <p>{@value #RUNS} inputs per decoder; {@code -Dwildroots.fuzzRuns=n}
+ * <p>{@value #RUNS} inputs per decoder; {@code -Pwildroots.fuzzRuns=n}
  * changes it (the property is the same at any count).
  */
 class NbtDecoderFuzzTest {
@@ -99,6 +100,7 @@ class NbtDecoderFuzzTest {
         long ms = (System.nanoTime() - t0) / 1_000_000;
         System.out.printf("[WR-197] fuzz %s: %d inputs, %d valid, %d inert, %d ms%n", name, runs, valid, inert, ms);
         assertTrue(inert > 0, name + ": no mutation made the root inert, the mutator does not reach the decoder");
+        assertTrue(valid >= runs / 100, name + ": only " + valid + " valid results, the mutator destroys every input");
         return new Tally(valid, inert, ms);
     }
 
@@ -135,7 +137,8 @@ class NbtDecoderFuzzTest {
             PlantNbt.Result r = PlantNbt.read(t);
             if (r instanceof PlantNbt.Ok ok) {
                 CompoundTag saved = PlantNbt.write(ok.state());
-                assertTrue(PlantNbt.read(saved) instanceof PlantNbt.Ok, "saved plant does not read back");
+                assertTrue(PlantNbt.read(saved) instanceof PlantNbt.Ok again
+                        && PlantNbt.write(again.state()).equals(saved), "saved plant does not round-trip");
                 if (ok.state().genome() != null) {
                     genome(ok.state().genome());
                 }
@@ -152,9 +155,18 @@ class NbtDecoderFuzzTest {
             LotNbt.disp(t);
             if (r instanceof LotNbt.Lot l) {
                 LotStacks.record(l, SNAP); // genomes of mother and fathers: decoded or empty, never thrown
+                CompoundTag saved = LotNbtTestAccess.write(l, LotNbt.disp(t));
+                assertTrue(LotNbt.read(saved) instanceof LotNbt.Lot again
+                        && LotNbtTestAccess.write(again, LotNbt.disp(saved)).equals(saved), "saved lot does not round-trip");
                 return Outcome.VALID;
             }
-            return r instanceof LotNbt.Lazy ? Outcome.VALID : Outcome.INERT;
+            if (r instanceof LotNbt.Lazy lazy) {
+                CompoundTag saved = LotNbtTestAccess.write(lazy, LotNbt.disp(t));
+                assertTrue(LotNbt.read(saved) instanceof LotNbt.Lazy again
+                        && LotNbtTestAccess.write(again, LotNbt.disp(saved)).equals(saved), "saved lazy lot does not round-trip");
+                return Outcome.VALID;
+            }
+            return Outcome.INERT;
         });
     }
 
@@ -166,7 +178,8 @@ class NbtDecoderFuzzTest {
                 return Outcome.INERT;
             }
             PouchContents c = p.get();
-            assertTrue(PouchContents.read(c.write()).isPresent(), "saved pouch does not read back");
+            CompoundTag saved = c.write();
+            assertEquals(saved, PouchContents.read(saved).orElseThrow().write(), "saved pouch does not round-trip");
             while (c.used() > 0) {
                 PouchContents.Extracted e = c.removeLast().orElseThrow();
                 LotNbt.read(e.lot());
@@ -183,7 +196,9 @@ class NbtDecoderFuzzTest {
             if (j.inert()) {
                 return Outcome.INERT;
             }
-            assertTrue(!JournalData.load(j.save()).inert(), "saved journal does not read back");
+            CompoundTag saved = j.save();
+            JournalData again = JournalData.load(saved);
+            assertTrue(!again.inert() && again.save().equals(saved), "saved journal does not round-trip");
             return Outcome.VALID;
         });
     }
@@ -195,7 +210,8 @@ class NbtDecoderFuzzTest {
             if (m.isEmpty()) {
                 return Outcome.INERT;
             }
-            assertTrue(MotherNbt.read(MotherNbt.write(m.get())).isPresent(), "saved mother root does not read back");
+            CompoundTag saved = MotherNbt.write(m.get());
+            assertEquals(saved, MotherNbt.write(MotherNbt.read(saved).orElseThrow()), "saved mother root does not round-trip");
             genome(m.get().genome());
             return Outcome.VALID;
         });
@@ -215,7 +231,7 @@ class NbtDecoderFuzzTest {
             }
             BeePollen again = new BeePollen();
             again.load(p.save());
-            assertTrue(again.hasPollen(), "saved pollen does not read back");
+            assertTrue(again.hasPollen() && again.save().equals(p.save()), "saved pollen does not round-trip");
             return Outcome.VALID;
         });
     }

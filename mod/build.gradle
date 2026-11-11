@@ -148,6 +148,10 @@ tasks.named('test', Test).configure {
     // file is not on the test classpath, so a change alone must rerun the test
     inputs.file('src/gametest/resources/data/wildroots/structures/gametest/old_save_v1.nbt')
             .withPropertyName('oldSaveV1Template').withPathSensitivity(PathSensitivity.RELATIVE)
+    // WR-197: -Pwildroots.fuzzRuns=n changes the NbtDecoderFuzzTest count
+    if (project.hasProperty('wildroots.fuzzRuns')) {
+        systemProperty 'wildroots.fuzzRuns', project.property('wildroots.fuzzRuns')
+    }
 }
 
 // Expand mod metadata from gradle.properties into mods.toml and pack.mcmeta.
