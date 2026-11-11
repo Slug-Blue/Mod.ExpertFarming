@@ -1,6 +1,7 @@
 package io.github.slugblue.wildroots.gametest;
 
 import io.github.slugblue.wildroots.WildRoots;
+import io.github.slugblue.wildroots.core.Ids;
 import io.github.slugblue.wildroots.core.registry.ModItems;
 import io.github.slugblue.wildroots.data.Definitions;
 import io.github.slugblue.wildroots.genetics.codec.DecodeResult;
@@ -16,31 +17,32 @@ import io.github.slugblue.wildroots.plant.PlantBlockEntity;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import io.github.slugblue.wildroots.core.Ids;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.RandomSource;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
-import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ChestMenu;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
+import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 
 /**
  * WR-196, docs/05-architecture.md §5.4 item 3: the frozen template
  * {@code old_save_v1.nbt} (block entities and items exactly as the v1 format
- * wrote them, built from {@code fixtures/v1/*.snbt}) is placed; its block
+ * wrote them, built from {@code fixtures/v1/*.snbt} by the test-source
+ * generator {@code OldSaveTemplate}; {@code OldSaveV1Test} checks that the
+ * committed file is exactly what it builds) is placed; its block
  * entities load through {@code BlockEntity#load}, genomes decode, plants
  * grow, a lot plants, the pouch gives its entries last in first out and the
  * mother root decodes. The template is never regenerated or deleted; its

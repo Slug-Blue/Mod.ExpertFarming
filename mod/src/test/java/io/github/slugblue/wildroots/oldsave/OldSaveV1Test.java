@@ -180,6 +180,36 @@ class OldSaveV1Test {
         assertEquals(t, MotherNbt.write(m), "save changed the v1 mother root");
     }
 
+    /**
+     * The committed template is exactly what {@link OldSaveTemplate} builds
+     * from the v1 fixtures; in particular its chest holds the fixture lot,
+     * pouch and mother root and its plants the fixture plant roots.
+     */
+    @Test
+    void templateIsBuiltFromTheFixtures() throws Exception {
+        CompoundTag committed = net.minecraft.nbt.NbtIo.readCompressed(TEMPLATE.toFile());
+        CompoundTag chest = null;
+        List<CompoundTag> plants = new ArrayList<>();
+        net.minecraft.nbt.ListTag blocks = committed.getList("blocks", net.minecraft.nbt.Tag.TAG_COMPOUND);
+        for (int i = 0; i < blocks.size(); i++) {
+            CompoundTag nbt = blocks.getCompound(i).getCompound("nbt");
+            if ("minecraft:chest".equals(nbt.getString("id"))) {
+                chest = nbt;
+            } else if ("wildroots:plant".equals(nbt.getString("id"))) {
+                plants.add(nbt.getCompound("wr"));
+            }
+        }
+        assertTrue(chest != null, "no chest in the template");
+        net.minecraft.nbt.ListTag items = chest.getList("Items", net.minecraft.nbt.Tag.TAG_COMPOUND);
+        assertEquals(fixture("lot_v1.snbt"), items.getCompound(0).getCompound("tag").getCompound(LotNbt.KEY));
+        assertEquals(fixture("pouch_v1.snbt"), items.getCompound(1).getCompound("tag").getCompound(PouchContents.KEY));
+        assertEquals(fixture("mother_v1.snbt"), items.getCompound(2).getCompound("tag").getCompound(MotherNbt.KEY));
+        assertEquals(4, plants.size());
+        assertTrue(plants.contains(fixture("plant_v1.snbt")), "the flowering mother is not the plant fixture");
+        assertTrue(plants.contains(fixture("plant_wild_v1.snbt")), "the wild plant is not the wild fixture");
+        assertEquals(OldSaveTemplate.build("v1"), committed, "the template differs from what its generator builds");
+    }
+
     /** The frozen template is still there and byte for byte the one committed with WR-196. */
     @Test
     void oldSaveTemplateIsFrozen() throws Exception {
