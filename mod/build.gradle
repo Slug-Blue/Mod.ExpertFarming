@@ -144,6 +144,10 @@ dependencies {
 
 tasks.named('test', Test).configure {
     useJUnitPlatform()
+    // WR-196: OldSaveV1Test pins the sha256 of this GameTest template; the
+    // file is not on the test classpath, so a change alone must rerun the test
+    inputs.file('src/gametest/resources/data/wildroots/structures/gametest/old_save_v1.nbt')
+            .withPropertyName('oldSaveV1Template').withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 // Expand mod metadata from gradle.properties into mods.toml and pack.mcmeta.
