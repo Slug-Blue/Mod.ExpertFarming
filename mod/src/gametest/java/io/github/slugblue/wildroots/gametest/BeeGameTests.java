@@ -251,16 +251,66 @@ public final class BeeGameTests {
     @GameTest(template = FIELD, setupTicks = SETUP, timeoutTicks = 6000, batch = "wr142_bees_vanilla")
     public static void noBloomBeesVisitVanillaFlowers(GameTestHelper helper) {
         helper.getLevel().setDayTime(1000);
-        List<Bee> bees = field(helper, false, FLOWERS_NEAR);
+        helper.getLevel().setWeatherParameters(12_000, 0, false, false);
+        field(helper, false, FLOWERS_NEAR);
         helper.succeedWhen(() -> {
-            long nectar = bees.stream().filter(Bee::hasNectar).count();
-            int honey = maxHoney(helper);
             for (BlockPos p : PLANTS) {
                 PlantBlockEntity be = (PlantBlockEntity) helper.getBlockEntity(p);
                 helper.assertTrue(be.data().pending() == null, "our goal visited a plant out of flower at " + p);
             }
-            helper.assertTrue(nectar + honey >= 3, "vanilla nectar " + nectar + ", honey " + honey);
+            int[] w = vanillaWork(helper);
+            helper.assertTrue(w[0] + w[1] + w[2] >= 3, "vanilla honey " + w[0] + ", nectar outside " + w[1]
+                    + ", nectar in hives " + w[2]);
         });
+    }
+
+    /**
+     * Vanilla pollination work in the field: honey of all hives (summed),
+     * bees in the field carrying nectar and bees with nectar inside a hive.
+     * Counted from the world, not from the spawned entity objects: a bee that
+     * leaves a hive is a new entity, and one hive holds only part of the
+     * honey (the old count, tracked bees + the fullest hive, missed both).
+     */
+    static int[] vanillaWork(GameTestHelper helper) {
+        int honey = 0;
+        int inHives = 0;
+        for (BlockPos h : HIVES) {
+            BlockState st = helper.getBlockState(h);
+            if (st.hasProperty(BeehiveBlock.HONEY_LEVEL)) {
+                honey += st.getValue(BeehiveBlock.HONEY_LEVEL);
+            }
+            if (helper.getBlockEntity(h) instanceof BeehiveBlockEntity hive) {
+                ListTag occupants = hive.writeBees();
+                for (int i = 0; i < occupants.size(); i++) {
+                    if (occupants.getCompound(i).getCompound("EntityData").getBoolean("HasNectar")) {
+                        inHives++;
+                    }
+                }
+            }
+        }
+        AABB box = new AABB(helper.absolutePos(BlockPos.ZERO), helper.absolutePos(new BlockPos(17, 10, 17))).inflate(8);
+        int outside = (int) helper.getLevel().getEntitiesOfClass(Bee.class, box, Bee::hasNectar).size();
+        return new int[] {honey, outside, inHives};
+    }
+
+    /**
+     * WR-195 regression for {@link #vanillaWork}: honey 1 and 2 in two hives
+     * and a bee with nectar resting in a third count 4 (the old count saw 2).
+     */
+    @GameTest(template = FIELD, setupTicks = SETUP, timeoutTicks = 100)
+    public static void vanillaWorkCountsEveryHiveAndBeesInside(GameTestHelper helper) {
+        for (BlockPos h : HIVES) {
+            helper.setBlock(h, Blocks.BEEHIVE.defaultBlockState());
+        }
+        helper.setBlock(HIVES[0], Blocks.BEEHIVE.defaultBlockState().setValue(BeehiveBlock.HONEY_LEVEL, 1));
+        helper.setBlock(HIVES[1], Blocks.BEEHIVE.defaultBlockState().setValue(BeehiveBlock.HONEY_LEVEL, 2));
+        Bee bee = helper.spawn(EntityType.BEE, HIVES[2].above());
+        bee.setHasNectar(true);
+        ((BeehiveBlockEntity) helper.getBlockEntity(HIVES[2])).addOccupant(bee, true);
+        int[] w = vanillaWork(helper);
+        helper.assertTrue(w[0] == 3 && w[2] == 1, "honey " + w[0] + ", nectar in hives " + w[2]);
+        helper.assertTrue(maxHoney(helper) == 2, "fullest hive " + maxHoney(helper));
+        helper.succeed();
     }
 
     /**
@@ -278,7 +328,7 @@ public final class BeeGameTests {
                 donors += donors((PlantBlockEntity) helper.getBlockEntity(p));
             }
             int honey = maxHoney(helper);
-            helper.assertTrue(donors >= 1, "no donors after 3 days");
+            helper.assertTrue(donors >= 1, "no donors after 3 days; " + fieldState(helper));
             helper.assertTrue(honey >= 1, "no honey after 3 days");
             org.slf4j.LoggerFactory.getLogger(BeeGameTests.class).info("WR-142 bee field: donors {}, honey {}",
                     donors, honey);
@@ -287,6 +337,7 @@ public final class BeeGameTests {
     }
 
     static List<Bee> field(GameTestHelper helper, boolean flowering, BlockPos[] flowers) {
+        enclose(helper);
         for (BlockPos h : HIVES) {
             helper.setBlock(h, Blocks.BEEHIVE.defaultBlockState());
         }
@@ -303,6 +354,74 @@ public final class BeeGameTests {
             bees.add(helper.spawn(EntityType.BEE, new BlockPos(6 + i % 5, 4, 7 + i / 5 * 2)));
         }
         return bees;
+    }
+
+    /** Template size of {@code lit_field_17x10x17}. */
+    static final int FIELD_W = 17;
+    static final int FIELD_H = 10;
+
+    /**
+     * Barrier walls and ceiling on the outer cells of the field (WR-195). The
+     * template is open on every side and on top, and test areas lie in the
+     * world's terrain: where an earlier batch or a cave left air next to the
+     * field, the bees flew out (seen: all 10 bees 26 blocks above the field
+     * for three days, order-dependent) and the test failed with no donors or
+     * no vanilla nectar. Air and the light blocks of the outer ring (no
+     * collision) are closed; the light layer inside stays.
+     */
+    static void enclose(GameTestHelper helper) {
+        for (BlockPos p : BlockPos.betweenClosed(0, 1, 0, FIELD_W - 1, FIELD_H - 1, FIELD_W - 1)) {
+            boolean edge = p.getX() == 0 || p.getZ() == 0 || p.getX() == FIELD_W - 1 || p.getZ() == FIELD_W - 1
+                    || p.getY() == FIELD_H - 1;
+            BlockState st = helper.getBlockState(p);
+            if (edge && (st.isAir() || st.is(Blocks.LIGHT))) {
+                helper.setBlock(p, Blocks.BARRIER);
+            }
+        }
+    }
+
+    /** WR-195 regression for {@link #enclose}: no outer cell of the field lets an entity through. */
+    @GameTest(template = FIELD, setupTicks = SETUP, timeoutTicks = 100)
+    public static void beeFieldIsClosed(GameTestHelper helper) {
+        field(helper, true, new BlockPos[0]).forEach(Bee::discard);
+        int open = 0;
+        for (BlockPos p : BlockPos.betweenClosed(0, 1, 0, FIELD_W - 1, FIELD_H - 1, FIELD_W - 1)) {
+            boolean edge = p.getX() == 0 || p.getZ() == 0 || p.getX() == FIELD_W - 1 || p.getZ() == FIELD_W - 1
+                    || p.getY() == FIELD_H - 1;
+            if (edge && helper.getBlockState(p).getCollisionShape(helper.getLevel(), helper.absolutePos(p)).isEmpty()) {
+                open++;
+            }
+        }
+        helper.assertTrue(open == 0, open + " open cells on the boundary of the bee field");
+        helper.succeed();
+    }
+
+    /** What the field looks like (failure messages, WR-195): bees, their goal and pollen, the index, the world. */
+    static String fieldState(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        AABB box = new AABB(helper.absolutePos(BlockPos.ZERO), helper.absolutePos(new BlockPos(17, 10, 17))).inflate(8);
+        List<Bee> bees = level.getEntitiesOfClass(Bee.class, box);
+        long withGoal = bees.stream().filter(b -> ourGoals(b) > 0).count();
+        long withPollen = bees.stream().filter(b -> pollen(b).hasPollen()).count();
+        int indexed = 0;
+        for (BlockPos p : PLANTS) {
+            indexed += io.github.slugblue.wildroots.pollination.BloomTracker.contains(level, helper.absolutePos(p),
+                    PlantFixtures.SP) ? 1 : 0;
+        }
+        BlockPos c = helper.absolutePos(new BlockPos(8, 2, 8));
+        List<Bee> far = level.getEntitiesOfClass(Bee.class, box.inflate(56));
+        int inHives = 0;
+        for (BlockPos h : HIVES) {
+            if (helper.getBlockEntity(h) instanceof BeehiveBlockEntity hive) {
+                inHives += hive.getOccupantCount();
+            }
+        }
+        String farPos = far.stream().limit(4).map(b -> b.blockPosition().toShortString() + (b.isAlive() ? "" : " dead"))
+                .toList().toString();
+        return "field at " + c.toShortString() + ", bees in hives " + inHives + ", bees within 64 " + far.size() + " "
+                + farPos + ", bees " + bees.size() + " (goal " + withGoal + ", pollen " + withPollen + "), indexed " + indexed + "/"
+                + PLANTS.length + ", entity ticking " + level.isPositionEntityTicking(c) + ", raining "
+                + level.isRaining() + ", day time " + level.getDayTime() % 24000 + ", honey " + maxHoney(helper);
     }
 
     static int maxHoney(GameTestHelper helper) {
