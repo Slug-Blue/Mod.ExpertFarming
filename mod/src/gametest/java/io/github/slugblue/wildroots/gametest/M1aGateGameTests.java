@@ -213,14 +213,42 @@ public final class M1aGateGameTests {
     @GameTest(template = FLOOR, batch = "wr195_m1a_gate", timeoutTicks = TIMEOUT)
     public static void fromStarterPatchToCarrot(GameTestHelper helper) {
         Gate g = new Gate(helper);
-        try {
-            g.newLine();
-            g.startRealBees();
-        } catch (RuntimeException e) {
-            g.close();
-            throw e;
+        whenEntitiesLoaded(helper, g.sky, () -> {
+            try {
+                g.newLine();
+                g.startRealBees();
+            } catch (RuntimeException e) {
+                g.close();
+                throw e;
+            }
+            helper.runAfterDelay(1, g::step);
+        }, 0);
+    }
+
+    /**
+     * Runs {@code body} once the entity sections of the platform's chunks are
+     * loaded (at most 400 ticks). The harvest picks up item entities and the
+     * bees are entities; the gate batch may be the first of a run, while the
+     * server still loads the area (one run found no drops at all, WR-195).
+     */
+    static void whenEntitiesLoaded(GameTestHelper helper, SkyPlatform sky, Runnable body, int waited) {
+        ServerLevel level = helper.getLevel();
+        boolean loaded = true;
+        for (int dx = -sky.radius; dx <= sky.radius; dx += 8) {
+            for (int dz = -sky.radius; dz <= sky.radius; dz += 8) {
+                BlockPos p = sky.center.offset(dx, 1, dz);
+                loaded &= level.areEntitiesLoaded(net.minecraft.world.level.ChunkPos.asLong(p))
+                        && level.isPositionEntityTicking(p);
+            }
         }
-        helper.runAfterDelay(1, g::step);
+        if (loaded || waited >= 400) {
+            if (waited > 0) {
+                LOG.info("WR-195 platform entities loaded after {} ticks ({})", waited, loaded);
+            }
+            body.run();
+            return;
+        }
+        helper.runAfterDelay(1, () -> whenEntitiesLoaded(helper, sky, body, waited + 1));
     }
 
     // ------------------------------------------------------------------ sweep (opt-in)

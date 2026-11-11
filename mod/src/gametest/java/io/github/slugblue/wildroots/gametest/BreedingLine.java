@@ -109,6 +109,8 @@ final class BreedingLine {
     /** Plants sown per generation, seeds harvested per generation (trace). */
     final StringBuilder trace = new StringBuilder();
 
+    String lastHarvest = "";
+
     /** A mother root the player keeps, and what he saw of its plant. */
     record Root(ItemStack mother, double score, int variant, boolean bitter, int size, int sweet) {
     }
@@ -171,6 +173,12 @@ final class BreedingLine {
             harvestRoot(p).ifPresent(roots::add);
         }
         trace.append("g0 wild ").append(r.plants().size()).append(" roots ").append(roots.size());
+        if (roots.size() < 2) {
+            throw new IllegalStateException("the starter patch gave " + roots.size() + " mother roots from "
+                    + r.plants().size() + " plants; entities loaded at the patch "
+                    + level.areEntitiesLoaded(net.minecraft.world.level.ChunkPos.asLong(origin)) + ", entity ticking "
+                    + level.isPositionEntityTicking(origin) + "; " + lastHarvest);
+        }
         noteColours(0);
         return r;
     }
@@ -340,6 +348,7 @@ final class BreedingLine {
             out.add(e.getItem().copy());
             e.discard();
         }
+        lastHarvest = "last harvest at " + p + ": " + out;
         return out;
     }
 
