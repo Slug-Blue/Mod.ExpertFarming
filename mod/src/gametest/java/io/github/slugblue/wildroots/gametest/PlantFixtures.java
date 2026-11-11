@@ -109,6 +109,17 @@ final class PlantFixtures {
         return be;
     }
 
+    /**
+     * Fills {@code be} as a planted mother root with genome {@code key}: the
+     * only kind of biennial that leaves harvest ripeness (D1).
+     */
+    static PlantBlockEntity mother(PlantBlockEntity be, long key) {
+        be.init(Definitions.current().genetics(), new PlantBlockEntity.Init(SP, genome(key), noise(key + 1),
+                Passport.PLAYER, new UUID(1, 2), Classification.WILD, null, 0, 0,
+                io.github.slugblue.wildroots.plant.PlantState.MOTHER));
+        return be;
+    }
+
     /** Full save, then a fresh block entity loaded from it (chunk save/load). */
     static PlantBlockEntity saveLoad(PlantBlockEntity be) {
         CompoundTag tag = be.saveWithFullMetadata();

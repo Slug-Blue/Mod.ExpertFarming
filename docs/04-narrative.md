@@ -218,7 +218,7 @@
 | `flowering` | однолетники, 4; маточник | Flowering | Цветение |
 | `seed_ripening` | все, 5 | Ripening seed | Созревание семян |
 | `mother_plant` | Съесть или посадить / Eat or Plant | Первый сбор двулетника (морковь, капуста, свёкла, **FD** лук) | Сорванный корень можно съесть, а можно посадить. Посаженный, он зацветёт и даст семена — это то же растение, со всеми его достоинствами. Так и отбирают: выкопать, посмотреть, лучших — обратно в землю. | A pulled root can be eaten, or planted. Planted, it flowers and sets seed, and it's the same plant with all its merits. That's how selection goes: dig up, look, put the best back. |
-| `woody` | двулетник, оставленный на корню после зрелости | Going woody | Одревесневает |
+| `woody` | двулетник, оставленный на корню после зрелости (с D1 не показывается: своё растение ждёт на `harvest_ready`, `00-vision.md` п. 32) | Going woody | Одревесневает |
 | `bolting` | свёкла с `B_`: цветёт в первый год | Bolting | Пошла в стрелку |
 | `setting_fruit` | тыква, арбуз, стадия 3: плеть ставит плоды | Setting fruit | Завязывает плоды |
 | `tubers` | картофель, стадия 3 | Forming tubers | Завязывает клубни |
@@ -363,7 +363,8 @@
 | `small_population` | Маловато / Too Few | Созревание своего растения, когда своих растений вида в радиусе 8 не больше 9 (GDD §12.2) | Грядка маловата. Из горстки трудно выбрать лучших, а редкие признаки легко потерять. Хороший ориентир — грядка пять на пять. | The bed is too small. A handful gives little to choose from, and rare traits slip away. A five-by-five bed is a good rule of thumb. |
 | `select_quarter` | Кого оставить / Whom to Keep | Сбор 16-го своего растения одного вида за один игровой день | На семена хватит каждого четвёртого — самых лучших. Строже — быстрее, но так легко потерять то, что ещё не проявилось. | Every fourth plant, the very best, is enough for seed. Choosier is faster, but it's easy to lose what hasn't shown itself yet. |
 | `mother_plant` | Съесть или посадить / Eat or Plant | Первый сбор двулетника (морковь, капуста, **FD** лук) | Сорванный корень можно съесть, а можно посадить. Посаженный, он зацветёт и даст семена — это то же растение, со всеми его достоинствами. Так и отбирают: выкопать, посмотреть, лучших — обратно в землю. | A pulled root can be eaten, or planted. Planted, it flowers and sets seed, and it's the same plant with all its merits. That's how selection goes: dig up, look, put the best back. |
-| `left_on_stalk` | Вслепую / Picking Blind | Первый лот с двулетника, оставленного на корню (стадия `woody`) | Оставленное на корню растение зацвело само. Удобно, но корня так никто и не увидел — отбор вслепую. | Left in the ground, the plant flowered on its own. Convenient, but nobody ever saw the root. Selection blindfolded. |
+| `left_on_stalk` | Вслепую / Picking Blind | Первый лот с дикого двулетника, отцветшего на корню (своё растение само не зацветает, `00-vision.md` п. 32) | Этот дикий куст отцвёл сам, на второй год. Семена с него удобны, но корня так никто и не увидел — отбор вслепую. | This wild plant flowered on its own, in its second year. Its seed is handy, but nobody ever saw the root. Selection blindfolded. |
+| `root_ripe` | Корень созрел / The Root Is Ripe | Первое своё растение-двулетник (не маточник) дошло до урожайной зрелости (стадия 3) | Корень созрел. Сам он не зацветёт: морковь ждёт в земле, пока её не выкопают. Выкопай и посмотри, а потом съешь или посади лучших обратно маточниками. | The root is ripe. It won't flower by itself: a carrot waits in the ground until it's dug up. Pull it and look, then eat it or plant the best back as a mother root. |
 
 #### Признаки, которые видно
 

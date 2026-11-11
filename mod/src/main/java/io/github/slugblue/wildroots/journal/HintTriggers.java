@@ -257,6 +257,10 @@ public final class HintTriggers {
         if (p.vigor() < GrowthLogic.AILING_BELOW) {
             hint(player.get(), "inbreeding");
         }
+        if (GrowthLogic.waitsForHarvest(live, FieldPlantBlock.HARVEST_STAGE)) {
+            // D1: the cue that the root is ripe and waits to be dug up
+            hint(player.get(), "root_ripe");
+        }
         if (!j.get().has("hint.small_population")
                 && ownNear(level, pos, d.species(), d.planter(), SMALL_POPULATION + 1) + 1 <= SMALL_POPULATION) {
             hint(player.get(), "small_population");

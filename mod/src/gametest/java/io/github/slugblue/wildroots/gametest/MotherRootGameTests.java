@@ -116,16 +116,57 @@ public final class MotherRootGameTests {
         helper.succeed();
     }
 
+    /**
+     * D1 (`00-vision.md` item 32): an own plant that is not a mother root
+     * waits at harvest ripeness until it is harvested. Random ticks, bone
+     * meal (not spent) and {@code growCrops} leave it at stage 3; the harvest
+     * gives food and a mother root.
+     */
     @GameTest(template = SmokeGameTests.FLOOR_3X3X3, timeoutTicks = 200)
-    public static void plantLeftOnTheRootFlowersAndGivesALotWithoutFood(GameTestHelper helper) {
+    public static void plantLeftOnTheRootWaitsAtHarvestRipeness(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Player player = helper.makeMockSurvivalPlayer();
         PlantFixtures.farmland(helper, PlantFixtures.PLANT);
         ItemStack lot = PlantingGameTests.lot(level, 3);
         helper.assertTrue(PlantingGameTests.use(helper, player, lot, PlantFixtures.PLANT).consumesAction(), "not planted");
-        helper.assertTrue(growTo(helper, PlantFixtures.PLANT, FieldPlantBlock.SEED_STAGE, null, 7301), "did not set seed");
+        helper.assertTrue(growTo(helper, PlantFixtures.PLANT, FieldPlantBlock.HARVEST_STAGE, null, 7301),
+                "did not ripen");
+        BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
+        RandomSource r = RandomSource.create(7302);
+        for (int i = 0; i < 20_000; i++) {
+            level.getBlockState(abs).randomTick(level, abs, r);
+        }
+        helper.assertTrue(PlantFixtures.stage(helper, PlantFixtures.PLANT) == FieldPlantBlock.HARVEST_STAGE,
+                "left harvest ripeness on random ticks: " + PlantFixtures.stage(helper, PlantFixtures.PLANT));
+        PlantBlockEntity be = (PlantBlockEntity) helper.getBlockEntity(PlantFixtures.PLANT);
+        helper.assertTrue(be.growthChance() == 0f, "cached chance " + be.growthChance());
+        FieldPlantBlock block = (FieldPlantBlock) level.getBlockState(abs).getBlock();
+        helper.assertTrue(!block.isValidBonemealTarget(level, abs, level.getBlockState(abs), false),
+                "bone meal target");
+        ItemStack meal = new ItemStack(net.minecraft.world.item.Items.BONE_MEAL, 4);
+        helper.assertTrue(!net.minecraft.world.item.BoneMealItem.growCrop(meal, level, abs) && meal.getCount() == 4,
+                "bone meal used: " + meal.getCount());
+        block.growCrops(level, abs, level.getBlockState(abs));
+        helper.assertTrue(PlantFixtures.stage(helper, PlantFixtures.PLANT) == FieldPlantBlock.HARVEST_STAGE, "growCrops");
         List<ItemStack> d = drops(helper, PlantFixtures.PLANT, player);
-        helper.assertTrue(!d.isEmpty() && d.stream().allMatch(s -> s.is(ModItems.SEED_LOT.get())), "drops " + d);
+        helper.assertTrue(d.stream().anyMatch(s -> s.is(ModItems.MOTHER_ROOT.get()))
+                && d.stream().noneMatch(s -> s.is(ModItems.SEED_LOT.get())), "drops " + d);
+        helper.succeed();
+    }
+
+    /** D1: a planted mother root leaves stage 3 (bone meal, growCrops); the rule does not touch it. */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
+    public static void motherAtHarvestRipenessStillGrowsAndTakesBoneMeal(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        PlantBlockEntity be = PlantFixtures.mother(PlantFixtures.place(helper, PlantFixtures.PLANT,
+                FieldPlantBlock.HARVEST_STAGE), 76);
+        BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
+        FieldPlantBlock block = (FieldPlantBlock) level.getBlockState(abs).getBlock();
+        helper.assertTrue(block.isValidBonemealTarget(level, abs, level.getBlockState(abs), false), "bone meal target");
+        helper.assertTrue(GrowthLogic.cachedChance(level, abs, FieldPlantBlock.HARVEST_STAGE, be,
+                be.live(level).orElseThrow()) > 0, "mother does not grow");
+        block.growCrops(level, abs, level.getBlockState(abs));
+        helper.assertTrue(PlantFixtures.stage(helper, PlantFixtures.PLANT) == FieldPlantBlock.FLOWER_STAGE, "growCrops");
         helper.succeed();
     }
 

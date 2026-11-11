@@ -39,7 +39,7 @@ public final class JournalHints {
     static {
         // start and selection
         core("welcome", "plant_together", "lone_plant", "small_population", "select_quarter", "mother_plant",
-                "left_on_stalk");
+                "left_on_stalk", "root_ripe");
         // traits one can see
         core("bitter");
         line("tomato", "toxic_tomato");

@@ -53,7 +53,7 @@ public final class BloomIndexGameTests {
     @GameTest(template = FLOOR)
     public static void growthIntoBloomRegisters(GameTestHelper helper) {
         BlockPos rel = PlantFixtures.PLANT;
-        PlantFixtures.plant(PlantFixtures.place(helper, rel, FieldPlantBlock.HARVEST_STAGE), 2);
+        PlantFixtures.mother(PlantFixtures.place(helper, rel, FieldPlantBlock.HARVEST_STAGE), 2);
         ModBlocks.WILD_CARROT.get().growCrops(helper.getLevel(), helper.absolutePos(rel), helper.getBlockState(rel));
         helper.assertTrue(PlantFixtures.stage(helper, rel) == FieldPlantBlock.FLOWER_STAGE, "did not grow");
         helper.assertTrue(indexed(helper, rel), "grown into flowering, not indexed");

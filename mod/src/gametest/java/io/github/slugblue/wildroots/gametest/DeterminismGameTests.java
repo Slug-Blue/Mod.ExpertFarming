@@ -115,7 +115,7 @@ public final class DeterminismGameTests {
     @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
     public static void growthChanceIsReplacedOnEveryStageChangeAndAfterReload(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        PlantBlockEntity be = PlantFixtures.plant(PlantFixtures.place(helper, PlantFixtures.PLANT, 0), 61);
+        PlantBlockEntity be = PlantFixtures.mother(PlantFixtures.place(helper, PlantFixtures.PLANT, 0), 61);
         BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
         FieldPlantBlock block = ModBlocks.WILD_CARROT.get();
         PlantBlockEntity.Live live = be.live(level).orElseThrow();
@@ -157,7 +157,7 @@ public final class DeterminismGameTests {
     @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
     public static void extremeTemperatureSlowsButNeverKills(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        PlantBlockEntity be = PlantFixtures.plant(PlantFixtures.place(helper, PlantFixtures.PLANT, 1), 62);
+        PlantBlockEntity be = PlantFixtures.mother(PlantFixtures.place(helper, PlantFixtures.PLANT, 1), 62);
         PlantBlockEntity.Live live = be.live(level).orElseThrow();
         SpeciesDef d = live.def();
         for (double t : new double[] {d.tempMin() - 10, d.tempMin() - 2, d.tempMax() + 2, d.tempMax() + 10}) {

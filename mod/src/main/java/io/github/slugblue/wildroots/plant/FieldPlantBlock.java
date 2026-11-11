@@ -255,10 +255,18 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
     /**
      * Bone meal works on stages 1–3, never on flowering (GDD §5.1); stage 5 is
      * final for the field archetype, so it is refused there too (GD question).
+     * A biennial that waits at harvest ripeness for the harvest (not a mother
+     * root, D1) is refused on the server: the bone meal is not spent. The
+     * client does not know the mother flag and may predict a use; the server
+     * answer wins.
      */
     @Override
     public boolean isValidBonemealTarget(LevelReader level, BlockPos pos, BlockState state, boolean isClient) {
-        return bonemealStage(stage(state));
+        if (!bonemealStage(stage(state))) {
+            return false;
+        }
+        return !(level instanceof ServerLevel server) || !Guarded.call("plant bone meal target", pos,
+                () -> GrowthLogic.waits(server, pos, state), true);
     }
 
     /** Stages on which bone meal may advance the plant: 1–3; 4 (flowering) and the final 5 never. */

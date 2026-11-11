@@ -35,6 +35,13 @@ import net.minecraftforge.common.ForgeHooks;
  * {@code seed_stage_min} over 4–5 as 1 : 1 (economy §3.1, carrot 4/4/5 +
  * 2.5/2.5). A seed with the wild (dormant) phenotype of {@code dormancy}
  * needs {@code U(2, 6)} minutes more to sprout, drawn once per plant (GDD §3.6).
+ *
+ * <p>Biennials (GDD §5.1–5.2, owner decision D1 of 2026-11-11,
+ * {@code 00-vision.md} item 32): a plant that is not a planted mother root
+ * <b>waits</b> at harvest ripeness (stage 3) until it is harvested; its
+ * chance is 0 and neither bone meal nor {@code growCrops} moves it on. Only a
+ * planted mother root flowers and sets seed (3 → 4 → 5). Wild plants placed
+ * by worldgen keep their generated stage (flowering wild plants exist).
  */
 public final class GrowthLogic {
 
@@ -81,6 +88,26 @@ public final class GrowthLogic {
         return Double.isFinite(c) ? Math.max(MIN_CHANCE, Math.min(MAX_CHANCE, c)) : MIN_CHANCE;
     }
 
+    /**
+     * D1: a biennial that is not a planted mother root stays at harvest
+     * ripeness until it is harvested (GDD §5.2).
+     */
+    public static boolean waitsForHarvest(PlantBlockEntity.Live live, int stage) {
+        return stage == FieldPlantBlock.HARVEST_STAGE && biennial(live)
+                && !live.data().has(PlantState.MOTHER);
+    }
+
+    /** {@code biennial} life cycle of the species (definitions, {@code life_cycle}). */
+    public static boolean biennial(PlantBlockEntity.Live live) {
+        return "biennial".equals(live.species().info().lifeCycle());
+    }
+
+    /** Growth chance of the live plant at {@code stage}: 0 while it waits for the harvest (D1). */
+    static double chance(PlantBlockEntity.Live live, Phenotype p, Environment env, BlockPos pos, int stage) {
+        return waitsForHarvest(live, stage) ? 0
+                : chance(live.def(), p, env, stage, dormancyMinutes(live.def(), p, pos, live));
+    }
+
     /** {@code U(2, 6)} minutes for a dormant seed (wild phenotype of {@code dormancy}), 0 otherwise. */
     static double dormancyMinutes(SpeciesDef s, Phenotype p, BlockPos pos, PlantBlockEntity.Live live) {
         if (s.qual(DORMANCY) == null || p.domestic(DORMANCY)) {
@@ -109,8 +136,7 @@ public final class GrowthLogic {
         float c = be.growthChance();
         if (Float.isNaN(c)) {
             Environment env = environment(level, pos);
-            c = (float) (double) phenotype(live, env).map(p -> chance(live.def(), p, env, stage,
-                    dormancyMinutes(live.def(), p, pos, live))).orElse(0.0);
+            c = (float) (double) phenotype(live, env).map(p -> chance(live, p, env, pos, stage)).orElse(0.0);
             be.setGrowthChance(c);
         }
         return c;
@@ -131,27 +157,43 @@ public final class GrowthLogic {
             return;
         }
         double chance = cachedChance(level, pos, stage, be.get(), live.get());
-        if (random.nextDouble() < chance && ForgeHooks.onCropsGrowPre(level, pos, state, true)) {
+        if (chance > 0 && random.nextDouble() < chance && ForgeHooks.onCropsGrowPre(level, pos, state, true)) {
             advance(level, pos, state, be.get(), live.get(), stage + 1);
             ForgeHooks.onCropsGrowPost(level, pos, state);
         }
     }
 
-    /** Bone meal (GDD §5.1): +1 stage with chance 0.35 on stages 1–3; nothing on flowering. */
+    /**
+     * Bone meal (GDD §5.1): +1 stage with chance 0.35 on stages 1–3; nothing
+     * on flowering, nothing on a plant that waits for the harvest (D1; the
+     * block refuses it as a target, so the bone meal is not spent).
+     */
     static void bonemeal(ServerLevel level, RandomSource random, BlockPos pos, BlockState state) {
-        if (FieldPlantBlock.bonemealStage(FieldPlantBlock.stage(state)) && random.nextFloat() < BONEMEAL_CHANCE) {
+        if (FieldPlantBlock.bonemealStage(FieldPlantBlock.stage(state)) && !waits(level, pos, state)
+                && random.nextFloat() < BONEMEAL_CHANCE) {
             grow(level, pos, state);
         }
     }
 
-    /** Advances one stage without a roll (bone meal, other mods' {@code growCrops}). */
+    /** Whether the plant at {@code pos} waits at harvest ripeness for the harvest (D1). */
+    public static boolean waits(ServerLevel level, BlockPos pos, BlockState state) {
+        int stage = FieldPlantBlock.stage(state);
+        return stage == FieldPlantBlock.HARVEST_STAGE && LoadedLevelAccess.blockEntity(level, pos, PlantBlockEntity.class)
+                .flatMap(be -> be.live(level)).map(live -> waitsForHarvest(live, stage)).orElse(false);
+    }
+
+    /**
+     * Advances one stage without a roll (bone meal, other mods'
+     * {@code growCrops}); never moves a plant that waits for the harvest (D1).
+     */
     static void grow(ServerLevel level, BlockPos pos, BlockState state) {
         int stage = FieldPlantBlock.stage(state);
         if (stage >= FieldPlantBlock.MAX_STAGE) {
             return;
         }
         LoadedLevelAccess.blockEntity(level, pos, PlantBlockEntity.class)
-                .ifPresent(be -> be.live(level).ifPresent(live -> advance(level, pos, state, be, live, stage + 1)));
+                .ifPresent(be -> be.live(level).filter(live -> !waitsForHarvest(live, stage))
+                        .ifPresent(live -> advance(level, pos, state, be, live, stage + 1)));
     }
 
     /**
@@ -182,8 +224,7 @@ public final class GrowthLogic {
             io.github.slugblue.wildroots.core.safety.Guarded.run("journal matured", pos, () ->
                     io.github.slugblue.wildroots.journal.HintTriggers.matured(level, pos, live, ph));
         }
-        be.setGrowthChance((float) chance(live.def(), p.get(), env, newStage,
-                dormancyMinutes(live.def(), p.get(), pos, live)));
+        be.setGrowthChance((float) chance(live, p.get(), env, pos, newStage));
     }
 
     /** {@code size}, {@code ailing} and {@code variant} from the phenotype (§7.2). */

@@ -182,7 +182,7 @@ public final class GrowthGameTests {
     @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
     public static void boneMealThresholdIs035(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        PlantFixtures.plant(PlantFixtures.place(helper, PlantFixtures.PLANT, 1), 25);
+        PlantFixtures.mother(PlantFixtures.place(helper, PlantFixtures.PLANT, 1), 25);
         BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
         FieldPlantBlock block = ModBlocks.WILD_CARROT.get();
         for (int stage = 1; stage <= 3; stage++) {
@@ -201,7 +201,7 @@ public final class GrowthGameTests {
     @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
     public static void boneMealAdvancesAt035ButNeverOnFlowering(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        PlantFixtures.plant(PlantFixtures.place(helper, PlantFixtures.PLANT, 1), 22);
+        PlantFixtures.mother(PlantFixtures.place(helper, PlantFixtures.PLANT, 1), 22);
         BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
         FieldPlantBlock block = ModBlocks.WILD_CARROT.get();
         RandomSource random = RandomSource.create(2201);
@@ -270,7 +270,7 @@ public final class GrowthGameTests {
     @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
     public static void lookChangesOnlyWithTheStage(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        PlantBlockEntity be = PlantFixtures.plant(PlantFixtures.place(helper, PlantFixtures.PLANT, 0), 24);
+        PlantBlockEntity be = PlantFixtures.mother(PlantFixtures.place(helper, PlantFixtures.PLANT, 0), 24);
         BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
         RandomSource random = RandomSource.create(2401);
         int changes = 0;
