@@ -116,8 +116,12 @@ public final class JournalGameTests {
     public static void firstWildHarvestGivesTheJournalOnce(GameTestHelper helper) {
         Recorder rec = new Recorder();
         ServerPlayer p = survival(helper, "wr180_first");
+        // the config is shared by the server: set it here instead of relying on the default, which
+        // configOffGivesNoItemButTheWelcomeEntry switches off for its own run (separate batch)
+        boolean old = ServerConfig.GIVE_JOURNAL_ON_FIRST_HARVEST.get();
         try {
-            helper.assertTrue(ServerConfig.GIVE_JOURNAL_ON_FIRST_HARVEST.get(), "config default is not true");
+            ServerConfig.GIVE_JOURNAL_ON_FIRST_HARVEST.set(true);
+            helper.assertTrue(ServerConfig.GIVE_JOURNAL_ON_FIRST_HARVEST.getDefault(), "config default is not true");
             wildMature(helper, PlantFixtures.PLANT, helper.absolutePos(PlantFixtures.PLANT).asLong());
             helper.assertTrue(p.gameMode.destroyBlock(helper.absolutePos(PlantFixtures.PLANT)), "not broken");
             helper.assertTrue(journals(p) == 1, "journals after the first wild harvest: " + journals(p));
@@ -136,13 +140,14 @@ public final class JournalGameTests {
                     .filter(r -> r.key().equals("wildroots.journal.species.found_at")).count() == 2,
                     "found-at rows " + j.entry("species.wild_carrot").orElseThrow().rows());
         } finally {
+            ServerConfig.GIVE_JOURNAL_ON_FIRST_HARVEST.set(old);
             rec.close();
             p.discard();
         }
         helper.succeed();
     }
 
-    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "wr18x_journal")
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "wr18x_journal_config_off")
     public static void configOffGivesNoItemButTheWelcomeEntry(GameTestHelper helper) {
         Recorder rec = new Recorder();
         ServerPlayer p = survival(helper, "wr180_noitem");
