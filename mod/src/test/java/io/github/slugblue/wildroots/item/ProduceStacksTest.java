@@ -114,4 +114,15 @@ class ProduceStacksTest {
             assertFalse(ProduceStacks.tag(3, false, c).contains(ProduceStacks.COLOUR), "colour " + c);
         }
     }
+
+    /** D3: grade 1 eats slowest, 32 ticks x 1.5 / 1.25 / 1.0 / 0.9; out-of-range grades clamp. */
+    @Test
+    void eatTicksByGrade() {
+        org.junit.jupiter.api.Assertions.assertEquals(48, ProduceStacks.eatTicks(1));
+        org.junit.jupiter.api.Assertions.assertEquals(40, ProduceStacks.eatTicks(2));
+        org.junit.jupiter.api.Assertions.assertEquals(32, ProduceStacks.eatTicks(3));
+        org.junit.jupiter.api.Assertions.assertEquals(29, ProduceStacks.eatTicks(4));
+        org.junit.jupiter.api.Assertions.assertEquals(48, ProduceStacks.eatTicks(0));
+        org.junit.jupiter.api.Assertions.assertEquals(29, ProduceStacks.eatTicks(9));
+    }
 }

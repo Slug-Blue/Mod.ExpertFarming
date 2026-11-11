@@ -83,4 +83,41 @@ public final class ProduceGameTests {
         helper.assertTrue(player.getFoodData().getFoodLevel() == 4, "food after eating " + player.getFoodData().getFoodLevel());
         helper.succeed();
     }
+
+    /**
+     * D3 (owner, 2026-11-11): coarse produce takes longer to eat. Grades 1–4
+     * eat in 48 / 40 / 32 / 29 ticks, bitter or not; a mother root by its
+     * own grade; the real use timer of a player follows it.
+     */
+    @net.minecraft.gametest.framework.GameTest(template = SmokeGameTests.FLOOR_3X3X3)
+    public static void eatingTimeFollowsTheGrade(net.minecraft.gametest.framework.GameTestHelper helper) {
+        int[] ticks = {0, 48, 40, 32, 29};
+        for (var item : java.util.List.of(io.github.slugblue.wildroots.core.registry.ModItems.WILD_CARROT_ROOT.get(),
+                io.github.slugblue.wildroots.core.registry.ModItems.EASTERN_CARROT.get(),
+                io.github.slugblue.wildroots.core.registry.ModItems.CARROT.get())) {
+            for (int g = 1; g <= 4; g++) {
+                ItemStack s = io.github.slugblue.wildroots.item.ProduceStacks.create(item, g, false, 1);
+                helper.assertTrue(s.getUseDuration() == ticks[g], item + " grade " + g + ": " + s.getUseDuration());
+            }
+            ItemStack bitter = io.github.slugblue.wildroots.item.ProduceStacks.create(item, 2, true, 1);
+            helper.assertTrue(bitter.getUseDuration() == ticks[2], "bitter changed the time: " + bitter.getUseDuration());
+        }
+        net.minecraft.world.entity.player.Player player = helper.makeMockSurvivalPlayer();
+        io.github.slugblue.wildroots.plant.PlantBlockEntity be = PlantFixtures.plant(PlantFixtures.place(helper,
+                PlantFixtures.PLANT, io.github.slugblue.wildroots.plant.FieldPlantBlock.HARVEST_STAGE), 91);
+        ItemStack mother = MotherRootGameTests.drops(helper, PlantFixtures.PLANT, player).stream()
+                .filter(s -> s.is(io.github.slugblue.wildroots.core.registry.ModItems.MOTHER_ROOT.get()))
+                .findFirst().orElseThrow();
+        int grade = io.github.slugblue.wildroots.item.MotherItem.read(mother).orElseThrow().grade();
+        helper.assertTrue(mother.getUseDuration() == ticks[grade], "mother grade " + grade + ": " + mother.getUseDuration());
+        // the player's use timer starts from it
+        ItemStack coarse = io.github.slugblue.wildroots.item.ProduceStacks.create(
+                io.github.slugblue.wildroots.core.registry.ModItems.WILD_CARROT_ROOT.get(), 1, false, 1);
+        player.getFoodData().setFoodLevel(10);
+        player.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, coarse);
+        player.startUsingItem(net.minecraft.world.InteractionHand.MAIN_HAND);
+        helper.assertTrue(player.getUseItemRemainingTicks() == 48, "use timer " + player.getUseItemRemainingTicks());
+        helper.assertTrue(be != null, "plant");
+        helper.succeed();
+    }
 }

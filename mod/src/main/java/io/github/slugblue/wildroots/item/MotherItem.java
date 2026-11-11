@@ -71,6 +71,14 @@ public class MotherItem extends Item {
         }).orElse(super.getFoodProperties(stack, entity)), super.getFoodProperties(stack, entity));
     }
 
+    /** D3: eating time by the grade of the root, as produce ({@link ProduceStacks#eatTicks}). */
+    @Override
+    @EntryPoint
+    public int getUseDuration(ItemStack stack) {
+        return Guarded.call("mother eat time", "mother", () -> read(stack).map(m -> ProduceStacks.eatTicks(m.grade()))
+                .orElse(super.getUseDuration(stack)), super.getUseDuration(stack));
+    }
+
     /** Planting on the top of farmland: the plant starts at harvest ripeness as a flowering mother. */
     @Override
     @EntryPoint

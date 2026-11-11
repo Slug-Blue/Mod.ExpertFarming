@@ -108,6 +108,18 @@ public final class ProduceStacks {
         return MULT[Math.max(1, Math.min(4, grade))];
     }
 
+    /**
+     * Eating time by grade (owner decision D3, 2026-11-11; GDD §6.4): the
+     * vanilla 32 ticks × 1.5 / 1.25 / 1.0 / 0.9 for grades 1–4, so coarse
+     * produce takes longest. Bitterness does not change it. Index = grade.
+     */
+    static final int[] EAT_TICKS = {0, 48, 40, 32, 29};
+
+    /** Ticks to eat produce or a mother root of {@code grade} (clamped to 1–4). */
+    public static int eatTicks(int grade) {
+        return EAT_TICKS[Math.max(1, Math.min(4, grade))];
+    }
+
     /** {@code max(1, round(n_ref · m))} (GDD §6.4). */
     public static int nutrition(int nRef, int grade) {
         return Math.max(1, (int) Math.round(nRef * multiplier(grade)));

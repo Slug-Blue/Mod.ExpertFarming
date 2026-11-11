@@ -59,6 +59,14 @@ public class ProduceItem extends Item {
                 super.getFoodProperties(stack, entity));
     }
 
+    /** D3: eating time by grade ({@link ProduceStacks#eatTicks}); bitterness does not change it. */
+    @Override
+    @EntryPoint
+    public int getUseDuration(ItemStack stack) {
+        return Guarded.call("produce eat time", "produce", () -> ProduceStacks.eatTicks(
+                ProduceStacks.grade(stack.getTag())), super.getUseDuration(stack));
+    }
+
     @Override
     @EntryPoint
     public void appendHoverText(ItemStack stack, Level level, List<Component> tooltip, TooltipFlag flag) {

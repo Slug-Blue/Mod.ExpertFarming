@@ -615,6 +615,7 @@ Spike · WR-007 · AppSec + SD · 1 д
 - Предметы `wild_carrot_root`, `eastern_carrot`, `wildroots:carrot` с тегами из JSON сорта (`forge:crops/carrot`, `forge:vegetables/carrot`, `wildroots:cultivar_produce` и т. д.).
 - JUnit: `ProduceStacks.create(item, grade, bitter)`: `bitter && grade > 2 → 2`; `bitter = false` не пишется; других ключей нет; ровно ≤ 6 вариантов.
 - GameTest: еда моркови класса 1/2/3/4 — 1/0.24, 2/0.42, 3/0.6, 4/0.72 (GDD §6.4); горькая — ×0.5 насыщения и эффект; `FoodProperties` кэшируются (≤ 6 объектов на предмет).
+- GameTest (D3, `00-vision.md` п. 34): время поедания урожая и маточника — 48 / 40 / 32 / 29 тиков для классов 1–4, горечь не влияет.
 - GameTest (инвариант ADR-0007): сбор сегрегирующей грядки 5×5 даёт ≤ 6 различных `ItemStack` на предмет урожая.
 
 #### WR-137 · Маточник `mother_root`
