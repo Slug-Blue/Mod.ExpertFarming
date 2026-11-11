@@ -156,9 +156,11 @@ public final class BenchDriver {
 
     /** Day time at the start: restored at the end, so later bee tests do not run at night (WR-195). */
     private long dayTimeAtStart;
+    private int randomTickSpeedAtStart;
 
     private void setup() {
         dayTimeAtStart = level.getDayTime();
+        randomTickSpeedAtStart = level.getGameRules().getInt(GameRules.RULE_RANDOMTICKING);
         logEnvironment();
         level.getGameRules().getRule(GameRules.RULE_RANDOMTICKING).set(3, server);
         for (int i = 0; i < CW; i++) {
@@ -298,6 +300,9 @@ public final class BenchDriver {
         }
         return best;
     }
+
+    /** WR-131: a decoded block entity without a pending lot (owner, 2026-11-11: 400 B, was 300 B). */
+    static final int BE_BUDGET_BYTES = 400;
 
     private void measureMemory() {
         final int n = 10_000;
@@ -516,7 +521,15 @@ public final class BenchDriver {
         finished = true;
         MinecraftForge.EVENT_BUS.unregister(this);
         clearPlants();
+        // leave the world as found: day time, random tick speed, forced chunks (later batches, WR-195)
         level.setDayTime(dayTimeAtStart);
+        level.getGameRules().getRule(GameRules.RULE_RANDOMTICKING).set(randomTickSpeedAtStart, server);
+        for (int i = 0; i < CW; i++) {
+            for (int j = 0; j < CH; j++) {
+                ChunkPos cp = new ChunkPos(CX0 + i, CZ0 + j);
+                level.getChunkSource().removeRegionTicket(TicketType.FORCED, cp, 2, cp, true);
+            }
+        }
     }
 
     // ------------------------------------------------------------------ stats
@@ -615,6 +628,8 @@ public final class BenchDriver {
             failure = String.format(Locale.ROOT, "MSPT delta %.3f ms > budget %.1f ms", median(dRealWheat), budget);
         } else if (memInWorldBytes > 1024) {
             failure = String.format(Locale.ROOT, "memory %.0f B/plant > 1 KiB", memInWorldBytes);
+        } else if (memTypicalBytes > BE_BUDGET_BYTES) {
+            failure = String.format(Locale.ROOT, "block entity %.0f B > %d B (WR-131)", memTypicalBytes, BE_BUDGET_BYTES);
         }
     }
 

@@ -19,7 +19,7 @@ import net.minecraftforge.gametest.GameTestHolder;
  * {@code WILDROOTS_BENCH_WARM}, {@code WILDROOTS_BENCH_MEASURE}, {@code WILDROOTS_BENCH_WARMUP}.
  * Results: log lines {@code [S9]} and {@code mod/run/wildroots-bench/s9-*.{csv,txt}}. The run fails
  * when the median MSPT delta against wheat exceeds {@code wildroots.bench.budgetMs} (2.0 ms) or the
- * in-world memory exceeds 1 KiB per plant; above {@code wildroots.bench.warnMs} (0.5 ms) it warns.
+ * in-world memory exceeds 1 KiB per plant or a decoded block entity 400 B (WR-131); above {@code wildroots.bench.warnMs} (0.5 ms) it warns.
  */
 @GameTestHolder(WildRoots.MOD_ID)
 public final class PlantPerfBench {

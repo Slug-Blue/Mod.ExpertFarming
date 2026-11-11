@@ -11,7 +11,8 @@
 #   env: WILDROOTS_BENCH_REPS (6), WILDROOTS_BENCH_WARM (300),
 #        WILDROOTS_BENCH_MEASURE (1200), WILDROOTS_BENCH_WARMUP (1000)
 # Gate (WR-195): median delta MSPT <= 2 ms (warning above 0.5 ms), <= 1 KiB
-# per plant in the world; the bench GameTest fails otherwise.
+# per plant in the world, <= 400 B per decoded block entity (WR-131); the
+# bench GameTest fails otherwise.
 # JAVA_HOME must point to a JDK 17 (see CONTRIBUTING.md §8).
 set -euo pipefail
 
