@@ -91,8 +91,17 @@ public final class VanillaCrops {
     static final Map<String, Map<TraitId, Double>> VILLAGE_KEY_FREQ = Map.of(
             "wildroots:wild_carrot", Map.of(TraitId.of("color_y2"), 0.30));
 
-    private record PerLevel(TickBudget budget, TimedFlagCache meeting) {
+    /** Ripe or dark crops found on chunk load, waiting for the conversion budget (review 1, B1). */
+    private record PerLevel(TickBudget budget, TimedFlagCache meeting, java.util.ArrayDeque<Long> queue,
+                            java.util.Set<Long> queued) {
     }
+
+    /** Queue bound per level; a full queue drops new finds, which the fallbacks still convert. */
+    public static final int MAX_QUEUE = 4096;
+    /** At most this many crops are queued from one chunk. */
+    public static final int MAX_PER_CHUNK = 256;
+    /** Queue entries looked at per tick (stale ones are dropped without spending the budget). */
+    static final int MAX_POPS_PER_TICK = 64;
 
     private static final Map<ServerLevel, PerLevel> LEVELS = new WeakHashMap<>();
 
@@ -106,7 +115,7 @@ public final class VanillaCrops {
 
     private static PerLevel perLevel(ServerLevel level) {
         return LEVELS.computeIfAbsent(level, l -> new PerLevel(new TickBudget(MAX_PER_TICK),
-                new TimedFlagCache(POI_CACHE_TICKS)));
+                new TimedFlagCache(POI_CACHE_TICKS), new java.util.ArrayDeque<>(), new java.util.HashSet<>()));
     }
 
     /** Tests: forget budgets and POI answers. */
@@ -148,6 +157,16 @@ public final class VanillaCrops {
 
     @EntryPoint
     public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
+        // B1 fallback: a right click on a removed vanilla crop converts it (strict), the click is taken
+        if (event.getLevel() instanceof ServerLevel level) {
+            BlockState clicked = level.getBlockState(event.getPos());
+            if (clicked.is(REMOVED_BLOCKS) && Guarded.call("vanilla crop click", event.getPos(),
+                    () -> convertNow(level, event.getPos(), clicked), false)) {
+                event.setCanceled(true);
+                event.setCancellationResult(net.minecraft.world.InteractionResult.SUCCESS);
+                return;
+            }
+        }
         ItemStack stack = event.getItemStack();
         if (stack.is(REMOVED_ITEMS)) {
             Guarded.run("vanilla crop use", event.getPos(), () -> denyOnFarmland(event));
@@ -168,7 +187,120 @@ public final class VanillaCrops {
         }
     }
 
-    // ------------------------------------------------------------------ conversion
+    // ------------------------------------------------------------------ conversion without growth ticks (B1)
+
+    /**
+     * Forge bus: a loaded chunk is scanned for removed vanilla crops, only in
+     * sections whose palette may hold one, and they are queued (strict). A
+     * ripe crop gets no random tick in vanilla ({@code isRandomlyTicking} is
+     * {@code !isMaxAge}) and a dark one never posts the growth event, so
+     * growth ticks alone would leave them vanilla.
+     */
+    @EntryPoint
+    public static void onChunkLoad(net.minecraftforge.event.level.ChunkEvent.Load event) {
+        if (event.getLevel() instanceof ServerLevel level && event.getChunk() instanceof LevelChunk chunk) {
+            Guarded.run("vanilla crop chunk scan", chunk.getPos(), () -> {
+                if (level.getServer().isSameThread()) {
+                    scanChunk(level, chunk);
+                } else {
+                    level.getServer().execute(() -> Guarded.run("vanilla crop chunk scan", chunk.getPos(),
+                            () -> scanChunk(level, chunk)));
+                }
+            });
+        }
+    }
+
+    /** Queues the removed vanilla crops of {@code chunk} (strict only); returns how many were queued. */
+    public static int scanChunk(ServerLevel level, LevelChunk chunk) {
+        if (!strict()) {
+            return 0;
+        }
+        PerLevel pl = perLevel(level);
+        int found = 0;
+        net.minecraft.world.level.chunk.LevelChunkSection[] sections = chunk.getSections();
+        for (int i = 0; i < sections.length && found < MAX_PER_CHUNK; i++) {
+            net.minecraft.world.level.chunk.LevelChunkSection s = sections[i];
+            if (s.hasOnlyAir() || !s.maybeHas(b -> b.is(REMOVED_BLOCKS))) {
+                continue;
+            }
+            int baseY = chunk.getSectionYFromSectionIndex(i) << 4;
+            for (int y = 0; y < 16 && found < MAX_PER_CHUNK; y++) {
+                for (int z = 0; z < 16 && found < MAX_PER_CHUNK; z++) {
+                    for (int x = 0; x < 16 && found < MAX_PER_CHUNK; x++) {
+                        BlockState st = s.getBlockState(x, y, z);
+                        if (st.is(REMOVED_BLOCKS) && replacement(st).isPresent()) {
+                            long p = BlockPos.asLong(chunk.getPos().getMinBlockX() + x, baseY + y,
+                                    chunk.getPos().getMinBlockZ() + z);
+                            if (pl.queue().size() < MAX_QUEUE && pl.queued().add(p)) {
+                                pl.queue().addLast(p);
+                                found++;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return found;
+    }
+
+    /** Forge bus, end of a level tick: queued crops are converted within the same 16-per-tick budget. */
+    @EntryPoint
+    public static void onLevelTick(net.minecraftforge.event.TickEvent.LevelTickEvent event) {
+        if (event.phase == net.minecraftforge.event.TickEvent.Phase.END && event.level instanceof ServerLevel level) {
+            PerLevel pl = LEVELS.get(level);
+            if (pl != null && !pl.queue().isEmpty()) {
+                Guarded.run("vanilla crop queue", "level", () -> drain(level, pl));
+            }
+        }
+    }
+
+    private static void drain(ServerLevel level, PerLevel pl) {
+        if (!strict()) {
+            pl.queue().clear();
+            pl.queued().clear();
+            return;
+        }
+        for (int i = 0; i < MAX_POPS_PER_TICK && !pl.queue().isEmpty(); i++) {
+            long p = pl.queue().peekFirst();
+            BlockPos pos = BlockPos.of(p);
+            Optional<BlockState> st = LoadedLevelAccess.blockState(level, pos);
+            Optional<FieldPlantBlock> block = st.filter(s -> s.is(REMOVED_BLOCKS)).flatMap(VanillaCrops::replacement);
+            if (block.isPresent() && !pl.budget().tryTake(level.getGameTime())) {
+                return;
+            }
+            pl.queue().pollFirst();
+            pl.queued().remove(p);
+            block.ifPresent(b -> convert(level, pos, st.get(), b));
+        }
+    }
+
+    /**
+     * Forge bus: breaking a removed vanilla crop (strict) converts it instead,
+     * so its harvest is the line's plant; the break is cancelled. Player
+     * driven, outside the budget.
+     */
+    @EntryPoint
+    public static void onBreak(BlockEvent.BreakEvent event) {
+        if (event.getState().is(REMOVED_BLOCKS) && event.getLevel() instanceof ServerLevel level) {
+            Guarded.run("vanilla crop break", event.getPos(), () -> {
+                if (convertNow(level, event.getPos(), event.getState())) {
+                    event.setCanceled(true);
+                }
+            });
+        }
+    }
+
+    /** Converts a removed vanilla crop at once (strict); {@code false} if it is not one. */
+    static boolean convertNow(ServerLevel level, BlockPos pos, BlockState state) {
+        if (!strict()) {
+            return false;
+        }
+        Optional<FieldPlantBlock> block = replacement(state);
+        block.ifPresent(b -> convert(level, pos, state, b));
+        return block.isPresent();
+    }
+
+    // ------------------------------------------------------------------ conversion on growth ticks
 
     @EntryPoint
     public static void onCropGrow(BlockEvent.CropGrowEvent.Pre event) {
@@ -232,7 +364,11 @@ public final class VanillaCrops {
             return false;
         }
         ChunkPos cp = chunk.getPos();
-        return perLevel(level).meeting().get(cp.toLong(), level.getGameTime(), () -> meetingNear(level, pos));
+        // one answer per chunk, asked from the chunk centre: the 32-block circle of a field near the chunk
+        // edge is off by at most 8 blocks horizontally (review 1, minor 6). The POI query may read POI
+        // sections of unloaded neighbours from disk; bounded by 16 conversions per tick and this cache.
+        BlockPos centre = cp.getMiddleBlockPosition(pos.getY());
+        return perLevel(level).meeting().get(cp.toLong(), level.getGameTime(), () -> meetingNear(level, centre));
     }
 
     /** A {@code minecraft:meeting} POI (a village bell) within {@value #MEETING_RADIUS} blocks. */

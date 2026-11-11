@@ -18,7 +18,7 @@ public final class ModRegistries {
             ModBlocks.REGISTER, ModItems.REGISTER, ModBlockEntities.REGISTER, ModMenus.REGISTER,
             ModRecipeSerializers.REGISTER, ModLootModifiers.REGISTER, ModPoiTypes.REGISTER,
             ModProfessions.REGISTER, ModFeatures.REGISTER, ModPlacementModifiers.REGISTER, ModProcessors.REGISTER,
-            ModPoolElements.REGISTER,
+            ModPoolElements.REGISTER, ModLootConditions.REGISTER,
             ModCreativeTabs.REGISTER);
 
     private ModRegistries() {

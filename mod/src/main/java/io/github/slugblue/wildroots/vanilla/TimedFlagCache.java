@@ -6,9 +6,10 @@ import java.util.function.BooleanSupplier;
 
 /**
  * A yes/no answer per key kept for {@code ttl} ticks (the POI query of a
- * chunk, 1200 ticks, docs/05-architecture.md §11.2). Expired entries are
- * dropped when the map grows past {@value #PRUNE_AT}. Server thread only.
- * Pure (JUnit).
+ * chunk, 1200 ticks, docs/05-architecture.md §11.2). At most
+ * {@value #PRUNE_AT} entries: when the map is full, expired entries are
+ * dropped first and, if it is still full, all of them (it is only a cache;
+ * the next asks query again). Server thread only. Pure (JUnit).
  */
 public final class TimedFlagCache {
 
@@ -32,6 +33,9 @@ public final class TimedFlagCache {
         }
         if (map.size() >= PRUNE_AT) {
             map.values().removeIf(x -> now >= x.until() || now < x.until() - ttl);
+            if (map.size() >= PRUNE_AT) {
+                map.clear();
+            }
         }
         boolean v = query.getAsBoolean();
         map.put(key, new Entry(now + ttl, v));

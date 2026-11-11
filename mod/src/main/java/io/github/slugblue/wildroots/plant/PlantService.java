@@ -49,14 +49,14 @@ public final class PlantService {
     }
 
     /** Block of a species, if it has one. */
-    /** The plant blocks of the built-in species (WR-162: the vanilla crop each one replaces). */
-    public static java.util.List<FieldPlantBlock> blocks() {
-        return BLOCKS.values().stream().map(s -> (FieldPlantBlock) s.get()).toList();
-    }
-
     public static Optional<FieldPlantBlock> blockFor(String species) {
         var b = BLOCKS.get(species);
         return b == null ? Optional.empty() : Optional.of(b.get());
+    }
+
+    /** The plant blocks of the built-in species (WR-162: the vanilla crop each one replaces). */
+    public static java.util.List<FieldPlantBlock> blocks() {
+        return BLOCKS.values().stream().map(s -> (FieldPlantBlock) s.get()).toList();
     }
 
     /** Key of a noise migration at {@code pos}: the same as the block entity uses (§5.3). */

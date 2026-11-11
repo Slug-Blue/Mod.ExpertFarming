@@ -59,4 +59,13 @@ class ConversionLimitsTest {
         c.get(-1L, 100, () -> true);
         assertEquals(1, c.size());
     }
+
+    @Test
+    void liveEntriesNeverPassTheHardCap() {
+        TimedFlagCache c = new TimedFlagCache(1200);
+        for (long k = 0; k < 3L * TimedFlagCache.PRUNE_AT; k++) {
+            c.get(k, 5, () -> true);
+            assertTrue(c.size() <= TimedFlagCache.PRUNE_AT, "size " + c.size());
+        }
+    }
 }

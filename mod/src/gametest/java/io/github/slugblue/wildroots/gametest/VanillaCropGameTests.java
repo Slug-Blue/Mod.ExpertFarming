@@ -92,12 +92,9 @@ public final class VanillaCropGameTests {
             boolean manual = net.minecraftforge.event.ForgeEventFactory.onBlockPlace(fake,
                     net.minecraftforge.common.util.BlockSnapshot.create(level.dimension(), level, absA), Direction.UP);
             level.setBlock(absA, Blocks.AIR.defaultBlockState(), 2);
-            // Forge keeps captured block snapshots per level; an earlier test that threw out of an item's
-            // useOn leaves them behind, and the next placement would post them as a multi-place event
-            LOG.info("WR-162 strict: capture flag {}, stale snapshots {}", level.captureBlockSnapshots,
-                    level.capturedBlockSnapshots.size());
-            level.captureBlockSnapshots = false;
-            level.capturedBlockSnapshots.clear();
+            // a leaked Forge block capture would post stale snapshots with this placement (CaptureLeakGuard)
+            helper.assertTrue(!level.captureBlockSnapshots && level.capturedBlockSnapshots.isEmpty(),
+                    "Forge block snapshot capture left on: " + level.capturedBlockSnapshots.size());
             boolean planted = use(fake, seeds, helper, a);
             helper.assertTrue(!planted, "a fake player planted a vanilla carrot; manual event cancelled " + manual
                     + ", tag " + carrots(0).is(VanillaCrops.REMOVED_BLOCKS) + ", count " + seeds.getCount());
@@ -112,6 +109,13 @@ public final class VanillaCropGameTests {
                         new BlockHitResult(Vec3.atCenterOf(farm).add(0, 0.5, 0), Direction.UP, farm, false));
                 helper.assertTrue(!helper.getBlockState(b).is(Blocks.CARROTS) && mine.getCount() == 2,
                         "player planted a vanilla carrot");
+                // an unconverted ripe crop (explosion, piston, water) drops line produce, never the vanilla carrot
+                java.util.List<ItemStack> drops = net.minecraft.world.level.block.Block.getDrops(carrots(7), level,
+                        helper.absolutePos(b), null);
+                helper.assertTrue(drops.stream().noneMatch(d -> d.is(Items.CARROT)) && drops.stream().anyMatch(d ->
+                        d.is(io.github.slugblue.wildroots.core.registry.ModItems.WILD_CARROT_ROOT.get())
+                        && io.github.slugblue.wildroots.item.ProduceStacks.grade(d.getTag()) == 1),
+                        "strict drops of a ripe vanilla carrot: " + drops);
             } finally {
                 p.discard();
             }
@@ -133,6 +137,10 @@ public final class VanillaCropGameTests {
                 helper.assertTrue(mine.getCount() == 1, "carrot not spent");
                 helper.assertTrue(growTick(helper, a), "soft: vanilla growth denied");
                 helper.assertTrue(helper.getBlockState(a).is(Blocks.CARROTS), "soft: converted");
+                java.util.List<ItemStack> drops = net.minecraft.world.level.block.Block.getDrops(carrots(7),
+                        helper.getLevel(), helper.absolutePos(a), null);
+                helper.assertTrue(!drops.isEmpty() && drops.stream().allMatch(d -> d.is(Items.CARROT)),
+                        "soft drops of a ripe vanilla carrot: " + drops);
             } finally {
                 ServerConfig.MODE.set(old);
                 p.discard();
@@ -260,5 +268,50 @@ public final class VanillaCropGameTests {
                     "the rest did not convert on the next tick");
             helper.succeed();
         });
+    }
+
+    /**
+     * Review 1, B1: a ripe crop gets no random tick, so the growth event never
+     * fires for it. The chunk scan (run on chunk load) queues it and the level
+     * tick converts it within the budget; no growth event is posted here.
+     */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "wr162_queue", timeoutTicks = 60)
+    public static void ripeCarrotIsConvertedFromTheChunkQueue(GameTestHelper helper) {
+        VanillaCrops.clearCaches();
+        BlockPos a = new BlockPos(1, 2, 1);
+        vanilla(helper, a, 7);
+        helper.assertTrue(!helper.getBlockState(a).isRandomlyTicking(), "a ripe vanilla carrot ticks");
+        ServerLevel level = helper.getLevel();
+        int queued = VanillaCrops.scanChunk(level, level.getChunkAt(helper.absolutePos(a)));
+        helper.assertTrue(queued >= 1, "not queued");
+        helper.succeedWhen(() -> {
+            BlockState s = helper.getBlockState(a);
+            helper.assertTrue(s.is(ModBlocks.WILD_CARROT.get()), "not converted yet: " + s);
+            helper.assertTrue(FieldPlantBlock.stage(s) == FieldPlantBlock.HARVEST_STAGE, "stage " + s);
+        });
+    }
+
+    /** Review 1, B1 fallbacks: breaking or right-clicking a ripe vanilla carrot converts it (strict). */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "wr162_break")
+    public static void breakingOrClickingARipeCarrotConvertsIt(GameTestHelper helper) {
+        VanillaCrops.clearCaches();
+        ServerLevel level = helper.getLevel();
+        ServerPlayer p = JournalGameTests.survival(helper, "wr162_break");
+        try {
+            BlockPos a = new BlockPos(0, 2, 0);
+            BlockPos b = new BlockPos(2, 2, 2);
+            vanilla(helper, a, 7);
+            vanilla(helper, b, 7);
+            helper.assertTrue(!p.gameMode.destroyBlock(helper.absolutePos(a)), "the vanilla carrot was broken");
+            helper.assertTrue(helper.getBlockState(a).is(ModBlocks.WILD_CARROT.get()), "break did not convert");
+            p.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+            BlockPos abs = helper.absolutePos(b);
+            p.gameMode.useItemOn(p, level, ItemStack.EMPTY, InteractionHand.MAIN_HAND,
+                    new BlockHitResult(Vec3.atCenterOf(abs), Direction.UP, abs, false));
+            helper.assertTrue(helper.getBlockState(b).is(ModBlocks.WILD_CARROT.get()), "right click did not convert");
+        } finally {
+            p.discard();
+        }
+        helper.succeed();
     }
 }

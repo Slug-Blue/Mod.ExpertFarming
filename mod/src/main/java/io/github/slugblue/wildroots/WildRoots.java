@@ -79,6 +79,9 @@ public final class WildRoots {
         MinecraftForge.EVENT_BUS.addListener(io.github.slugblue.wildroots.vanilla.VanillaCrops::onRightClickBlock);
         MinecraftForge.EVENT_BUS.addListener(io.github.slugblue.wildroots.vanilla.VanillaCrops::onCropGrow);
         MinecraftForge.EVENT_BUS.addListener(io.github.slugblue.wildroots.vanilla.VanillaCrops::onLevelUnload);
+        MinecraftForge.EVENT_BUS.addListener(io.github.slugblue.wildroots.vanilla.VanillaCrops::onChunkLoad);
+        MinecraftForge.EVENT_BUS.addListener(io.github.slugblue.wildroots.vanilla.VanillaCrops::onLevelTick);
+        MinecraftForge.EVENT_BUS.addListener(io.github.slugblue.wildroots.vanilla.VanillaCrops::onBreak);
         WrNetwork.register();
         MinecraftForge.EVENT_BUS.addListener(ServerPacketGuard::onLogout);
         LOGGER.debug("Wild Roots constructed");
