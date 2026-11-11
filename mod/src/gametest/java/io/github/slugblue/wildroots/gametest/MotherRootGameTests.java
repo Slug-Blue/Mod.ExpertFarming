@@ -181,8 +181,11 @@ public final class MotherRootGameTests {
                 java.util.Optional.empty(), genome, java.util.Optional.empty(), 0, 0), noise, 77L), 1);
         BlockPos a = new BlockPos(0, 2, 1);
         BlockPos b = new BlockPos(2, 2, 1);
-        PlantFixtures.farmland(helper, a);
-        PlantFixtures.farmland(helper, b);
+        // a and b lie on the template edge: their light must not come from the world (WR-195)
+        PlantFixtures.litFarmland(helper, a);
+        PlantFixtures.litFarmland(helper, b);
+        PlantFixtures.whenLit(helper, List.of(a, b), () -> {
+        helper.assertTrue(PlantFixtures.lit(helper, a) && PlantFixtures.lit(helper, b), "cells not lit");
         var original = io.github.slugblue.wildroots.data.Definitions.current();
         try {
             io.github.slugblue.wildroots.data.Definitions.publish(PlantFixtures.withSpecies(original, newDef));
@@ -208,5 +211,51 @@ public final class MotherRootGameTests {
             io.github.slugblue.wildroots.data.Definitions.publish(original);
         }
         helper.succeed();
+        }, 0);
+    }
+
+    /**
+     * WR-195 regression for the order-dependent failure above: a planted
+     * mother root in a dark cell (raw light below 8, no sky) pops on the
+     * next shape update of a neighbour (vanilla {@code CropBlock#canSurvive});
+     * the same cell lit by {@link PlantFixtures#litFarmland} keeps it.
+     */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, timeoutTicks = 100)
+    public static void darkCellPopsOnANeighbourUpdateLitCellKeepsThePlant(GameTestHelper helper) {
+        BlockPos cell = PlantFixtures.PLANT;
+        PlantFixtures.farmland(helper, cell);
+        // a sealed dark cell: stone on the four sides and on top
+        BlockPos[] walls = {cell.west(), cell.east(), cell.north(), cell.south(), cell.above()};
+        for (BlockPos w : walls) {
+            helper.setBlock(w, net.minecraft.world.level.block.Blocks.STONE);
+        }
+        Player player = helper.makeMockSurvivalPlayer();
+        helper.runAfterDelay(10, () -> {
+            helper.assertFalse(PlantFixtures.lit(helper, cell), "sealed cell still lit after 10 ticks");
+            helper.assertTrue(PlantingGameTests.use(helper, player, mother(), cell).consumesAction(), "dark: not planted");
+            helper.assertTrue(helper.getBlockEntity(cell) instanceof PlantBlockEntity, "dark: gone at planting");
+            helper.setBlock(cell.west(), net.minecraft.world.level.block.Blocks.COBBLESTONE);
+            helper.assertTrue(helper.getBlockState(cell).isAir(), "dark: the plant survived a neighbour update");
+            // the fix: the same cell with the light block of litFarmland
+            helper.setBlock(cell.above(), net.minecraft.world.level.block.Blocks.LIGHT);
+            PlantFixtures.whenLit(helper, List.of(cell), () -> {
+                helper.assertTrue(PlantFixtures.lit(helper, cell), "light block did not light the cell");
+                helper.assertTrue(PlantingGameTests.use(helper, player, mother(), cell).consumesAction(), "lit: not planted");
+                helper.setBlock(cell.west(), net.minecraft.world.level.block.Blocks.STONE);
+                helper.assertTrue(helper.getBlockEntity(cell) instanceof PlantBlockEntity,
+                        "lit: the plant popped on a neighbour update");
+                helper.succeed();
+            }, 0);
+        });
+    }
+
+    /** A wild mother root (genome 91), as dug from a plant at harvest ripeness. */
+    static ItemStack mother() {
+        var gs = io.github.slugblue.wildroots.data.Definitions.current().genetics();
+        ItemStack m = new ItemStack(ModItems.MOTHER_ROOT.get());
+        m.getOrCreateTag().put(MotherNbt.KEY, MotherNbt.write(new MotherNbt.Mother(gs.encode(PlantFixtures.genome(91)),
+                PlantFixtures.noise(92).bytes(), java.util.Optional.empty(), 0, false, java.util.Optional.empty(), 0, 0,
+                3, false)));
+        return m;
     }
 }

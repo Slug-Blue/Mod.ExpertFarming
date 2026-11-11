@@ -50,6 +50,35 @@ final class PlantFixtures {
         helper.setBlock(rel.below(), Blocks.FARMLAND.defaultBlockState().setValue(FarmBlock.MOISTURE, 7));
     }
 
+    /**
+     * Moist farmland under {@code rel} and a light block (level 15) above it.
+     * Test areas lie underground and their light depends on the world: a
+     * crop with raw light below 8 and no sky pops on the next shape update
+     * of a neighbour (vanilla {@code CropBlock#canSurvive}), so a test whose
+     * cell is on the template edge must not rely on the world's light (WR-195).
+     * The light engine applies the block a tick or two later: wait for
+     * {@link #lit} before planting.
+     */
+    static void litFarmland(GameTestHelper helper, BlockPos rel) {
+        farmland(helper, rel);
+        helper.setBlock(rel.above(), Blocks.LIGHT.defaultBlockState());
+    }
+
+    /** Whether a crop at {@code rel} survives shape updates by its light (raw light ≥ 8 or sky). */
+    static boolean lit(GameTestHelper helper, BlockPos rel) {
+        BlockPos abs = helper.absolutePos(rel);
+        return helper.getLevel().getRawBrightness(abs, 0) >= 8 || helper.getLevel().canSeeSky(abs);
+    }
+
+    /** Runs {@code body} once every cell is {@link #lit} (at most 40 ticks, then runs it anyway). */
+    static void whenLit(GameTestHelper helper, List<BlockPos> cells, Runnable body, int waited) {
+        if (waited >= 40 || cells.stream().allMatch(c -> lit(helper, c))) {
+            body.run();
+            return;
+        }
+        helper.runAfterDelay(1, () -> whenLit(helper, cells, body, waited + 1));
+    }
+
     /** Farmland and a wild carrot at stage {@code stage}; returns its block entity. */
     static PlantBlockEntity place(GameTestHelper helper, BlockPos rel, int stage) {
         farmland(helper, rel);
