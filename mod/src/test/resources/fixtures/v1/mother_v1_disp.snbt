@@ -1,0 +1,17 @@
+{
+    ct: 1b,
+    e: [B; -10B, 0B, 6B, 21B, -20B, 9B, -36B],
+    fl: 1b,
+    g: {
+        a: [L; 5843509598464786513L, -8930638058306006902L, 49L],
+        lh: -3539622408563365149L,
+        sp: "wildroots:wild_carrot",
+        v: 1
+    },
+    gen: 12,
+    gr: 3b,
+    ln: "Golden Line",
+    v: 1,
+    var: "wildroots:eastern_carrot",
+    disp: ["tooltip.lenss4*y3g2f3Wc3h2d2d-aeastern_carrot"]
+}

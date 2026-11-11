@@ -205,11 +205,18 @@ class NbtDecoderFuzzTest {
 
     @Test
     void motherRoot() {
-        fuzz("mother root", 1976, List.of(fixture("v1/mother_v1.snbt")), t -> {
+        fuzz("mother root", 1976, List.of(fixture("v1/mother_v1.snbt"), fixture("v1/mother_v1_disp.snbt")), t -> {
+            // D2: the display-only lens row of an inspected root never throws and is a valid row or none
+            io.github.slugblue.wildroots.lens.LensPanel.row(MotherNbt.disp(t)).ifPresent(r ->
+                    assertTrue(DispCodec.valid(r.line()), "lens row " + r));
             Optional<MotherNbt.Mother> m = MotherNbt.read(t);
             if (m.isEmpty()) {
                 return Outcome.INERT;
             }
+            // inspecting keeps the root valid and within its 512 B
+            MotherNbt.withRow(t, new io.github.slugblue.wildroots.lens.LensRow("s4*y3g2f3Wc3h2d2", 'd', '-', true, Optional.of("eastern_carrot"), false).degradations().stream()
+                    .map(io.github.slugblue.wildroots.lens.LensRow::line).toList()).ifPresent(r ->
+                    assertTrue(NbtLimits.mother(r).ok() && MotherNbt.read(r).isPresent(), "inspected root over its limit"));
             CompoundTag saved = MotherNbt.write(m.get());
             assertEquals(saved, MotherNbt.write(MotherNbt.read(saved).orElseThrow()), "saved mother root does not round-trip");
             genome(m.get().genome());

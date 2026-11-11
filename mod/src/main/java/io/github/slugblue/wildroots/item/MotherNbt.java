@@ -104,16 +104,28 @@ public final class MotherNbt {
         if (stack.getTag() == null || read(stack.getTag().get(KEY)).isEmpty()) {
             return false;
         }
-        CompoundTag base = stack.getTag().getCompound(KEY);
+        Optional<CompoundTag> root = withRow(stack.getTag().getCompound(KEY), rows);
+        root.ifPresent(r -> stack.getTag().put(KEY, r));
+        return root.isPresent();
+    }
+
+    /**
+     * A copy of the valid root {@code base} with the first of {@code rows}
+     * that keeps it a valid root within 512 B as its {@code disp}; empty if
+     * {@code base} is not valid or none fits. Pure (JUnit, fuzz).
+     */
+    public static Optional<CompoundTag> withRow(CompoundTag base, List<DispCodec.Line> rows) {
+        if (read(base).isEmpty()) {
+            return Optional.empty();
+        }
         for (DispCodec.Line row : rows) {
             CompoundTag root = base.copy();
             root.put("disp", DispCodec.encode(List.of(row)));
             if (NbtLimits.mother(root).ok() && read(root).isPresent()) {
-                stack.getTag().put(KEY, root);
-                return true;
+                return Optional.of(root);
             }
         }
-        return false;
+        return Optional.empty();
     }
 
     public static CompoundTag write(Mother m) {

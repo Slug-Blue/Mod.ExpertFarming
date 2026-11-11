@@ -134,6 +134,11 @@ public class HandLensItem extends Item {
         if (!io.github.slugblue.wildroots.lens.LensPanel.inspectable(target) || !slot.allowModification(player)) {
             return false;
         }
+        // the creative inventory screen handles clicks on the client only (SetCreativeModeSlot), so the
+        // server never inspects there: the click stays a vanilla swap (review 1, minor 1); the panel works
+        if (player.level().isClientSide() && player.isCreative() && player.containerMenu == player.inventoryMenu) {
+            return false;
+        }
         if (io.github.slugblue.wildroots.lens.LensPanel.inspected(target)
                 || player.getCooldowns().isOnCooldown(lens.getItem())) {
             return true;

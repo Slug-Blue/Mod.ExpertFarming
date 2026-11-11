@@ -74,7 +74,21 @@ public final class ClientLensPanel implements ClientTooltipComponent {
             return Optional.empty();
         }
         Slot slot = screen.getSlotUnderMouse();
-        return slot == null || !slot.hasItem() ? Optional.empty() : LensPanel.of(slot.getItem());
+        return slot == null || !slot.hasItem() ? Optional.empty() : cached(slot.getItem());
+    }
+
+    /** The last stack, its tag and its panel: one parse while the cursor rests on a slot (review 1, minor 8). */
+    private static ItemStack lastStack = ItemStack.EMPTY;
+    private static net.minecraft.nbt.CompoundTag lastTag;
+    private static Optional<LensPanel> lastPanel = Optional.empty();
+
+    static Optional<LensPanel> cached(ItemStack stack) {
+        if (stack != lastStack || stack.getTag() != lastTag) {
+            lastStack = stack;
+            lastTag = stack.getTag();
+            lastPanel = LensPanel.of(stack);
+        }
+        return lastPanel;
     }
 
     /** Draws the panel after the screen (Forge bus, client only). */
