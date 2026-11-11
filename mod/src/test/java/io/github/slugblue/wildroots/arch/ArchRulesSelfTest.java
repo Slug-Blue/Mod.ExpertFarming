@@ -59,6 +59,23 @@ class ArchRulesSelfTest {
         assertAllows(rule, "client.ClientOnly", "feature.AnnotatedClientPlugin");
     }
 
+    /** WR-198: the render stack counts as client code too. */
+    @Test
+    void clientRuleFiresOnBlaze3d() {
+        ArchRule rule = ArchRules.noClientCodeOutsideClientPackage(F, List.of(F + ".FakeClientPlugin"));
+        assertViolates(rule, "feature.UsesBlaze3d");
+    }
+
+    /** WR-198: the mod's client classes only from lambda bodies. */
+    @Test
+    void modClientRuleAllowsOnlyLambdaBodies() {
+        ArchRule rule = ArchRules.modClientOnlyFromLambdas(F);
+        assertViolates(rule, "feature.ReachesClientDirectly");
+        assertViolates(rule, "feature.ReachesClientByMethodReference");
+        assertViolates(rule, "feature.HoldsClientField");
+        assertAllows(rule, "feature.ReachesClientInLambda", "client.ClientOnly", "client.ClientHandlers");
+    }
+
     @Test
     void compatRuleFiresOnCompatAndForeignModImports() {
         ArchRule rule = ArchRules.compatIsolated(F, List.of(F + ".foreignmod.."));

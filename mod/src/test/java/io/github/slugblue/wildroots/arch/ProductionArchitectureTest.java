@@ -40,6 +40,14 @@ class ProductionArchitectureTest {
         ArchRules.noClientCodeOutsideClientPackage(ROOT, ArchRules.CLIENT_PLUGIN_ANNOTATIONS).check(production);
     }
 
+    /** WR-198: common code touches the mod's client classes only inside DistExecutor lambdas. */
+    @Test
+    void modClientOnlyFromLambdas() {
+        ArchRules.modClientOnlyFromLambdas(ROOT).check(production);
+        org.junit.jupiter.api.Assertions.assertTrue(production.contain(ROOT + ".client.ClientPacketHandlers")
+                        && production.contain(ROOT + ".journal.Journals"), "the rule does not see the client entry points");
+    }
+
     @Test
     void compatIsolated() {
         ArchRules.compatIsolated(ROOT, ArchRules.FOREIGN_MOD_PACKAGES).check(production);

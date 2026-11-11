@@ -55,8 +55,42 @@ public final class ArchRules {
                 .that().resideInAPackage(root + "..")
                 .and().resideOutsideOfPackage(root + "..client..")
                 .and(not(annotatedWithAny(clientPluginAnnotations)))
-                .should().dependOnClassesThat().resideInAPackage("net.minecraft.client..")
+                .should().dependOnClassesThat().resideInAnyPackage(CLIENT_ONLY_PACKAGES.toArray(String[]::new))
                 .because("client code lives in ..client.. (docs/05-architecture.md §15)");
+    }
+
+    /** Vanilla client-only packages: the game client and the render stack (WR-198, §15). */
+    public static final List<String> CLIENT_ONLY_PACKAGES = List.of("net.minecraft.client..", "com.mojang.blaze3d..");
+
+    /**
+     * WR-198 (§15): common code reaches the mod's own {@code ..client..}
+     * classes only from inside a lambda body (the
+     * {@code DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> …)}
+     * pattern), so a dedicated server never loads them. A field, parameter,
+     * return or super type, or a call, method reference or class literal in
+     * an ordinary method is a violation: the JVM resolves those when the
+     * common class is verified or the method runs.
+     *
+     * <p>ArchUnit attributes a lambda's accesses to the enclosing method, so
+     * the condition reads the bytecode itself ({@link ClientReferences}, ASM
+     * from Forge's classpath): every reference to a client class must sit in
+     * a synthetic {@code lambda$…} method.
+     */
+    public static ArchRule modClientOnlyFromLambdas(String root) {
+        String client = root.replace('.', '/') + "/client/";
+        ArchCondition<JavaClass> onlyFromLambdas = new ArchCondition<>("reach " + root + "..client.. only from lambda bodies") {
+            @Override
+            public void check(JavaClass c, ConditionEvents events) {
+                for (String v : ClientReferences.outsideLambdas(c.reflect(), client)) {
+                    events.add(SimpleConditionEvent.violated(c, c.getName() + ": " + v));
+                }
+            }
+        };
+        return classes()
+                .that().resideInAPackage(root + "..")
+                .and().resideOutsideOfPackage(root + "..client..")
+                .should(onlyFromLambdas)
+                .because("a dedicated server must never load a client class (docs/05-architecture.md §15)");
     }
 
     /**
