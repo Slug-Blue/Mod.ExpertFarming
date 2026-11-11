@@ -102,12 +102,14 @@ public final class PacketBudgetGameTests {
 
     static int journalActions(GameTestHelper helper, PacketGuardGameTests.Probe p) {
         JournalData j = JournalGameTests.journal(p.player());
-        j.unlock("hint.welcome", List.of(), List.of());
-        int before = j.revision();
-        ResourceLocation id = new ResourceLocation("wildroots", "hint.welcome");
         for (int i = 0; i < 50; i++) {
-            // PIN and UNPIN alternate, so every handled packet changes the journal once
-            JournalActionPacket msg = new JournalActionPacket(id, i % 2 == 0 ? JournalActionPacket.PIN : JournalActionPacket.UNPIN);
+            j.unlock("note.wr197_burst_" + i, List.of(), List.of());
+        }
+        int before = j.revision();
+        for (int i = 0; i < 50; i++) {
+            // one unpinned entry per packet: every handled PIN changes the journal exactly once
+            JournalActionPacket msg = new JournalActionPacket(new ResourceLocation("wildroots", "note.wr197_burst_" + i),
+                    JournalActionPacket.PIN);
             p.listener().handleCustomPayload((ServerboundCustomPayloadPacket) WrNetwork.CHANNEL
                     .toVanillaPacket(msg, NetworkDirection.PLAY_TO_SERVER));
         }
