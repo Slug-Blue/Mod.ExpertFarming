@@ -78,6 +78,25 @@ final class ClientReferences {
         return n;
     }
 
+    static final String DIST = "net/minecraftforge/api/distmarker/Dist";
+
+    /**
+     * True when the side argument of the DistExecutor call that consumes {@code indy} is {@code Dist.CLIENT}:
+     * walking back over the lambda's captured values (local and field loads), the next instruction must be
+     * {@code GETSTATIC Dist.CLIENT}. Anything else, e.g. {@code Dist.DEDICATED_SERVER} or a computed side,
+     * is not a client guard.
+     */
+    static boolean sideIsClient(AbstractInsnNode indy) {
+        AbstractInsnNode p = indy.getPrevious();
+        while (p != null && (p.getOpcode() < 0
+                || (p.getOpcode() >= Opcodes.ILOAD && p.getOpcode() <= Opcodes.ALOAD)
+                || p.getOpcode() == Opcodes.GETFIELD)) {
+            p = p.getPrevious();
+        }
+        return p instanceof FieldInsnNode f && f.getOpcode() == Opcodes.GETSTATIC
+                && f.owner.equals(DIST) && f.name.equals("CLIENT");
+    }
+
     /** Synthetic lambda methods of {@code c} whose bodies run only on the client. */
     static Set<String> guardedLambdas(ClassNode c) {
         Map<String, String> createdIn = new HashMap<>();
@@ -91,7 +110,8 @@ final class ClientReferences {
                 }
                 createdIn.put(h.getName(), m.name);
                 if (nextReal(i) instanceof MethodInsnNode call && call.getOpcode() == Opcodes.INVOKESTATIC
-                        && call.owner.equals(DIST_EXECUTOR) && DIST_CALL.matcher(call.name).matches()) {
+                        && call.owner.equals(DIST_EXECUTOR) && DIST_CALL.matcher(call.name).matches()
+                        && sideIsClient(i)) {
                     direct.add(h.getName());
                 }
             }

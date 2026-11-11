@@ -74,6 +74,7 @@ class ArchRulesSelfTest {
         assertViolates(rule, "feature.ReachesClientByMethodReference");
         assertViolates(rule, "feature.HoldsClientField");
         assertViolates(rule, "feature.ReachesClientInPlainLambda");
+        assertViolates(rule, "feature.ReachesClientOnServerSide");
         assertViolates(rule, "feature.CatchesClientException");
         assertViolates(rule, "feature.ThrowsClientException");
         assertViolates(rule, "feature.AnnotatedWithClientValue");
