@@ -351,9 +351,32 @@ public final class BeeGameTests {
         }
         List<Bee> bees = new java.util.ArrayList<>();
         for (int i = 0; i < 10; i++) {
-            bees.add(helper.spawn(EntityType.BEE, new BlockPos(6 + i % 5, 4, 7 + i / 5 * 2)));
+            Bee b = helper.spawn(EntityType.BEE, new BlockPos(6 + i % 5, 4, 7 + i / 5 * 2));
+            homeAt(b, helper.absolutePos(HIVES[i % HIVES.length]));
+            bees.add(b);
         }
         return bees;
+    }
+
+    /**
+     * Gives the bee its home among the field's hives (WR-195). A spawned bee
+     * has no hive and takes the nearest bee home POI within 20 blocks; in
+     * some batch orders that was a hive or nest outside the field (bees were
+     * traced 26 blocks above it), so the bees left with their nectar and
+     * never came back: no honey, no second visit, no donors.
+     */
+    static void homeAt(Bee bee, BlockPos hive) {
+        CompoundTag t = new CompoundTag();
+        bee.addAdditionalSaveData(t);
+        t.put("HivePos", net.minecraft.nbt.NbtUtils.writeBlockPos(hive));
+        bee.readAdditionalSaveData(t);
+    }
+
+    /** The home the bee remembers, or {@code null}. */
+    static BlockPos home(Bee bee) {
+        CompoundTag t = new CompoundTag();
+        bee.addAdditionalSaveData(t);
+        return t.contains("HivePos") ? net.minecraft.nbt.NbtUtils.readBlockPos(t.getCompound("HivePos")) : null;
     }
 
     /** Template size of {@code lit_field_17x10x17}. */
@@ -393,6 +416,10 @@ public final class BeeGameTests {
             }
         }
         helper.assertTrue(open == 0, open + " open cells on the boundary of the bee field");
+        Bee b = helper.spawn(EntityType.BEE, new BlockPos(8, 4, 8));
+        homeAt(b, helper.absolutePos(HIVES[1]));
+        helper.assertTrue(helper.absolutePos(HIVES[1]).equals(home(b)), "home not set: " + home(b));
+        b.discard();
         helper.succeed();
     }
 
@@ -419,7 +446,8 @@ public final class BeeGameTests {
         String farPos = far.stream().limit(4).map(b -> b.blockPosition().toShortString() + (b.isAlive() ? "" : " dead"))
                 .toList().toString();
         return "field at " + c.toShortString() + ", bees in hives " + inHives + ", bees within 64 " + far.size() + " "
-                + farPos + ", bees " + bees.size() + " (goal " + withGoal + ", pollen " + withPollen + "), indexed " + indexed + "/"
+                + farPos + ", homes " + bees.stream().map(b -> { BlockPos h = home(b); return h == null ? "-"
+                        : h.toShortString(); }).distinct().limit(6).toList() + ", bees " + bees.size() + " (goal " + withGoal + ", pollen " + withPollen + "), indexed " + indexed + "/"
                 + PLANTS.length + ", entity ticking " + level.isPositionEntityTicking(c) + ", raining "
                 + level.isRaining() + ", day time " + level.getDayTime() % 24000 + ", honey " + maxHoney(helper);
     }
