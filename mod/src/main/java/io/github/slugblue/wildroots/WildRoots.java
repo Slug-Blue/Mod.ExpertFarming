@@ -69,6 +69,8 @@ public final class WildRoots {
                 io.github.slugblue.wildroots.journal.JournalTriggers::onBreak);
         MinecraftForge.EVENT_BUS.addListener(io.github.slugblue.wildroots.journal.HintTriggers::onFinishEating);
         MinecraftForge.EVENT_BUS.addListener(io.github.slugblue.wildroots.journal.HintTriggers::onBonemeal);
+        MinecraftForge.EVENT_BUS.addListener(io.github.slugblue.wildroots.animal.AnimalFeed::onJoin);
+        MinecraftForge.EVENT_BUS.addListener(io.github.slugblue.wildroots.animal.AnimalFeed::onInteract);
         WrNetwork.register();
         MinecraftForge.EVENT_BUS.addListener(ServerPacketGuard::onLogout);
         LOGGER.debug("Wild Roots constructed");
