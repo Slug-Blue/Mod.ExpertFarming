@@ -117,7 +117,12 @@ public final class StarterPatchGameTests {
             helper.assertTrue(!patches.isEmpty() && patches.get(0).stream().allMatch(q -> starter(level, q)),
                     "patch not starter: " + p);
         } else {
-            helper.assertTrue(p.outcome() == Outcome.NOT_FOUND, "no accepted column but " + p);
+            // no accepted column in the ring: the fallbacks may still place (an island spawn finds the
+            // nearest land up to 160 blocks, GDD §11.2); seen with a spawn in the ocean (WR-195)
+            helper.assertTrue(p.outcome() == Outcome.NOT_FOUND || p.outcome() == Outcome.FALLBACK
+                    || p.outcome() == Outcome.ISLAND, "no accepted column but " + p);
+            helper.assertTrue(p.outcome() == Outcome.NOT_FOUND || p.plants() >= 10 && p.plants() <= 14,
+                    "fallback plants " + p);
         }
         helper.succeed();
     }
