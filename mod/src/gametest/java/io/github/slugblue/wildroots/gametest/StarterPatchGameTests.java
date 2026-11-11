@@ -79,10 +79,19 @@ public final class StarterPatchGameTests {
         long realisedCount = patch.stream().filter(q -> realised(level, q)).count();
         LOG.info("WR-152 marked patch at {}: {} plants, {} starter, {} realised before marking",
                 p.origin(), patch.size(), patch.stream().filter(q -> starter(level, q)).count(), realisedCount);
+        long starterCount = patch.stream().filter(q -> starter(level, q)).count();
         helper.assertTrue(!patch.isEmpty(), "no plant with the patch origin " + p.origin());
+        helper.assertTrue(patch.size() == p.plants(), "the patch has " + patch.size() + " plants, the placement says "
+                + p.plants() + ": " + p);
         helper.assertTrue(unmarked.isEmpty(), unmarked.size() + " unrealised plants of the marked patch " + p.origin()
                 + " are not starter: " + unmarked);
+        // a starter patch must have starter plants: at least as many as an existing patch needs (MIN_EXISTING)
+        helper.assertTrue(starterCount >= MIN_EXISTING, "only " + starterCount + " of " + patch.size()
+                + " plants of the marked patch are starter (" + realisedCount + " realised before): " + p);
     }
+
+    /** {@code StarterPatch.MIN_EXISTING}: plants an existing patch needs to count (package-private there). */
+    static final int MIN_EXISTING = 5;
 
     /**
      * On server start the starter step ran once. A world reused from an
@@ -384,9 +393,11 @@ public final class StarterPatchGameTests {
         SkyPlatform sky = SkyPlatform.build(helper, 14);
         try {
             BlockPos origin = sky.surface();
+            // 10 plants: one realised still leaves MIN_EXISTING + 4 to mark
             WildPatchFeature.Result r = WildPatchGameTests.place(level, origin, WildPatchGameTests.carrotConfig(level),
-                    WildPatchGameTests.TEST);
-            helper.assertTrue(r.placed() && r.plants().size() >= 5, "test patch not placed");
+                    new WildPatchFeature.Options(false, Optional.of(net.minecraft.util.valueproviders.ConstantInt.of(10)),
+                            Optional.empty(), "meadow", 0, WildPatchFeature.Rich.NEVER));
+            helper.assertTrue(r.placed() && r.plants().size() > MIN_EXISTING, "test patch not placed: " + r.plants().size());
             BlockPos visited = r.plants().get(0);
             PlantBlockEntity be = (PlantBlockEntity) level.getBlockEntity(visited);
             helper.assertTrue(be.live(level).isPresent() && realised(level, visited), "plant not realised");
