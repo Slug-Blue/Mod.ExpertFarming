@@ -1,8 +1,10 @@
 package io.github.slugblue.wildroots.item;
 
+import io.github.slugblue.wildroots.core.safety.DispCodec;
 import io.github.slugblue.wildroots.core.safety.NbtBudget;
 import io.github.slugblue.wildroots.core.safety.NbtLimits;
 import io.github.slugblue.wildroots.genetics.codec.GenomeRecord;
+import java.util.List;
 import java.util.Optional;
 import net.minecraft.nbt.ByteArrayTag;
 import net.minecraft.nbt.CompoundTag;
@@ -17,8 +19,12 @@ import net.minecraft.resources.ResourceLocation;
  * {@value #KEY}; at most 512 B, depth 4.
  *
  * <pre>
- * wildroots:mother: { v: 1, g: {v, sp, lh, a}, e: [B; ...], var?, ct, ci?, ln?, gen, fl, gr, bt? }
+ * wildroots:mother: { v: 1, g: {v, sp, lh, a}, e: [B; ...], var?, ct, ci?, ln?, gen, fl, gr, bt?, disp? }
  * </pre>
+ *
+ * <p>{@code disp} (D2, 2026-11-11): the tier-1 row of the hand lens
+ * ({@code lens.LensRow}) once the root was inspected; display only, never
+ * read for logic, and optional, so roots of v1 without it stay valid.
  */
 public final class MotherNbt {
 
@@ -81,6 +87,33 @@ public final class MotherNbt {
     private static boolean id(CompoundTag c, String key) {
         return c.contains(key, Tag.TAG_STRING) && c.getString(key).length() <= NbtLimits.GENOME_MAX_SPECIES_LENGTH
                 && ResourceLocation.tryParse(c.getString(key)) != null;
+    }
+
+    /** The {@code disp} lines of a mother root (display only, never trusted for logic). */
+    public static List<DispCodec.Line> disp(Tag root) {
+        return root instanceof CompoundTag c ? DispCodec.decode(c.get("disp")) : List.of();
+    }
+
+    /**
+     * Hand lens (D2): writes the first of {@code rows} (from the full tier-1
+     * row to the smallest) that keeps the root within its 512 B into the
+     * mother root of {@code stack}; {@code false} if the stack holds no
+     * valid root or none fits (nothing is written).
+     */
+    public static boolean inspect(net.minecraft.world.item.ItemStack stack, List<DispCodec.Line> rows) {
+        if (stack.getTag() == null || read(stack.getTag().get(KEY)).isEmpty()) {
+            return false;
+        }
+        CompoundTag base = stack.getTag().getCompound(KEY);
+        for (DispCodec.Line row : rows) {
+            CompoundTag root = base.copy();
+            root.put("disp", DispCodec.encode(List.of(row)));
+            if (NbtLimits.mother(root).ok() && read(root).isPresent()) {
+                stack.getTag().put(KEY, root);
+                return true;
+            }
+        }
+        return false;
     }
 
     public static CompoundTag write(Mother m) {

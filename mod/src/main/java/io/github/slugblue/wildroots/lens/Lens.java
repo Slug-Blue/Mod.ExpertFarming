@@ -119,6 +119,52 @@ public final class Lens {
     }
 
     /**
+     * Inspects a mother root in place (D2): its tier-1 row, read like a
+     * seedling lot from its own genome and noise in an ideal cell of the
+     * species' climate, goes into its {@code disp}. A root is not
+     * pollinated, so the row has no pollination. {@code false} if the stack
+     * is no usable mother root or the row does not fit.
+     */
+    public static boolean inspectMother(ItemStack stack, ServerLevel level, ServerPlayer player) {
+        Optional<io.github.slugblue.wildroots.item.MotherNbt.Mother> m = io.github.slugblue.wildroots.item.MotherItem
+                .read(stack);
+        if (m.isEmpty()) {
+            return false;
+        }
+        DefinitionsSnapshot snap = Definitions.current();
+        Optional<DefinitionsSnapshot.SpeciesEntry> e = snap.species(m.get().species());
+        if (e.isEmpty()) {
+            return false;
+        }
+        SpeciesDef def = e.get().def();
+        if (!(snap.genetics().decode(m.get().genome(), def)
+                instanceof io.github.slugblue.wildroots.genetics.codec.DecodeResult.Valid valid)) {
+            return false;
+        }
+        Optional<io.github.slugblue.wildroots.genetics.model.Genome> g = Optional.of(valid.genome());
+        NoiseVector noise = Optional.of(new NoiseVector(m.get().noise()))
+                .filter(n -> n.bytes().length == def.quantitative().size())
+                .orElse(NoiseVector.zero(def.quantitative().size()));
+        Environment env = Environment.neutral((def.tempMin() + def.tempMax()) / 2);
+        Optional<Phenotype> p = snap.genetics().phenotype(g.get(), def, env, noise);
+        if (p.isEmpty()) {
+            return false;
+        }
+        Optional<CultivarDef> looks = LensReading.looksLike(snap, def, p.get(), m.get().cultivar(), m.get().tier());
+        LensRow row = LensRow.of(def, e.get().info(), p.get(), LensReading.Pollination.NONE, looks);
+        if (!io.github.slugblue.wildroots.item.MotherNbt.inspect(stack,
+                row.degradations().stream().map(LensRow::line).toList())) {
+            return false;
+        }
+        if (player != null) {
+            JournalTriggers.discoverSpecies(player, def.id(), Optional.empty());
+            looks.ifPresent(c -> Journals.unlock(player, "hint.looks_like",
+                    DispCodec.keyArg(JournalTriggers.nameKey("cultivar", c.id().value()))));
+        }
+        return true;
+    }
+
+    /**
      * Inspects a lot in place: a lazy lot is realised first; the lot gets
      * {@code inspected} and its tier-1 lines in {@code disp}. The mother's
      * {@code P} is read in an ideal cell of the species' climate without

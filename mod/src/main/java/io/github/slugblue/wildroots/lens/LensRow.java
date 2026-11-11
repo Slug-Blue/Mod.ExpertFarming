@@ -199,15 +199,26 @@ public record LensRow(String traits, char bitter, char pollination, boolean aili
         return null;
     }
 
+    /** Name key of a trait token of {@code species} (its id): the species name when the token says so. */
+    public static String traitNameKey(Token k, String species) {
+        String path = JournalTriggers.speciesEntry(species).substring("species.".length());
+        return "wildroots.tooltip.trait_name." + k.trait() + (k.speciesName() ? "." + path : "");
+    }
+
     /** The tooltip lines of the row for a lot of {@code species} (its id). */
     public List<Component> expand(String species) {
-        String path = JournalTriggers.speciesEntry(species).substring("species.".length());
         List<Component> out = new ArrayList<>();
         for (Token k : tokens(traits)) {
-            String name = "wildroots.tooltip.trait_name." + k.trait() + (k.speciesName() ? "." + path : "");
-            out.add(Component.translatable(LensReading.TRAIT, Component.translatable(name),
+            out.add(Component.translatable(LensReading.TRAIT, Component.translatable(traitNameKey(k, species)),
                     Component.translatable(LensScale.wordKey(k.scale(), k.step()))));
         }
+        out.addAll(notes());
+        return out;
+    }
+
+    /** The lines of the row after the traits: bitterness, pollination, inbreeding, looks like, and more. */
+    public List<Component> notes() {
+        List<Component> out = new ArrayList<>();
         if (bitter != '-') {
             out.add(Component.translatable("wildroots.tooltip.qual_state.bitterness." + (bitter == 'd' ? "domestic" : "wild")));
         }

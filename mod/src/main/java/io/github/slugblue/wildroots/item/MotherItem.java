@@ -117,6 +117,9 @@ public class MotherItem extends Item {
             tooltip.add(Component.translatable("wildroots.grade." + m.get().grade()));
             m.get().lineName().ifPresent(n -> tooltip.add(Component.translatable("wildroots.tooltip.lot.line_name",
                     Component.literal(n))));
+            // D2: an inspected root keeps its tier-1 row; it expands as on a lot
+            io.github.slugblue.wildroots.lens.LensPanel.row(MotherNbt.disp(stack.getTag().get(MotherNbt.KEY)))
+                    .ifPresent(r -> tooltip.addAll(r.expand(m.get().species())));
         });
     }
 }
