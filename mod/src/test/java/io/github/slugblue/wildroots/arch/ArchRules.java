@@ -64,9 +64,10 @@ public final class ArchRules {
 
     /**
      * WR-198 (§15): common code reaches the mod's own {@code ..client..}
-     * classes only from inside a lambda body (the
+     * classes only from inside a DistExecutor-guarded lambda body (the
      * {@code DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> …)}
-     * pattern), so a dedicated server never loads them. A field, parameter,
+     * pattern), so a dedicated server never loads them. A plain lambda (a
+     * work item, a listener) runs on the server too and is a violation. A field, parameter,
      * return or super type, or a call, method reference or class literal in
      * an ordinary method is a violation: the JVM resolves those when the
      * common class is verified or the method runs.
@@ -74,11 +75,12 @@ public final class ArchRules {
      * <p>ArchUnit attributes a lambda's accesses to the enclosing method, so
      * the condition reads the bytecode itself ({@link ClientReferences}, ASM
      * from Forge's classpath): every reference to a client class must sit in
-     * a synthetic {@code lambda$…} method.
+     * a synthetic {@code lambda$…} method created right before a
+     * {@code DistExecutor} call, or inside such a lambda.
      */
     public static ArchRule modClientOnlyFromLambdas(String root) {
         String client = root.replace('.', '/') + "/client/";
-        ArchCondition<JavaClass> onlyFromLambdas = new ArchCondition<>("reach " + root + "..client.. only from lambda bodies") {
+        ArchCondition<JavaClass> onlyFromLambdas = new ArchCondition<>("reach " + root + "..client.. only from DistExecutor lambda bodies") {
             @Override
             public void check(JavaClass c, ConditionEvents events) {
                 for (String v : ClientReferences.outsideLambdas(c.reflect(), client)) {
