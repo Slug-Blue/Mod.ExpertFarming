@@ -225,14 +225,23 @@ public final class VanillaCropGameTests {
     public static void atMostSixteenConversionsPerTick(GameTestHelper helper) {
         VanillaCrops.clearCaches();
         List<BlockPos> cells = new ArrayList<>();
-        for (int layer = 0; layer < 2; layer++) {
+        // a checkerboard in 4 layers (20 cells): no carrot is a direct neighbour of another, so the
+        // shape updates of a conversion never reach a carrot in the dark test area
+        for (int layer = 0; layer < 4; layer++) {
             for (int x = 0; x < 3; x++) {
                 for (int z = 0; z < 3; z++) {
+                    if ((x + z) % 2 != 0) {
+                        continue;
+                    }
                     BlockPos rel = new BlockPos(x, 2 + 2 * layer, z);
-                    vanilla(helper, rel, 7);
+                    PlantFixtures.farmland(helper, rel);
                     cells.add(rel);
                 }
             }
+        }
+        // all farmland first: its shape updates would pop a carrot already set in the dark
+        for (BlockPos rel : cells) {
+            helper.getLevel().setBlock(helper.absolutePos(rel), carrots(7), 2);
         }
         for (BlockPos rel : cells) {
             growTick(helper, rel);
