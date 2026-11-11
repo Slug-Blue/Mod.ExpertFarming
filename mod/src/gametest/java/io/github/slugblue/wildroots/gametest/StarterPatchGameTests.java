@@ -93,6 +93,12 @@ public final class StarterPatchGameTests {
     /** {@code StarterPatch.MIN_EXISTING}: plants an existing patch needs to count (package-private there). */
     static final int MIN_EXISTING = 5;
 
+    /** Area predicate of {@code StarterPatch.place}: only the patch {@code r} placed by the test. */
+    static java.util.function.Predicate<BlockPos> onlyPatch(WildPatchFeature.Result r) {
+        java.util.Set<BlockPos> plants = new java.util.HashSet<>(r.plants());
+        return plants::contains;
+    }
+
     /**
      * On server start the starter step ran once. A world reused from an
      * earlier run is an existing world: then no data file and no patch (the
@@ -368,7 +374,8 @@ public final class StarterPatchGameTests {
             helper.assertTrue(r.placed() && r.plants().size() >= 5, "test patch not placed");
             BlockPos center = origin.offset(-30, 0, 0);
             int before = count(StarterPatch.existingPatches(level, center, 24, 128));
-            StarterPatch.Placement p = StarterPatch.place(level, center);
+            // only the test patch counts: a natural patch near the platform must not win (seed-dependent)
+            StarterPatch.Placement p = StarterPatch.place(level, center, onlyPatch(r));
             helper.assertTrue(p.outcome() == Outcome.MARKED_EXISTING, "outcome " + p);
             int after = count(StarterPatch.existingPatches(level, center, 24, 128));
             helper.assertTrue(before == after, "a new patch was placed: " + before + " -> " + after);
@@ -401,7 +408,7 @@ public final class StarterPatchGameTests {
             BlockPos visited = r.plants().get(0);
             PlantBlockEntity be = (PlantBlockEntity) level.getBlockEntity(visited);
             helper.assertTrue(be.live(level).isPresent() && realised(level, visited), "plant not realised");
-            StarterPatch.Placement p = StarterPatch.place(level, origin.offset(-30, 0, 0));
+            StarterPatch.Placement p = StarterPatch.place(level, origin.offset(-30, 0, 0), onlyPatch(r));
             helper.assertTrue(p.outcome() == Outcome.MARKED_EXISTING, "outcome " + p);
             helper.assertTrue(!starter(level, visited), "a realised plant was marked starter");
             helper.assertTrue(r.plants().stream().filter(q -> !q.equals(visited)).allMatch(q -> starter(level, q)),
@@ -445,7 +452,7 @@ public final class StarterPatchGameTests {
                 }
             }
             helper.assertTrue(center != null, "no spawn makes the patch straddle the ring edge:" + tried);
-            StarterPatch.Placement p = StarterPatch.place(level, center);
+            StarterPatch.Placement p = StarterPatch.place(level, center, onlyPatch(r));
             helper.assertTrue(p.outcome() == Outcome.MARKED_EXISTING, "outcome " + p);
             List<BlockPos> unmarked = r.plants().stream().filter(q -> !starter(level, q)).toList();
             helper.assertTrue(unmarked.isEmpty(), unmarked.size() + " of " + r.plants().size()
