@@ -254,7 +254,7 @@ public final class VanillaCrops {
         Optional<VillagePlant> village = villageField(level, pos, vanilla)
                 ? villagePlant(level, pos, snap, e.get().def()) : Optional.empty();
         BlockState state = block.getStateForAge(stage).setValue(FieldPlantBlock.VILLAGE, village.isPresent());
-        // flag 2 as vanilla growth: no neighbour shape updates, a dark field next to it does not pop
+        // flag 2 as vanilla growth: clients see it, no block updates; neighbour shapes update as on growth
         level.setBlock(pos, state, 2);
         Optional<PlantBlockEntity> be = LoadedLevelAccess.blockEntity(level, pos, PlantBlockEntity.class);
         if (be.isEmpty()) {
