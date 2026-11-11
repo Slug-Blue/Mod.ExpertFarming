@@ -1,6 +1,7 @@
 package io.github.slugblue.wildroots.gametest;
 
 import io.github.slugblue.wildroots.WildRoots;
+import net.minecraft.gametest.framework.GameTestServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -26,7 +27,7 @@ public final class CaptureLeakGuard {
 
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase != TickEvent.Phase.START || event.getServer() == null) {
+        if (event.phase != TickEvent.Phase.START || !(event.getServer() instanceof GameTestServer)) {
             return;
         }
         if (!announced) {
