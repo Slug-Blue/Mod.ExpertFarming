@@ -178,6 +178,7 @@
   "wildroots.journal.tool.hand_lens": "The lens shows what the eye can't judge: taste, hardiness, how pollination went, whether a plant is ailing. Works on plants and on seed packets alike.",
   "wildroots.message.lens.nothing": "Nothing to look at here",
   "wildroots.message.lens.header": "%1$s · %2$s",
+  "wildroots.message.needs_planting_material": "This won't take root. It needs planting material: a seed lot or a mother root.",
   "wildroots.message.lens.inspected": "Seeds inspected",
   "item.wildroots.hand_lens.desc.cursor": "On the cursor: click a seed lot or a mother root to inspect it, hover over seeds, roots or produce to see the bars.",
   "wildroots.message.lens.inspected_root": "Root inspected",

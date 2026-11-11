@@ -178,6 +178,7 @@
   "wildroots.journal.tool.hand_lens": "Лупа показывает то, что глазом не оценить: вкус, выносливость, как прошло опыление, не слабеет ли растение. Работает и на растении, и на пакетике семян.",
   "wildroots.message.lens.nothing": "Здесь нечего рассматривать",
   "wildroots.message.lens.header": "%1$s · %2$s",
+  "wildroots.message.needs_planting_material": "Это не приживётся. Нужен посадочный материал — лот семян или маточник.",
   "wildroots.message.lens.inspected": "Семена осмотрены",
   "item.wildroots.hand_lens.desc.cursor": "На курсоре: щелчок по лоту семян или маточнику осматривает его, наведение на семена, корни или урожай показывает шкалы.",
   "wildroots.message.lens.inspected_root": "Корень осмотрен",

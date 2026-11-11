@@ -205,7 +205,7 @@ public class WildPatchFeature extends Feature<WildPatchConfig> {
     }
 
     /** First category of {@code categories} whose tag {@code wildroots:patch_category/<id>} holds {@code biome}. */
-    static String category(Holder<Biome> biome, List<String> categories) {
+    public static String category(Holder<Biome> biome, List<String> categories) {
         for (String c : categories) {
             ResourceLocation id = ResourceLocation.tryBuild("wildroots", "patch_category/" + c);
             if (id != null && biome.is(TagKey.create(Registries.BIOME, id))) {
