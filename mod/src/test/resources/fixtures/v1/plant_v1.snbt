@@ -1,0 +1,33 @@
+{
+    ct: 1b,
+    cv: "wildroots:eastern_carrot",
+    e: [B; -7B, -6B, -5B, -5B, 11B, -4B, -50B],
+    fl: 1b,
+    g: {
+        a: [L; 4992702343843299669L, -4236302851338009576L, 24L],
+        lh: -3539622408563365149L,
+        sp: "wildroots:wild_carrot",
+        v: 1
+    },
+    gen: 13,
+    ln: "Golden Line",
+    pf: 1b,
+    pl: {
+        bee: 1b,
+        f: [
+            {
+                a: [L; 4684113345127665744L, 960781300351898696L, 3076L],
+                w: 1.0f
+            },
+            {
+                a: [L; 74753682486722901L, 2883588361817227338L, 536L],
+                w: 2.0f
+            }
+        ],
+        po: 0.5f
+    },
+    sp: "wildroots:wild_carrot",
+    ul: 2L,
+    um: 1L,
+    v: 1
+}

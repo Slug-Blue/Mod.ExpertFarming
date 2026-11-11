@@ -1,0 +1,41 @@
+{
+    disp: [
+        "cultivar.eastern_carrot",
+        "tooltip.lot.generation12",
+        "tooltip.lot.line_nameGolden Line",
+        "tooltip.lot.from_wild",
+        "tooltip.lot.pollination.bees"
+    ],
+    f: [
+        {
+            a: [L; 4684113345127665744L, 960781300351898696L, 3076L],
+            w: 1.0f
+        },
+        {
+            a: [L; 74753682486722901L, 2883588361817227338L, 536L],
+            w: 2.0f
+        },
+        {
+            a: [L; 4611844348120223765L, 874020486378422357L, 266L],
+            w: 3.0f
+        },
+        {
+            a: [L; 1538139252045649025L, 1342072691658596368L, 4145L],
+            d: 1b,
+            w: 4.0f
+        }
+    ],
+    fl: 9b,
+    g: {
+        a: [L; 76588965013356677L, 2954455936510461254L, 562L],
+        lh: -3539622408563365149L,
+        sp: "wildroots:wild_carrot",
+        v: 1
+    },
+    gen: 12,
+    id: 20015998343868L,
+    ln: "Golden Line",
+    po: 0.35f,
+    v: 1,
+    var: "wildroots:eastern_carrot"
+}
