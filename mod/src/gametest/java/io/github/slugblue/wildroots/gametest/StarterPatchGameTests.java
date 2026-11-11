@@ -34,6 +34,56 @@ public final class StarterPatchGameTests {
                 && be.data().passport().starter();
     }
 
+    /** Whether the wild plant at {@code p} already carries a realised genome (first server access happened). */
+    static boolean realised(ServerLevel level, BlockPos p) {
+        return level.getBlockEntity(p) instanceof PlantBlockEntity be && be.data() != null && be.data().genome() != null;
+    }
+
+    /** The surface plants of the patch whose passport origin is {@code origin} (all within the patch area). */
+    static List<BlockPos> patchOf(ServerLevel level, BlockPos origin) {
+        List<BlockPos> out = new ArrayList<>();
+        for (List<BlockPos> g : StarterPatch.existingPatches(level, origin, 0, 22)) {
+            for (BlockPos q : g) {
+                if (level.getBlockEntity(q) instanceof PlantBlockEntity be && be.data() != null
+                        && be.data().passport().patchOrigin() == origin.asLong()) {
+                    out.add(q);
+                }
+            }
+        }
+        return out;
+    }
+
+    /**
+     * A MARKED_EXISTING placement marked its patch: every plant with the
+     * patch's origin is starter, except plants whose genome was realised
+     * before (a bee visit or a lens look realises a wild plant; its genome is
+     * kept, {@code PlantBlockEntity#markStarter}). The patch is found by its
+     * passport origin, not as "the nearest patch": in a dense area another
+     * patch can lie nearer to the origin.
+     *
+     * <p>Order flake (salt 2, fix/gametest-order-flakes): the real search runs
+     * on natural patches near spawn, where the bees of their nests work from
+     * server start; the later the test runs, the more flowering plants are
+     * realised, and the old check "all plants of the nearest patch are
+     * starter" failed.
+     */
+    static void assertMarked(GameTestHelper helper, ServerLevel level, StarterPatch.Placement p) {
+        if (p.outcome() != Outcome.MARKED_EXISTING) {
+            List<List<BlockPos>> placed = StarterPatch.existingPatches(level, p.origin(), 0, 8);
+            helper.assertTrue(!placed.isEmpty() && placed.get(0).stream().allMatch(q -> starter(level, q)),
+                    "placed patch not starter: " + p);
+            return;
+        }
+        List<BlockPos> patch = patchOf(level, p.origin());
+        List<BlockPos> unmarked = patch.stream().filter(q -> !starter(level, q) && !realised(level, q)).toList();
+        long realisedCount = patch.stream().filter(q -> realised(level, q)).count();
+        LOG.info("WR-152 marked patch at {}: {} plants, {} starter, {} realised before marking",
+                p.origin(), patch.size(), patch.stream().filter(q -> starter(level, q)).count(), realisedCount);
+        helper.assertTrue(!patch.isEmpty(), "no plant with the patch origin " + p.origin());
+        helper.assertTrue(unmarked.isEmpty(), unmarked.size() + " unrealised plants of the marked patch " + p.origin()
+                + " are not starter: " + unmarked);
+    }
+
     /**
      * On server start the starter step ran once. A world reused from an
      * earlier run is an existing world: then no data file and no patch (the
@@ -113,9 +163,7 @@ public final class StarterPatchGameTests {
             helper.assertTrue(p.outcome().success(), "accepted columns but no patch: " + p + "; " + bestSurvey);
             helper.assertTrue(p.outcome() == Outcome.MARKED_EXISTING ? p.plants() >= 5
                     : p.plants() >= 10 && p.plants() <= 14, "plants " + p);
-            List<List<BlockPos>> patches = StarterPatch.existingPatches(level, p.origin(), 0, 8);
-            helper.assertTrue(!patches.isEmpty() && patches.get(0).stream().allMatch(q -> starter(level, q)),
-                    "patch not starter: " + p);
+            assertMarked(helper, level, p);
         } else {
             // no accepted column in the ring: the fallbacks may still place (an island spawn finds the
             // nearest land up to 160 blocks, GDD §11.2); seen with a spawn in the ocean (WR-195)
@@ -318,6 +366,37 @@ public final class StarterPatchGameTests {
             List<BlockPos> marked = StarterPatch.existingPatches(level, p.origin(), 0, 8).get(0);
             helper.assertTrue(marked.size() >= 5 && marked.stream().allMatch(q -> starter(level, q)),
                     "existing patch not marked starter");
+        } finally {
+            sky.clear();
+        }
+        helper.succeed();
+    }
+
+    /**
+     * Regression of the salt-2 order flake: a plant of an existing patch whose
+     * genome is already realised (as a bee visit does) keeps its genome and is
+     * not marked; the rest of the patch is, and {@link #assertMarked} accepts
+     * that. The old check (every plant starter) rejects it.
+     */
+    @GameTest(template = FLOOR, batch = "wr152_sky_existing_realised")
+    public static void existingPatchWithARealisedPlantIsMarkedAroundIt(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        SkyPlatform sky = SkyPlatform.build(helper, 14);
+        try {
+            BlockPos origin = sky.surface();
+            WildPatchFeature.Result r = WildPatchGameTests.place(level, origin, WildPatchGameTests.carrotConfig(level),
+                    WildPatchGameTests.TEST);
+            helper.assertTrue(r.placed() && r.plants().size() >= 5, "test patch not placed");
+            BlockPos visited = r.plants().get(0);
+            PlantBlockEntity be = (PlantBlockEntity) level.getBlockEntity(visited);
+            helper.assertTrue(be.live(level).isPresent() && realised(level, visited), "plant not realised");
+            StarterPatch.Placement p = StarterPatch.place(level, origin.offset(-30, 0, 0));
+            helper.assertTrue(p.outcome() == Outcome.MARKED_EXISTING, "outcome " + p);
+            helper.assertTrue(!starter(level, visited), "a realised plant was marked starter");
+            helper.assertTrue(r.plants().stream().filter(q -> !q.equals(visited)).allMatch(q -> starter(level, q)),
+                    "the unrealised plants were not marked");
+            helper.assertTrue(!r.plants().stream().allMatch(q -> starter(level, q)), "the old check would pass");
+            assertMarked(helper, level, p);
         } finally {
             sky.clear();
         }
