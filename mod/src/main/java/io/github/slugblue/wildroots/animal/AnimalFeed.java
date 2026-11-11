@@ -6,7 +6,6 @@ import io.github.slugblue.wildroots.core.safety.Guarded;
 import java.util.Map;
 import java.util.Optional;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.sounds.SoundEvents;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
@@ -112,27 +111,30 @@ public final class AnimalFeed {
         }
     }
 
-    /** Vanilla {@code Animal#mobInteract} for food, with the tag in place of {@code isFood}. */
+    /**
+     * Vanilla {@code Animal#mobInteract} for food, with the tag in place of
+     * {@code isFood}. The client cannot see the age (adults read 1, babies
+     * -1), so it predicts as vanilla does: success for a baby, consume for
+     * anyone else, and never falls through to riding or eating (review 1, M1).
+     * The server takes the item for an adult that cannot breed now too, so a
+     * saddled pig is not mounted, as with vanilla food; nothing is spent then.
+     */
     static InteractionResult feed(Animal a, Player player, ItemStack stack) {
+        if (a.level().isClientSide()) {
+            return a.isBaby() ? InteractionResult.SUCCESS : InteractionResult.CONSUME;
+        }
         int age = a.getAge();
-        boolean client = a.level().isClientSide();
         if (age == 0 && a.canFallInLove()) {
-            if (!client) {
-                spend(player, stack);
-                a.setInLove(player);
-                a.playSound(SoundEvents.GENERIC_EAT, 1.0f, 1.0f);
-            }
-            return InteractionResult.sidedSuccess(client);
+            spend(player, stack);
+            a.setInLove(player);
+            return InteractionResult.SUCCESS;
         }
         if (a.isBaby()) {
-            if (!client) {
-                spend(player, stack);
-                a.ageUp(Animal.getSpeedUpSecondsWhenFeeding(-age), true);
-                a.playSound(SoundEvents.GENERIC_EAT, 1.0f, 1.0f);
-            }
-            return InteractionResult.sidedSuccess(client);
+            spend(player, stack);
+            a.ageUp(Animal.getSpeedUpSecondsWhenFeeding(-age), true);
+            return InteractionResult.SUCCESS;
         }
-        return InteractionResult.PASS;
+        return InteractionResult.CONSUME;
     }
 
     static void spend(Player player, ItemStack stack) {

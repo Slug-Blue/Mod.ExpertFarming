@@ -57,9 +57,14 @@ public final class AnimalFeedGameTests {
             helper.assertTrue(p.interactOn(adult, InteractionHand.MAIN_HAND).consumesAction(), "adult refused");
             helper.assertTrue(adult.isInLove(), "adult not in love");
             helper.assertTrue(p.getItemInHand(InteractionHand.MAIN_HAND).getCount() == 2, "item not spent");
-            // in love already: refused, nothing spent
-            helper.assertTrue(!p.interactOn(adult, InteractionHand.MAIN_HAND).consumesAction()
+            // in love already: the click is taken (no ride, no eating), nothing is spent
+            helper.assertTrue(p.interactOn(adult, InteractionHand.MAIN_HAND).consumesAction()
                     && p.getItemInHand(InteractionHand.MAIN_HAND).getCount() == 2, "fed while in love");
+            if (adult instanceof net.minecraft.world.entity.animal.Pig pig) {
+                pig.equipSaddle(null);
+                p.interactOn(pig, InteractionHand.MAIN_HAND);
+                helper.assertTrue(p.getVehicle() == null, "feed on a saddled pig in love mounted it");
+            }
 
             int before = baby.getAge();
             helper.assertTrue(p.interactOn(baby, InteractionHand.MAIN_HAND).consumesAction(), "baby refused");
