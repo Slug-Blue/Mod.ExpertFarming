@@ -13,7 +13,7 @@ All four atlases are in `assets/wildroots/textures/gui/journal/`. The spec puts 
 | `journal_scene.png` | 64 × 32 | scene billboards 16 × 16, label callout 9-slice |
 | `trait_bar.png` | 64 × 32 | trait bar segments 6 × 5 and flag icons 9 × 9 (shared with the lens panel; whoever moves `TraitBar` to sprites may move the file to `textures/gui/`) |
 
-All four files are indexed-colour PNGs with tRNS alpha, about 14.3 KiB together (the budget is 80 KiB). Unused atlas space is transparent. Use `blit(..., 512, 512)` for `journal.png`, and pass the matching size for each of the others.
+All four files are 8-bit RGBA PNGs with no metadata chunks, as `AssetIntegrityTest` requires. Together they take 23.5 KiB (the budget is 80 KiB). That test also requires every texture to be 16 px wide, a rule written for block and item tiles. GUI atlases cannot meet it, so the test needs an exemption for `textures/gui/`. Unused atlas space is transparent. Use `blit(..., 512, 512)` for `journal.png`, and pass the matching size for each of the others.
 
 ## Book geometry (`spread`, 288 × 180)
 
