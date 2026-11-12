@@ -1,0 +1,7 @@
+{
+  "id": "guide.start", "category": "first_steps", "icon": "wildroots:seed_lot", "order": 10,
+  "unlock": [],
+  "pages": [
+    { "type": "text", "text": "wildroots.journal.guide.start.1" }
+  ]
+}

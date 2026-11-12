@@ -95,7 +95,7 @@ public final class DefinitionLoader {
      *
      * @throws IOException on malformed JSON
      */
-    static int jsonDepth(String text, int limit) throws IOException {
+    public static int jsonDepth(String text, int limit) throws IOException {
         int depth = 0;
         int max = 0;
         try (JsonReader r = new JsonReader(new StringReader(text))) {
