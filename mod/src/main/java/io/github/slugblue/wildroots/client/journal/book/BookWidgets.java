@@ -22,11 +22,12 @@ public final class BookWidgets {
     private BookWidgets() {
     }
 
+    /** Hover / keyboard focus ring of the art (9-slice). */
     static void focusFrame(GuiGraphics g, int x, int y, int w, int h) {
-        g.renderOutline(x, y, w, h, JournalColors.FOCUS);
+        JournalAtlas.nineSlice(g, JournalAtlas.FOCUS, JournalAtlas.FOCUS_BORDER, x, y, w, h);
     }
 
-    /** A 16 × 16 sprite button of the atlas. */
+    /** A sprite button of the atlas, sized by its sprite (16 px navigation, 12 px header and scene buttons). */
     public static final class SpriteButton extends AbstractButton {
 
         private final JournalAtlas.Button sprite;
@@ -34,7 +35,7 @@ public final class BookWidgets {
 
         public SpriteButton(int x, int y, JournalAtlas.Button sprite, Component tooltip, boolean enabled,
                             Runnable action) {
-            super(x, y, BookGeometry.BUTTON, BookGeometry.BUTTON, tooltip);
+            super(x, y, sprite.size, sprite.size, tooltip);
             this.sprite = sprite;
             this.action = action;
             this.active = enabled;
@@ -69,7 +70,8 @@ public final class BookWidgets {
     /** A category tab on the left edge: 16 × 20 visible, a 12 px icon, a dot when it holds something new. */
     public static final class TabButton extends AbstractButton {
 
-        static final int VISIBLE_W = 16;
+        /** The hit area: the part that sticks out left of the book. */
+        static final int VISIBLE_W = BookGeometry.TABS_OUT;
         private final BookIcon icon;
         private final boolean selected;
         private final boolean isNew;
@@ -89,14 +91,30 @@ public final class BookWidgets {
             action.run();
         }
 
+        public boolean selected() {
+            return selected;
+        }
+
+        /**
+         * The tab itself, drawn by the screen before the spread so that its
+         * right 12 px go under the cover (art doc); the selected tab is drawn
+         * over the spread in {@link #renderWidget} and joins the page.
+         */
+        public void renderBack(GuiGraphics g) {
+            if (!selected) {
+                JournalAtlas.tab(g, isHoveredOrFocused() ? JournalAtlas.TabState.HOVERED : JournalAtlas.TabState.NORMAL,
+                        getX(), getY());
+            }
+        }
+
         @Override
         protected void renderWidget(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-            JournalAtlas.TabState s = selected ? JournalAtlas.TabState.SELECTED
-                    : isHoveredOrFocused() ? JournalAtlas.TabState.HOVERED : JournalAtlas.TabState.NORMAL;
-            JournalAtlas.tab(g, s, getX(), getY(), VISIBLE_W);
-            icon.draw(g, getX() + 2, getY() + 4, 12);
+            if (selected) {
+                JournalAtlas.tab(g, JournalAtlas.TabState.SELECTED, getX(), getY());
+            }
+            icon.draw(g, getX() + 4, getY() + 2, 16);
             if (isNew) {
-                JournalAtlas.blit(g, JournalAtlas.NEW_DOT, getX() + 1, getY() + 1);
+                JournalAtlas.blit(g, JournalAtlas.NEW_DOT, getX(), getY());
             }
             if (isFocused()) {
                 focusFrame(g, getX(), getY(), width, height);

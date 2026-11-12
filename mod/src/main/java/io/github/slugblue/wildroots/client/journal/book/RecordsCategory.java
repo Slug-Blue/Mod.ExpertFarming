@@ -1,11 +1,9 @@
 package io.github.slugblue.wildroots.client.journal.book;
 
 import io.github.slugblue.wildroots.client.JournalPages;
-import io.github.slugblue.wildroots.core.Ids;
 import io.github.slugblue.wildroots.journal.JournalData;
 import java.util.List;
 import java.util.Optional;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 
@@ -17,20 +15,21 @@ import net.minecraftforge.api.distmarker.OnlyIn;
  */
 @OnlyIn(Dist.CLIENT)
 public enum RecordsCategory {
-    SPECIES(JournalPages.Tab.SPECIES, "species", "wild_carrot_root"),
-    CULTIVARS(JournalPages.Tab.CULTIVARS, "cultivar", "eastern_carrot"),
-    LINES(JournalPages.Tab.LINES, "cultivar", "carrot"),
-    NOTES(JournalPages.Tab.NOTES, "hint", "field_journal"),
-    BREEDER(JournalPages.Tab.BREEDER, "note", "seed_lot");
+    SPECIES(JournalPages.Tab.SPECIES, "species", "species"),
+    CULTIVARS(JournalPages.Tab.CULTIVARS, "cultivar", "cultivars"),
+    LINES(JournalPages.Tab.LINES, "cultivar", "lines"),
+    NOTES(JournalPages.Tab.NOTES, "hint", "notes"),
+    BREEDER(JournalPages.Tab.BREEDER, "note", "notes");
 
     public final JournalPages.Tab tab;
     private final String kind;
-    public final ResourceLocation icon;
+    /** A {@code gui:} icon of {@link JournalAtlas#ICONS}. */
+    public final String icon;
 
     RecordsCategory(JournalPages.Tab tab, String kind, String icon) {
         this.tab = tab;
         this.kind = kind;
-        this.icon = Ids.mod(icon);
+        this.icon = icon;
     }
 
     public String titleKey() {

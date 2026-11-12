@@ -1,85 +1,134 @@
 package io.github.slugblue.wildroots.client.journal.book;
 
 import io.github.slugblue.wildroots.core.Ids;
+import java.util.List;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 
 /**
- * Texture paths and the UV layout of the journal atlas (journal v2 §4.5),
- * the contract with the Technical Artist (WR-181h). The atlas shipped
- * with WR-181b is a temporary drawing in this exact layout.
- *
- * <pre>
- * textures/gui/journal.png, 512 × 512
- *   (0,0)     288 × 180  spread: cover, two pages, spine
- *   (0,180)   288 × 16   navigation strip
- *   (0,200)   24 × 20 ×3 tab: normal, hovered, selected (only the left 16 px show)
- *   (72,200)  12 × 16 ×2 bookmark ribbon: normal, hovered
- *   (96,200)  4 × 4      "new" dot
- *   (104,200) 8 × 8      hover/focus frame, 9-slice, border 1
- *   (0,224)   16 × 16    buttons, one column each in {@link Button} order;
- *                        rows: y 224 normal, 240 hovered, 256 disabled
- *   (0,272)   32 × 16    search field, 9-slice, border 3
- *   (32,272)  32 × 32    scene window frame, 9-slice, border 4
- *   (64,272)  64 × 4     slider track; (128,272) 6 × 6 step dot; (136,272) 8 × 10 thumb
- *   (160,272) 8 × 8 ×4   2D frame arrows: right, down, left, up
- * textures/gui/journal_icons.png, 256 × 256: 16 × 16 cells, row by row, in {@link #ICON_SPRITES} order
- * textures/gui/journal_scene.png: scene billboards (WR-181k)
- * textures/gui/trait_bar.png: trait bar segments and flag icons (shared with the lens panel)
- * </pre>
+ * Texture paths and UVs of the journal art (WR-181h), as fixed by
+ * {@code docs/design/journal-v2-art.md}: four atlases in
+ * {@code textures/gui/journal/}. The symbolic names are the API the pages
+ * and the scene engine use; the numbers follow the art doc.
  */
 @OnlyIn(Dist.CLIENT)
 public final class JournalAtlas {
 
-    public static final ResourceLocation TEXTURE = Ids.mod("textures/gui/journal.png");
-    public static final ResourceLocation ICONS = Ids.mod("textures/gui/journal_icons.png");
-    public static final ResourceLocation SCENE = Ids.mod("textures/gui/journal_scene.png");
-    public static final ResourceLocation TRAIT_BAR = Ids.mod("textures/gui/trait_bar.png");
+    public static final ResourceLocation TEXTURE = Ids.mod("textures/gui/journal/journal.png");
+    public static final ResourceLocation ICONS = Ids.mod("textures/gui/journal/journal_icons.png");
+    public static final ResourceLocation SCENE = Ids.mod("textures/gui/journal/journal_scene.png");
+    public static final ResourceLocation TRAIT_BAR = Ids.mod("textures/gui/journal/trait_bar.png");
+    /** {@link #TEXTURE} is {@value} × {@value}. */
     public static final int SIZE = 512;
-    public static final int ICONS_SIZE = 256;
+    /** {@link #ICONS} is {@value} × {@value}. */
+    public static final int ICONS_SIZE = 64;
+    public static final int SCENE_W = 64;
+    public static final int SCENE_H = 32;
+    public static final int TRAIT_BAR_W = 64;
+    public static final int TRAIT_BAR_H = 32;
 
-    /** A rectangle of the atlas. */
+    /** A rectangle of {@link #TEXTURE}. */
     public record Sprite(int u, int v, int width, int height) {
+
+        /** The same size, {@code du, dv} further: the next state of a multi-state sprite. */
+        public Sprite offset(int du, int dv) {
+            return new Sprite(u + du, v + dv, width, height);
+        }
     }
 
     public static final Sprite SPREAD = new Sprite(0, 0, 288, 180);
-    public static final Sprite NAV = new Sprite(0, 180, 288, 16);
-    public static final Sprite TAB = new Sprite(0, 200, 24, 20);
-    public static final Sprite RIBBON = new Sprite(72, 200, 12, 16);
-    public static final Sprite NEW_DOT = new Sprite(96, 200, 4, 4);
-    public static final Sprite FOCUS = new Sprite(104, 200, 8, 8);
-    public static final Sprite SEARCH_FIELD = new Sprite(0, 272, 32, 16);
-    public static final Sprite SCENE_FRAME = new Sprite(32, 272, 32, 32);
-    public static final Sprite SLIDER_TRACK = new Sprite(64, 272, 64, 4);
-    public static final Sprite SLIDER_DOT = new Sprite(128, 272, 6, 6);
-    public static final Sprite SLIDER_THUMB = new Sprite(136, 272, 8, 10);
-    public static final Sprite ARROWS = new Sprite(160, 272, 8, 8);
+    public static final Sprite NAV = new Sprite(0, 184, 288, 16);
+    /** Tab, normal; hovered and selected are the next cells to the right (+24 u). */
+    public static final Sprite TAB = new Sprite(292, 0, 24, 20);
+    /** Bookmark ribbon, normal; hovered +12 u. */
+    public static final Sprite RIBBON = new Sprite(364, 0, 12, 16);
+    public static final Sprite NEW_DOT = new Sprite(388, 0, 7, 7);
+    /** Hover and keyboard focus ring, 9-slice, border {@value #FOCUS_BORDER}. */
+    public static final Sprite FOCUS = new Sprite(382, 176, 6, 6);
+    public static final int FOCUS_BORDER = 2;
+    /** Search field, 9-slice, border 3; focused +24 u; text at +4, +3. */
+    public static final Sprite SEARCH_FIELD = new Sprite(328, 72, 24, 14);
+    public static final Sprite SEARCH_FIELD_FOCUSED = new Sprite(352, 72, 24, 14);
+    /** Scene window frame, 9-slice, border {@value #SCENE_FRAME_BORDER}, drawn on the window grown by 4. */
+    public static final Sprite SCENE_FRAME = new Sprite(292, 176, 16, 16);
+    public static final int SCENE_FRAME_BORDER = 4;
+    /** Optional sky behind a scene; stretched. */
+    public static final Sprite SCENE_BACKDROP = new Sprite(312, 176, 16, 16);
+    /** Slider track, tiled horizontally: empty (ahead) and filled (passed). */
+    public static final Sprite SLIDER_TRACK = new Sprite(292, 164, 8, 3);
+    public static final Sprite SLIDER_TRACK_FILLED = new Sprite(300, 164, 8, 3);
+    /** Step dots, 7 × 7, centre at +3, +3. */
+    public static final Sprite SLIDER_DOT_PAST = new Sprite(310, 162, 7, 7);
+    public static final Sprite SLIDER_DOT = new Sprite(318, 162, 7, 7);
+    public static final Sprite SLIDER_DOT_FUTURE = new Sprite(326, 162, 7, 7);
+    public static final Sprite SLIDER_DOT_HOVER = new Sprite(334, 162, 7, 7);
+    /** Slider handle 5 × 9, centre x at +2; hovered +6 u, disabled +12 u. */
+    public static final Sprite SLIDER_THUMB = new Sprite(344, 161, 5, 9);
+    /** 2D frame arrows 8 × 8, ink: right; down, left, up, loop are the next cells (+8 u each). */
+    public static final Sprite ARROWS = new Sprite(332, 176, 8, 8);
+    /** Current step in the 2D frame, 9-slice, border 2. */
+    public static final Sprite FRAME_HIGHLIGHT = new Sprite(372, 176, 8, 8);
 
     /** Tab states, by column. */
     public enum TabState {
         NORMAL, HOVERED, SELECTED
     }
 
-    /** Button states, by row. */
+    /** Button states, by row. {@link #ACTIVE} exists only for the scene controls (a toggle that is on). */
     public enum State {
-        NORMAL, HOVERED, DISABLED
+        NORMAL, HOVERED, DISABLED, ACTIVE
     }
 
-    /** Buttons, by column (16 px each). */
-    public enum Button {
-        UP, PREV, NEXT, BACK, FORWARD, HOME, STAR_FULL, STAR_EMPTY, SEARCH,
-        PLAY, PAUSE, STEP_BACK, STEP_FORWARD, RESTART, RESET_VIEW, FLAT, STEP;
+    /** The 2D frame arrows, in atlas order. */
+    public enum Arrow {
+        RIGHT, DOWN, LEFT, UP, LOOP;
 
-        public Sprite sprite(State state) {
-            return new Sprite(ordinal() * 16, 224 + state.ordinal() * 16, 16, 16);
+        public Sprite sprite() {
+            return ARROWS.offset(ordinal() * 8, 0);
         }
     }
 
-    /** {@code gui:<name>} icons of categories, in cell order of {@link #ICONS}. */
-    public static final java.util.List<String> ICON_SPRITES = java.util.List.of(
-            "first_steps", "plant", "selection", "cultivars");
+    /**
+     * Buttons: navigation 16 × 16 (rows 16 apart), header buttons 12 × 12
+     * (rows 12 apart), scene controls 12 × 12 (rows 12 apart, with an
+     * {@code ACTIVE} row). {@link #STEP} is the current-step dot of the
+     * slider, one cell for every state.
+     */
+    public enum Button {
+        BACK(292, 24, 16, 16, false), PREV(308, 24, 16, 16, false), HOME(324, 24, 16, 16, false),
+        NEXT(340, 24, 16, 16, false), FORWARD(356, 24, 16, 16, false), SEARCH(372, 24, 16, 16, false),
+        UP(292, 72, 12, 12, false), STAR_EMPTY(304, 72, 12, 12, false), STAR_FULL(316, 72, 12, 12, false),
+        STEP_BACK(292, 112, 12, 12, true), PLAY(304, 112, 12, 12, true), PAUSE(316, 112, 12, 12, true),
+        STEP_FORWARD(328, 112, 12, 12, true), RESTART(340, 112, 12, 12, true), RESET_VIEW(352, 112, 12, 12, true),
+        FLAT(364, 112, 12, 12, true), STEP(318, 162, 7, 0, false);
+
+        private final int u;
+        private final int v;
+        public final int size;
+        private final int rowStep;
+        private final boolean hasActive;
+
+        Button(int u, int v, int size, int rowStep, boolean hasActive) {
+            this.u = u;
+            this.v = v;
+            this.size = size;
+            this.rowStep = rowStep;
+            this.hasActive = hasActive;
+        }
+
+        public Sprite sprite(State state) {
+            State s = state == State.ACTIVE && !hasActive ? State.NORMAL : state;
+            return new Sprite(u, v + s.ordinal() * rowStep, size, size);
+        }
+    }
+
+    /** {@code gui:<name>} icons of {@link #ICONS}, 16 × 16, row by row (4 a row). */
+    public static final List<String> ICON_SPRITES = List.of(
+            "first_steps", "plant", "traits", "pollination",
+            "cultivars", "species", "lines", "notes",
+            "contents", "bookmarks", "search", "unknown");
 
     private JournalAtlas() {
     }
@@ -93,8 +142,8 @@ public final class JournalAtlas {
         g.blit(TEXTURE, x, y, s.u(), s.v(), Math.min(w, s.width()), Math.min(h, s.height()), SIZE, SIZE);
     }
 
-    public static void tab(GuiGraphics g, TabState state, int x, int y, int visibleWidth) {
-        g.blit(TEXTURE, x, y, TAB.u() + state.ordinal() * TAB.width(), TAB.v(), visibleWidth, TAB.height(), SIZE, SIZE);
+    public static void tab(GuiGraphics g, TabState state, int x, int y) {
+        blit(g, TAB.offset(state.ordinal() * TAB.width(), 0), x, y);
     }
 
     /** Stretches a 9-slice sprite with a border of {@code b} px over {@code w × h}. */

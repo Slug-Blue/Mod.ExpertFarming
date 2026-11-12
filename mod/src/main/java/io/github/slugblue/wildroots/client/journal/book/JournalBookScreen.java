@@ -268,13 +268,13 @@ public final class JournalBookScreen extends Screen implements PageContext {
             }
             if (rc.visible(entries)) {
                 boolean sel = location.kind() == BookLocation.Kind.RECORDS && location.id().equals(rc.name());
-                addRenderableWidget(new BookWidgets.TabButton(geo.tabX(), geo.tabY(t++), BookIcon.item(rc.icon),
+                addRenderableWidget(new BookWidgets.TabButton(geo.tabX(), geo.tabY(t++), BookIcon.sprite(rc.icon),
                         Component.translatable(rc.titleKey()), sel, rc.hasNew(entries),
                         () -> jump(BookLocation.records(rc))));
             }
         }
         if (location.kind() != BookLocation.Kind.CONTENTS) {
-            addRenderableWidget(new BookWidgets.SpriteButton(geo.x() + BookGeometry.INSET - 4, geo.headerY() - 4,
+            addRenderableWidget(new BookWidgets.SpriteButton(geo.x() + BookGeometry.INSET - 2, geo.headerY() - 2,
                     JournalAtlas.Button.UP, Component.translatable("wildroots.journal.ui.up"), true, this::up));
         }
         int ny = geo.navY();
@@ -375,6 +375,11 @@ public final class JournalBookScreen extends Screen implements PageContext {
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         renderBackground(g);
+        for (var c : children()) {
+            if (c instanceof BookWidgets.TabButton t) {
+                t.renderBack(g);
+            }
+        }
         JournalAtlas.blit(g, JournalAtlas.SPREAD, geo.x(), geo.y());
         JournalAtlas.blit(g, JournalAtlas.NAV, geo.x(), geo.navY());
         int tx = geo.x() + BookGeometry.INSET + (location.kind() == BookLocation.Kind.CONTENTS ? 0 : 14);

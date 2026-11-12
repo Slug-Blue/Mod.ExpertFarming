@@ -57,7 +57,7 @@ final class BookPages {
     static List<LaidOutPage> contents(GuideUnlocks unlocks, List<JournalData.Entry> entries,
                                       Consumer<BookLocation> jump) {
         List<ListPageView.Item> left = new ArrayList<>();
-        left.add(new ListPageView.Heading(heading("wildroots.journal.ui.guide")));
+        left.add(new ListPageView.Heading(heading("wildroots.journal.group.guide")));
         for (GuideCategory c : unlocks.openCategories()) {
             left.add(new ListPageView.Row(BookIcon.of(c.icon()), Component.translatable(c.titleKey()), Component.empty(),
                     unlocks.isNew(c), false, () -> jump.accept(BookLocation.category(c.id()))));
@@ -78,7 +78,7 @@ final class BookPages {
         }
 
         List<ListPageView.Item> right = new ArrayList<>();
-        right.add(new ListPageView.Heading(heading("wildroots.journal.ui.records")));
+        right.add(new ListPageView.Heading(heading("wildroots.journal.group.records")));
         boolean anyRecords = false;
         for (RecordsCategory rc : RecordsCategory.values()) {
             if (!rc.visible(entries)) {
@@ -88,7 +88,7 @@ final class BookPages {
             RecordsCategory.Count n = rc.count(entries);
             Component count = n.total().<Component>map(t -> Component.translatable("wildroots.journal.ui.count_of",
                     n.shown(), t)).orElse(Component.literal(Integer.toString(n.shown())));
-            right.add(new ListPageView.Row(BookIcon.item(rc.icon), Component.translatable(rc.titleKey()), count,
+            right.add(new ListPageView.Row(BookIcon.sprite(rc.icon), Component.translatable(rc.titleKey()), count,
                     rc.hasNew(entries), false, () -> jump.accept(BookLocation.records(rc))));
         }
         if (!anyRecords) {

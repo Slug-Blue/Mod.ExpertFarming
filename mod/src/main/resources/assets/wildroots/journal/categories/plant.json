@@ -1,1 +1,1 @@
-{ "id": "plant", "icon": "wildroots:mother_root", "group": "guide", "order": 20 }
+{ "id": "plant", "icon": "gui:plant", "group": "guide", "order": 20 }

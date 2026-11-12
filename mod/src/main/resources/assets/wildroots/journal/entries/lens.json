@@ -1,9 +1,25 @@
 {
-  "id": "guide.lens", "category": "lens", "icon": "wildroots:hand_lens", "order": 10,
+  "id": "guide.lens",
+  "category": "lens",
+  "icon": "wildroots:hand_lens",
+  "order": 10,
   "unlock": [],
-  "items": ["wildroots:hand_lens"],
+  "items": [
+    "wildroots:hand_lens"
+  ],
   "pages": [
-    { "type": "crafting", "recipe": "wildroots:hand_lens" },
-    { "type": "text", "text": "wildroots.journal.tool.hand_lens" }
+    {
+      "type": "crafting",
+      "recipe": "wildroots:hand_lens",
+      "text": "wildroots.journal.guide.lens.1"
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.tool.hand_lens"
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.lens.3"
+    }
   ]
 }

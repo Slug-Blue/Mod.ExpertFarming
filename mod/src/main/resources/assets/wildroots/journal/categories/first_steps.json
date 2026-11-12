@@ -1,1 +1,1 @@
-{ "id": "first_steps", "icon": "wildroots:field_journal", "group": "guide", "order": 10 }
+{ "id": "first_steps", "icon": "gui:first_steps", "group": "guide", "order": 10 }

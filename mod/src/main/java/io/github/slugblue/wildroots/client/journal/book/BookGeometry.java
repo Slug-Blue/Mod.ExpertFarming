@@ -23,13 +23,19 @@ public record BookGeometry(int x, int y) {
     public static final int TABS_OUT = 12;
     public static final int NAV_H = 16;
     public static final int TOTAL_W = SPREAD_W + TABS_OUT;
-    public static final int TOTAL_H = SPREAD_H + NAV_H + 4;
+    /** The navigation strip starts {@value} px below the spread's top (art doc: nav_bar at (0, 182)). */
+    public static final int NAV_Y = 182;
+    public static final int TOTAL_H = NAV_Y + NAV_H + 2;
     /** Half of the spread, spine included. */
     public static final int HALF_W = SPREAD_W / 2;
-    /** Text inset of a page from its half's edge. */
-    public static final int INSET = 14;
-    /** Inset of a page over the whole spread. */
+    /** Text area of the left page from the spread's left edge (art doc: (16, 20)). */
+    public static final int INSET = 16;
+    /** Text area of the right page from the spread's left edge (art doc: (156, 20)). */
+    public static final int RIGHT_X = 156;
+    /** A page over the whole spread: x from the spread's left edge. */
     public static final int SPREAD_INSET = 12;
+    /** A page over the whole spread: y from the spread's top (the scene frame's top edge, art doc). */
+    public static final int SPREAD_Y = 18;
     public static final int HEADER_Y = 7;
     public static final int CONTENT_Y = 20;
     public static final int TAB_H = 20;
@@ -47,16 +53,16 @@ public record BookGeometry(int x, int y) {
     }
 
     public PageRect right() {
-        return new PageRect(x + HALF_W + INSET, y + CONTENT_Y, PageRect.HALF_WIDTH, PageRect.HEIGHT);
+        return new PageRect(x + RIGHT_X, y + CONTENT_Y, PageRect.HALF_WIDTH, PageRect.HEIGHT);
     }
 
     public PageRect spread() {
-        return new PageRect(x + SPREAD_INSET, y + CONTENT_Y, PageRect.SPREAD_WIDTH, PageRect.HEIGHT);
+        return new PageRect(x + SPREAD_INSET, y + SPREAD_Y, PageRect.SPREAD_WIDTH, PageRect.SPREAD_HEIGHT);
     }
 
     /** Top of the navigation strip. */
     public int navY() {
-        return y + SPREAD_H;
+        return y + NAV_Y;
     }
 
     public int headerY() {

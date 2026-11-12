@@ -23,6 +23,11 @@ public record BookIcon(ItemStack stack, String sprite) {
         return icon.sprite().map(s -> new BookIcon(ItemStack.EMPTY, s)).orElse(NONE);
     }
 
+    /** A {@code gui:} icon of {@link JournalAtlas#ICONS}. */
+    public static BookIcon sprite(String name) {
+        return new BookIcon(ItemStack.EMPTY, name);
+    }
+
     public static BookIcon item(ResourceLocation id) {
         Item item = ForgeRegistries.ITEMS.getValue(id);
         return item == null || item == Items.AIR ? NONE : new BookIcon(new ItemStack(item), null);

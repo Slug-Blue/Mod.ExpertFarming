@@ -1,8 +1,20 @@
 {
-  "id": "guide.journal", "category": "first_steps", "icon": "wildroots:field_journal", "order": 20,
+  "id": "guide.journal",
+  "category": "first_steps",
+  "icon": "wildroots:field_journal",
+  "order": 20,
   "unlock": [],
-  "items": ["wildroots:field_journal"],
+  "items": [
+    "wildroots:field_journal"
+  ],
   "pages": [
-    { "type": "text", "text": "wildroots.journal.guide.journal.1" }
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.journal.1"
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.journal.2"
+    }
   ]
 }
