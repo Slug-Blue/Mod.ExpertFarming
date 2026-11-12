@@ -70,6 +70,11 @@ public final class GuideUnlocks {
         this(book, journal, showAll, p -> true);
     }
 
+    /** Whether the journal holds {@code journalId} (not a silhouette), e.g. {@code tool.hand_lens}. */
+    public boolean has(String journalId) {
+        return flags.containsKey(journalId);
+    }
+
     public GuideBook book() {
         return book;
     }

@@ -7,6 +7,9 @@
   "items": [
     "wildroots:hand_lens"
   ],
+  "see_also": [
+    "guide.traits"
+  ],
   "pages": [
     {
       "type": "crafting",
@@ -14,8 +17,10 @@
       "text": "wildroots.journal.guide.lens.1"
     },
     {
-      "type": "text",
-      "text": "wildroots.journal.tool.hand_lens"
+      "type": "spotlight",
+      "item": "wildroots:hand_lens",
+      "text": "wildroots.journal.tool.hand_lens",
+      "owned_badge": true
     },
     {
       "type": "text",

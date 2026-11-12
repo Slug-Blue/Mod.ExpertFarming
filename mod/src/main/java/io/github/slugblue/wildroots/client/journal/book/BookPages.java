@@ -149,7 +149,9 @@ final class BookPages {
      * as text (each block a heading and paragraphs), tagged with the entry
      * they show so that showing them marks them read.
      */
-    static List<LaidOutPage> records(Font font, RecordsCategory rc, List<JournalData.Entry> entries) {
+    static List<LaidOutPage> records(io.github.slugblue.wildroots.client.journal.page.PageContext ctx,
+                                     RecordsCategory rc, List<JournalData.Entry> entries) {
+        Font font = ctx.font();
         List<io.github.slugblue.wildroots.client.journal.book.Paginator.Block<TextLayout.Line>> blocks =
                 new ArrayList<>();
         for (JournalPages.Block b : JournalPages.blocks(rc.tab, entries)) {
@@ -162,6 +164,6 @@ final class BookPages {
             blocks.add(TextLayout.block(font, Component.translatable("wildroots.journal.ui.empty"), PageRect.HALF_WIDTH,
                     false, null));
         }
-        return TextLayout.textPages(blocks);
+        return TextLayout.textPages(blocks, ctx);
     }
 }

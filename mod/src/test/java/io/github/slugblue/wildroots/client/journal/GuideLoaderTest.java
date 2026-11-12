@@ -335,6 +335,26 @@ class GuideLoaderTest {
                 || rl.getNamespace().equals("minecraft"));
         assertEquals(List.of(), r.log());
         assertTrue(r.book().entry("guide.start").isPresent());
+        assertEquals(15, r.book().entries().size(), "the 15 M1a entries (§4.1)");
+        // unlock only on ids the server can send (§5.7): known hints, species/cultivar kinds, tools with an item
+        List<String> unlocks = new ArrayList<>();
+        for (GuideEntry e : r.book().entries()) {
+            unlocks.addAll(e.unlock());
+            e.pages().forEach(p -> unlocks.addAll(p.unlock()));
+            for (String s : e.seeAlso()) {
+                assertTrue(r.book().entry(s).isPresent(), e.id() + " sees also unknown " + s);
+            }
+        }
+        for (String u : unlocks) {
+            boolean ok = u.startsWith("hint.") && io.github.slugblue.wildroots.journal.JournalHints
+                    .line(u.substring(5)).isPresent()
+                    || u.equals("species.*") || u.equals("cultivar.*")
+                    || u.startsWith("tool.") && models.contains("wildroots:" + u.substring(5));
+            assertTrue(ok, "unlock id the server never sends: " + u);
+        }
+        for (String h : r.book().hintLinks().keySet()) {
+            assertTrue(io.github.slugblue.wildroots.journal.JournalHints.line(h.substring(5)).isPresent(), h);
+        }
     }
 
     @Test

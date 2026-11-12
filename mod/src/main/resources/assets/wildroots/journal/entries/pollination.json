@@ -1,0 +1,32 @@
+{
+  "id": "guide.pollination",
+  "category": "breeding",
+  "icon": "minecraft:beehive",
+  "order": 20,
+  "unlock": [
+    "hint.plant_together",
+    "hint.bees"
+  ],
+  "items": [
+    "minecraft:beehive"
+  ],
+  "see_also": [
+    "guide.inbreeding",
+    "guide.cycle"
+  ],
+  "pages": [
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.pollination.1"
+    },
+    {
+      "type": "spotlight",
+      "item": "minecraft:beehive",
+      "text": "wildroots.journal.guide.pollination.2"
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.pollination.3"
+    }
+  ]
+}

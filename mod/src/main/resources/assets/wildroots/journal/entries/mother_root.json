@@ -1,0 +1,27 @@
+{
+  "id": "guide.mother_root",
+  "category": "plant",
+  "icon": "wildroots:mother_root",
+  "order": 20,
+  "unlock": [
+    "hint.mother_plant"
+  ],
+  "items": [
+    "wildroots:mother_root"
+  ],
+  "see_also": [
+    "guide.cycle",
+    "guide.lens"
+  ],
+  "pages": [
+    {
+      "type": "spotlight",
+      "item": "wildroots:mother_root",
+      "text": "wildroots.journal.hint.mother_plant"
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.mother_root.2"
+    }
+  ]
+}

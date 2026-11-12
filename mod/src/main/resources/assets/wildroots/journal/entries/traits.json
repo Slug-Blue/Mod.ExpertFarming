@@ -1,0 +1,27 @@
+{
+  "id": "guide.traits",
+  "category": "lens",
+  "icon": "wildroots:hand_lens",
+  "order": 20,
+  "unlock": [
+    "tool.hand_lens"
+  ],
+  "see_also": [
+    "guide.colors",
+    "guide.cultivars"
+  ],
+  "pages": [
+    {
+      "type": "trait_legend",
+      "example": [
+        4,
+        3,
+        2,
+        3,
+        3,
+        2,
+        2
+      ]
+    }
+  ]
+}

@@ -2,7 +2,6 @@ package io.github.slugblue.wildroots.client.journal.page;
 
 import io.github.slugblue.wildroots.client.journal.GuidePage;
 import io.github.slugblue.wildroots.client.journal.JournalColors;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,8 +13,8 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 
 /**
  * The client page types (journal v2 §3), by the {@code type} of the JSON
- * page. {@code text} is built in (WR-181b); {@code spotlight},
- * {@code crafting}, {@code links} come with WR-181c, {@code trait_legend}
+ * page. {@code text}, {@code spotlight}, {@code crafting}, {@code links}
+ * are built in (WR-181b, WR-181c), {@code trait_legend}
  * with WR-181d, {@code scene} with the scene engine (WR-181k), which
  * registers it in client setup:
  * {@code PageTypes.register(ScenePage.TYPE, ScenePage.class, new ScenePageType())}.
@@ -34,10 +33,23 @@ public final class PageTypes {
     private static final Map<String, Registered<?>> TYPES = new ConcurrentHashMap<>();
 
     static {
-        register(TextPage.TYPE, TextPage.class, PageTypes::text);
+        register(TextPage.TYPE, TextPage.class, GuidePageTypes::text);
+        register(SpotlightPage.TYPE, SpotlightPage.class, GuidePageTypes::spotlight);
+        register(CraftingPage.TYPE, CraftingPage.class, GuidePageTypes::crafting);
+        register(LinksPage.TYPE, LinksPage.class, GuidePageTypes::links);
     }
 
     private PageTypes() {
+    }
+
+    /** Whether a page can be drawn on this client at all: a crafting page needs its recipe (§3.2). */
+    public static boolean available(io.github.slugblue.wildroots.client.journal.GuidePage page) {
+        return !(page.data() instanceof CraftingPage c) || GuidePageTypes.recipeExists(c.recipe());
+    }
+
+    /** The "See also" page at the end of an entry (§2.4): open targets only; none → no page. */
+    public static List<LaidOutPage> seeAlso(List<String> targets, PageContext ctx) {
+        return GuidePageTypes.linkRows("wildroots.journal.ui.see_also", targets, ctx);
     }
 
     /** Adds or replaces the client type of a page type; client setup. */
@@ -54,15 +66,6 @@ public final class PageTypes {
             return List.of(new LaidOutPage(span, rect -> new Placeholder(rect, page.type()), List.of()));
         }
         return r.layout(page.data(), page, ctx);
-    }
-
-    static List<LaidOutPage> text(TextPage data, GuidePage page, PageContext ctx) {
-        List<io.github.slugblue.wildroots.client.journal.book.Paginator.Block<TextLayout.Line>> blocks =
-                new ArrayList<>();
-        data.title().ifPresent(t -> blocks.add(TextLayout.block(ctx.font(),
-                TextLayout.heading(Component.translatable(t)), PageRect.HALF_WIDTH, true, null)));
-        blocks.addAll(TextLayout.paragraphs(ctx.font(), Component.translatable(data.text()), PageRect.HALF_WIDTH, null));
-        return TextLayout.textPages(blocks);
     }
 
     /** A page whose client type is not there yet: its type name in faded ink. */

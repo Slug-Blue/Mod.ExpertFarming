@@ -1,17 +1,30 @@
 {
   "id": "guide.start",
   "category": "first_steps",
-  "icon": "wildroots:seed_lot",
+  "icon": "wildroots:wild_carrot_root",
   "order": 10,
   "unlock": [],
+  "items": [
+    "wildroots:wild_carrot_root"
+  ],
   "pages": [
     {
       "type": "text",
       "text": "wildroots.journal.guide.start.1"
     },
     {
-      "type": "text",
+      "type": "spotlight",
+      "item": "wildroots:wild_carrot_root",
       "text": "wildroots.journal.guide.start.2"
+    },
+    {
+      "type": "links",
+      "links": [
+        "guide.journal",
+        "guide.seed_lot",
+        "guide.stages",
+        "guide.pollination"
+      ]
     }
   ]
 }

@@ -1,0 +1,24 @@
+{
+  "id": "guide.seed_lot",
+  "category": "first_steps",
+  "icon": "wildroots:seed_lot",
+  "order": 30,
+  "unlock": [],
+  "items": [
+    "wildroots:seed_lot"
+  ],
+  "see_also": [
+    "guide.selection"
+  ],
+  "pages": [
+    {
+      "type": "spotlight",
+      "item": "wildroots:seed_lot",
+      "text": "wildroots.journal.guide.seed_lot.1"
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.seed_lot.2"
+    }
+  ]
+}

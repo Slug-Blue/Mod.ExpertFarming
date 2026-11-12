@@ -1,0 +1,45 @@
+{
+  "id": "guide.colors",
+  "category": "lens",
+  "icon": "wildroots:eastern_carrot",
+  "order": 30,
+  "unlock": [
+    "hint.yellow_root",
+    "hint.purple_root"
+  ],
+  "items": [
+    "wildroots:eastern_carrot",
+    "wildroots:carrot"
+  ],
+  "see_also": [
+    "guide.cultivars"
+  ],
+  "pages": [
+    {
+      "type": "spotlight",
+      "item": "wildroots:eastern_carrot",
+      "variant": "colour=yellow",
+      "text": "wildroots.journal.hint.yellow_root",
+      "unlock": [
+        "hint.yellow_root"
+      ]
+    },
+    {
+      "type": "spotlight",
+      "item": "wildroots:eastern_carrot",
+      "variant": "colour=purple",
+      "text": "wildroots.journal.hint.purple_root",
+      "unlock": [
+        "hint.purple_root"
+      ]
+    },
+    {
+      "type": "spotlight",
+      "item": "wildroots:carrot",
+      "text": "wildroots.journal.hint.orange_root",
+      "unlock": [
+        "hint.orange_root"
+      ]
+    }
+  ]
+}

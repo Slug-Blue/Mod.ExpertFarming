@@ -4,9 +4,6 @@
   "icon": "wildroots:field_journal",
   "order": 20,
   "unlock": [],
-  "items": [
-    "wildroots:field_journal"
-  ],
   "pages": [
     {
       "type": "text",

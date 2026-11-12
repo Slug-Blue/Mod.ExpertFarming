@@ -1,0 +1,24 @@
+{
+  "id": "guide.tool.seed_pouch",
+  "category": "tools",
+  "icon": "wildroots:seed_pouch",
+  "order": 20,
+  "unlock": [
+    "tool.seed_pouch"
+  ],
+  "items": [
+    "wildroots:seed_pouch"
+  ],
+  "pages": [
+    {
+      "type": "spotlight",
+      "item": "wildroots:seed_pouch",
+      "text": "wildroots.journal.tool.seed_pouch",
+      "owned_badge": true
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.tool.seed_pouch.2"
+    }
+  ]
+}

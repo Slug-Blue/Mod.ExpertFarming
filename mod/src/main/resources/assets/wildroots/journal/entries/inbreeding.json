@@ -1,0 +1,23 @@
+{
+  "id": "guide.inbreeding",
+  "category": "breeding",
+  "icon": "wildroots:seed_lot",
+  "order": 30,
+  "unlock": [
+    "hint.inbreeding",
+    "hint.lone_plant"
+  ],
+  "see_also": [
+    "guide.pollination"
+  ],
+  "pages": [
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.inbreeding.1"
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.inbreeding.2"
+    }
+  ]
+}

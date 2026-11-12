@@ -124,7 +124,8 @@ public final class JournalBookScreen extends Screen implements PageContext {
         }
         hideShown();
         entries = ClientJournal.entries();
-        unlocks = new GuideUnlocks(GuideBooks.current(), entries, ClientConfig.get(ClientConfig.SHOW_ALL_GUIDES));
+        unlocks = new GuideUnlocks(GuideBooks.current(), entries, ClientConfig.get(ClientConfig.SHOW_ALL_GUIDES),
+                PageTypes::available);
         location = valid(location);
         List<LaidOutPage> pages = build(location);
         List<Spreads.Slots<LaidOutPage>> slots = Spreads.assemble(pages, LaidOutPage::span);
@@ -174,7 +175,7 @@ public final class JournalBookScreen extends Screen implements PageContext {
         return switch (l.kind()) {
             case CONTENTS -> BookPages.contents(unlocks, entries, this::jump);
             case CATEGORY -> BookPages.category(unlocks, unlocks.book().category(l.id()).orElseThrow(), this::jump);
-            case RECORDS -> BookPages.records(font, RecordsCategory.byName(l.id()).orElseThrow(), entries);
+            case RECORDS -> BookPages.records(this, RecordsCategory.byName(l.id()).orElseThrow(), entries);
             case ENTRY -> entryPages(unlocks.book().entry(l.id()).orElseThrow());
         };
     }
@@ -188,6 +189,7 @@ public final class JournalBookScreen extends Screen implements PageContext {
                 warn("page " + p.type() + " of " + e.id() + " could not be laid out", ex);
             }
         }
+        out.addAll(PageTypes.seeAlso(e.seeAlso(), this));
         return out;
     }
 
@@ -595,8 +597,14 @@ public final class JournalBookScreen extends Screen implements PageContext {
         return unlocks;
     }
 
+    /** Opens a guide entry, or a records category by {@code records.<name>} (a links page of the guide). */
     @Override
     public void open(String entryId) {
+        if (entryId.startsWith("records.")) {
+            RecordsCategory.byName(entryId.substring("records.".length()).toUpperCase(java.util.Locale.ROOT))
+                    .filter(rc -> rc.visible(entries)).ifPresent(rc -> jump(BookLocation.records(rc)));
+            return;
+        }
         if (unlocks.isOpen(entryId)) {
             jump(BookLocation.entry(entryId));
         }

@@ -1,0 +1,27 @@
+{
+  "id": "guide.cultivars",
+  "category": "cultivars",
+  "icon": "wildroots:eastern_carrot",
+  "order": 10,
+  "unlock": [
+    "hint.looks_like",
+    "cultivar.*"
+  ],
+  "see_also": [
+    "guide.traits",
+    "guide.selection"
+  ],
+  "pages": [
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.cultivars.1"
+    },
+    {
+      "type": "links",
+      "title": "wildroots.journal.guide.cultivars.2",
+      "links": [
+        "records.cultivars"
+      ]
+    }
+  ]
+}

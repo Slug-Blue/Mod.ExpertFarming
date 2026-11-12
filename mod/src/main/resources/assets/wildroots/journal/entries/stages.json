@@ -1,0 +1,23 @@
+{
+  "id": "guide.stages",
+  "category": "plant",
+  "icon": "wildroots:wild_carrot_root",
+  "order": 10,
+  "unlock": [
+    "species.*"
+  ],
+  "see_also": [
+    "guide.mother_root",
+    "guide.cycle"
+  ],
+  "pages": [
+    {
+      "type": "scene",
+      "scene": "scene.carrot_stages"
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.stages.2"
+    }
+  ]
+}

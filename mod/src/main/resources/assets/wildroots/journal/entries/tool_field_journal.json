@@ -1,0 +1,24 @@
+{
+  "id": "guide.tool.field_journal",
+  "category": "tools",
+  "icon": "wildroots:field_journal",
+  "order": 10,
+  "unlock": [],
+  "items": [
+    "wildroots:field_journal"
+  ],
+  "see_also": [
+    "guide.journal"
+  ],
+  "pages": [
+    {
+      "type": "crafting",
+      "recipe": "wildroots:field_journal",
+      "text": "wildroots.journal.guide.tool.field_journal.1"
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.tool.field_journal"
+    }
+  ]
+}

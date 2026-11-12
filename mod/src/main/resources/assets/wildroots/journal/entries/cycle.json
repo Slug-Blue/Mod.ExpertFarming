@@ -1,0 +1,20 @@
+{
+  "id": "guide.cycle",
+  "category": "plant",
+  "icon": "wildroots:mother_root",
+  "order": 30,
+  "unlock": [
+    "hint.mother_plant"
+  ],
+  "see_also": [
+    "guide.stages",
+    "guide.pollination",
+    "guide.selection"
+  ],
+  "pages": [
+    {
+      "type": "scene",
+      "scene": "scene.carrot_cycle"
+    }
+  ]
+}
