@@ -1,4 +1,4 @@
-package io.github.slugblue.wildroots.client;
+package io.github.slugblue.wildroots.client.journal.records;
 
 import io.github.slugblue.wildroots.core.safety.DispCodec;
 import io.github.slugblue.wildroots.journal.JournalData;
@@ -10,15 +10,18 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 
 /**
- * Builds the pages of the journal screen from the entries the server sent
- * (narrative §4.2–4.4, §9.7). Every text is a translation key the server
- * named or a fixed key of the entry kind; nothing here looks at genetics.
+ * The text blocks of the records the server sent (narrative §4.2–4.4,
+ * §9.7; journal v2 §4.2), carried over from the v1 journal: every text is
+ * a translation key the server named or a fixed key of the entry kind;
+ * nothing here looks at genetics. There is no Tools tab (В5): {@code tool.*}
+ * opens a guide entry instead.
  */
-public final class JournalPages {
+@net.minecraftforge.api.distmarker.OnlyIn(net.minecraftforge.api.distmarker.Dist.CLIENT)
+public final class RecordBlocks {
 
     /** Tabs in the order of narrative §4.2. */
     public enum Tab {
-        SPECIES("species"), CULTIVARS("cultivars"), LINES("lines"), NOTES("notes"), TOOLS("tools"), BREEDER("breeder");
+        SPECIES("species"), CULTIVARS("cultivars"), LINES("lines"), NOTES("notes"), BREEDER("breeder");
 
         public final String key;
 
@@ -32,14 +35,14 @@ public final class JournalPages {
                         boolean pinned) {
     }
 
-    private JournalPages() {
+    private RecordBlocks() {
     }
 
     static boolean kind(JournalData.Entry e, String kind) {
         return e.id().startsWith(kind + ".");
     }
 
-    static String rest(JournalData.Entry e) {
+    public static String rest(JournalData.Entry e) {
         return e.id().substring(e.id().indexOf('.') + 1);
     }
 
@@ -49,7 +52,6 @@ public final class JournalPages {
             case SPECIES, CULTIVARS -> entries.stream().anyMatch(e -> kind(e, "species"));
             case LINES -> entries.stream().anyMatch(e -> kind(e, "cultivar") && !e.is(JournalData.LOCKED));
             case NOTES -> entries.stream().anyMatch(e -> kind(e, "hint"));
-            case TOOLS -> entries.stream().anyMatch(e -> kind(e, "tool"));
             case BREEDER -> entries.stream().anyMatch(e -> kind(e, "note"));
         };
     }
@@ -83,8 +85,6 @@ public final class JournalPages {
                     .sorted(Comparator.comparing((JournalData.Entry e) -> !e.is(JournalData.PINNED))
                             .thenComparing(Comparator.comparingInt(JournalData.Entry::order).reversed()))
                     .forEach(e -> out.add(hint(e)));
-            case TOOLS -> entries.stream().filter(e -> kind(e, "tool")).forEach(e -> out.add(simple(e,
-                    "item.wildroots." + rest(e), "wildroots.journal.tool." + rest(e))));
             case BREEDER -> entries.stream().filter(e -> kind(e, "note")).forEach(e -> out.add(simple(e,
                     "wildroots.journal.note." + rest(e) + ".title", "wildroots.journal.note." + rest(e))));
         }
@@ -94,7 +94,7 @@ public final class JournalPages {
     static final String GOAL_PREFIX = "wildroots.journal.cultivar.";
     static final String GOAL_SUFFIX = ".goal";
 
-    static Block species(JournalData.Entry e) {
+    public static Block species(JournalData.Entry e) {
         String id = rest(e);
         List<Component> l = new ArrayList<>();
         l.add(heading("wildroots.species." + id));
@@ -123,7 +123,7 @@ public final class JournalPages {
         return new Block(List.of(e.id()), l, e.is(JournalData.NEW), Optional.empty(), false);
     }
 
-    static Block cultivar(JournalData.Entry e) {
+    public static Block cultivar(JournalData.Entry e) {
         String id = rest(e);
         List<Component> l = new ArrayList<>();
         if (e.is(JournalData.LOCKED)) {
@@ -158,7 +158,7 @@ public final class JournalPages {
         return new Block(List.of(e.id()), l, e.is(JournalData.NEW), Optional.empty(), false);
     }
 
-    static Block line(JournalData.Entry e) {
+    public static Block line(JournalData.Entry e) {
         String id = rest(e);
         List<Component> l = new ArrayList<>();
         l.add(heading("wildroots.cultivar." + id));
@@ -166,7 +166,7 @@ public final class JournalPages {
         return new Block(List.of(), l, false, Optional.empty(), false);
     }
 
-    static Block hint(JournalData.Entry e) {
+    public static Block hint(JournalData.Entry e) {
         // per-line hints (stagnation, missing_allele) carry a line suffix: hint.stagnation.l1a2b
         String rest = rest(e);
         String id = rest.contains(".") ? rest.substring(0, rest.indexOf('.')) : rest;
@@ -177,7 +177,7 @@ public final class JournalPages {
                     .withStyle(s -> s.withBold(false).withColor(0x2E7D32)));
         }
         l.add(title);
-        Object[] args = e.args().stream().map(JournalPages::arg).toArray();
+        Object[] args = e.args().stream().map(RecordBlocks::arg).toArray();
         l.add(Component.translatable("wildroots.journal.hint." + id, args));
         return new Block(List.of(e.id()), l, e.is(JournalData.NEW), Optional.of(e.id()), e.is(JournalData.PINNED));
     }

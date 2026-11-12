@@ -1,6 +1,6 @@
 package io.github.slugblue.wildroots.client.journal.book;
 
-import io.github.slugblue.wildroots.client.JournalPages;
+import io.github.slugblue.wildroots.client.journal.records.RecordBlocks;
 import io.github.slugblue.wildroots.journal.JournalData;
 import java.util.List;
 import java.util.Optional;
@@ -15,18 +15,18 @@ import net.minecraftforge.api.distmarker.OnlyIn;
  */
 @OnlyIn(Dist.CLIENT)
 public enum RecordsCategory {
-    SPECIES(JournalPages.Tab.SPECIES, "species", "species"),
-    CULTIVARS(JournalPages.Tab.CULTIVARS, "cultivar", "cultivars"),
-    LINES(JournalPages.Tab.LINES, "cultivar", "lines"),
-    NOTES(JournalPages.Tab.NOTES, "hint", "notes"),
-    BREEDER(JournalPages.Tab.BREEDER, "note", "notes");
+    SPECIES(RecordBlocks.Tab.SPECIES, "species", "species"),
+    CULTIVARS(RecordBlocks.Tab.CULTIVARS, "cultivar", "cultivars"),
+    LINES(RecordBlocks.Tab.LINES, "cultivar", "lines"),
+    NOTES(RecordBlocks.Tab.NOTES, "hint", "notes"),
+    BREEDER(RecordBlocks.Tab.BREEDER, "note", "notes");
 
-    public final JournalPages.Tab tab;
+    public final RecordBlocks.Tab tab;
     private final String kind;
     /** A {@code gui:} icon of {@link JournalAtlas#ICONS}. */
     public final String icon;
 
-    RecordsCategory(JournalPages.Tab tab, String kind, String icon) {
+    RecordsCategory(RecordBlocks.Tab tab, String kind, String icon) {
         this.tab = tab;
         this.kind = kind;
         this.icon = icon;
@@ -37,11 +37,11 @@ public enum RecordsCategory {
     }
 
     public boolean visible(List<JournalData.Entry> entries) {
-        return JournalPages.visible(tab, entries);
+        return RecordBlocks.visible(tab, entries);
     }
 
     public boolean hasNew(List<JournalData.Entry> entries) {
-        return JournalPages.hasNew(tab, entries);
+        return RecordBlocks.hasNew(tab, entries);
     }
 
     /** The count shown in the contents: shown entries, and for cultivars also all of them ("1 of 2", §3.7). */

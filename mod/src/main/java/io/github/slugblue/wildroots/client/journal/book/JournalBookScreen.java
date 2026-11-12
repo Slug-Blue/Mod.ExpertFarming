@@ -167,6 +167,7 @@ public final class JournalBookScreen extends Screen implements PageContext {
             case CATEGORY -> unlocks.book().category(l.id()).map(unlocks::isOpen).orElse(false);
             case ENTRY -> unlocks.isOpen(l.id());
             case RECORDS -> RecordsCategory.byName(l.id()).map(rc -> rc.visible(entries)).orElse(false);
+            case RECORD -> record(l.id()).isPresent();
         };
         return ok ? l : BookLocation.CONTENTS;
     }
@@ -175,7 +176,9 @@ public final class JournalBookScreen extends Screen implements PageContext {
         return switch (l.kind()) {
             case CONTENTS -> BookPages.contents(unlocks, entries, this::jump);
             case CATEGORY -> BookPages.category(unlocks, unlocks.book().category(l.id()).orElseThrow(), this::jump);
-            case RECORDS -> BookPages.records(this, RecordsCategory.byName(l.id()).orElseThrow(), entries);
+            case RECORDS -> BookPages.records(this, RecordsCategory.byName(l.id()).orElseThrow(), entries, this::jump);
+            case RECORD -> io.github.slugblue.wildroots.client.journal.records.RecordsLayout.record(this,
+                    record(l.id()).orElseThrow());
             case ENTRY -> entryPages(unlocks.book().entry(l.id()).orElseThrow());
         };
     }
@@ -202,6 +205,26 @@ public final class JournalBookScreen extends Screen implements PageContext {
                     .orElse(Component.empty());
             case RECORDS -> RecordsCategory.byName(l.id()).map(rc -> Component.translatable(rc.titleKey()))
                     .orElse(Component.empty());
+            case RECORD -> record(l.id()).map(e -> e.is(JournalData.LOCKED)
+                    ? Component.translatable("wildroots.journal.ui.locked") : BookPages.recordTitle(e))
+                    .orElse(Component.empty());
+        };
+    }
+
+    /** A species or cultivar the journal holds (a silhouette too: its page shows the goal). */
+    private Optional<JournalData.Entry> record(String id) {
+        if (!id.startsWith("species.") && !id.startsWith("cultivar.")) {
+            return Optional.empty();
+        }
+        return entries.stream().filter(e -> e.id().equals(id)).findFirst();
+    }
+
+    /** The records category a location belongs to, for its tab and its parent. */
+    private Optional<RecordsCategory> recordsCategory(BookLocation l) {
+        return switch (l.kind()) {
+            case RECORDS -> RecordsCategory.byName(l.id());
+            case RECORD -> RecordsCategory.of(l.id());
+            default -> Optional.empty();
         };
     }
 
@@ -269,7 +292,7 @@ public final class JournalBookScreen extends Screen implements PageContext {
                 break;
             }
             if (rc.visible(entries)) {
-                boolean sel = location.kind() == BookLocation.Kind.RECORDS && location.id().equals(rc.name());
+                boolean sel = recordsCategory(location).orElse(null) == rc;
                 addRenderableWidget(new BookWidgets.TabButton(geo.tabX(), geo.tabY(t++), BookIcon.sprite(rc.icon),
                         Component.translatable(rc.titleKey()), sel, rc.hasNew(entries),
                         () -> jump(BookLocation.records(rc))));
@@ -333,6 +356,13 @@ public final class JournalBookScreen extends Screen implements PageContext {
 
     /** To the parent: entry → its category, anything else → contents. */
     void up() {
+        if (location.kind() == BookLocation.Kind.RECORD) {
+            Optional<RecordsCategory> rc = recordsCategory(location);
+            if (rc.isPresent()) {
+                jump(BookLocation.records(rc.get()));
+                return;
+            }
+        }
         if (location.kind() == BookLocation.Kind.ENTRY) {
             Optional<GuideEntry> e = unlocks.book().entry(location.id());
             if (e.isPresent()) {

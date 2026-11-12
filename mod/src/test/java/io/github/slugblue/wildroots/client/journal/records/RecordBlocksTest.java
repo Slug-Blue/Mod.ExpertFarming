@@ -1,4 +1,4 @@
-package io.github.slugblue.wildroots.client;
+package io.github.slugblue.wildroots.client.journal.records;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -20,16 +20,16 @@ import org.junit.jupiter.api.Test;
  * pass the {@code JournalSync} decoder) without throwing. Pure code: the
  * screen itself is checked by hand in {@code runClient}.
  */
-class JournalPagesTest {
+class RecordBlocksTest {
 
     static JournalData.Entry e(String id, int flags, DispCodec.Line... rows) {
         return new JournalData.Entry(id, List.of(), List.of(rows), 0, flags);
     }
 
-    static Set<JournalPages.Tab> visible(List<JournalData.Entry> entries) {
-        Set<JournalPages.Tab> out = EnumSet.noneOf(JournalPages.Tab.class);
-        for (JournalPages.Tab t : JournalPages.Tab.values()) {
-            if (JournalPages.visible(t, entries)) {
+    static Set<RecordBlocks.Tab> visible(List<JournalData.Entry> entries) {
+        Set<RecordBlocks.Tab> out = EnumSet.noneOf(RecordBlocks.Tab.class);
+        for (RecordBlocks.Tab t : RecordBlocks.Tab.values()) {
+            if (RecordBlocks.visible(t, entries)) {
                 out.add(t);
             }
         }
@@ -39,17 +39,18 @@ class JournalPagesTest {
     @Test
     void tabsAppearByTheirConditions() {
         assertEquals(Set.of(), visible(List.of()), "an empty journal has only its title page");
-        assertEquals(EnumSet.of(JournalPages.Tab.NOTES), visible(List.of(e("hint.welcome", JournalData.NEW))));
-        assertEquals(EnumSet.of(JournalPages.Tab.SPECIES, JournalPages.Tab.CULTIVARS),
+        assertEquals(EnumSet.of(RecordBlocks.Tab.NOTES), visible(List.of(e("hint.welcome", JournalData.NEW))));
+        assertEquals(EnumSet.of(RecordBlocks.Tab.SPECIES, RecordBlocks.Tab.CULTIVARS),
                 visible(List.of(e("species.wild_carrot", 0))), "species and cultivars come with the first species");
-        assertEquals(EnumSet.noneOf(JournalPages.Tab.class), visible(List.of(e("cultivar.carrot", JournalData.LOCKED))),
+        assertEquals(EnumSet.noneOf(RecordBlocks.Tab.class), visible(List.of(e("cultivar.carrot", JournalData.LOCKED))),
                 "a locked silhouette opens no tab");
-        assertEquals(EnumSet.of(JournalPages.Tab.LINES), visible(List.of(e("cultivar.carrot", 0))),
+        assertEquals(EnumSet.of(RecordBlocks.Tab.LINES), visible(List.of(e("cultivar.carrot", 0))),
                 "lines come with the first bred cultivar");
-        assertEquals(EnumSet.of(JournalPages.Tab.TOOLS), visible(List.of(e("tool.hand_lens", 0))));
-        assertEquals(EnumSet.of(JournalPages.Tab.BREEDER), visible(List.of(e("note.hut_page", 0))));
-        List<JournalPages.Tab> order = List.of(JournalPages.Tab.values());
-        assertEquals(List.of("species", "cultivars", "lines", "notes", "tools", "breeder"),
+        assertEquals(EnumSet.noneOf(RecordBlocks.Tab.class), visible(List.of(e("tool.hand_lens", 0))),
+                "no Tools tab (В5): a tool opens a guide entry");
+        assertEquals(EnumSet.of(RecordBlocks.Tab.BREEDER), visible(List.of(e("note.hut_page", 0))));
+        List<RecordBlocks.Tab> order = List.of(RecordBlocks.Tab.values());
+        assertEquals(List.of("species", "cultivars", "lines", "notes", "breeder"),
                 order.stream().map(t -> t.key.substring("wildroots.journal.tab.".length())).toList(), "§4.2 order");
     }
 
@@ -58,10 +59,10 @@ class JournalPagesTest {
         List<JournalData.Entry> l = List.of(new JournalData.Entry("hint.a", List.of(), List.of(), 1, JournalData.READ),
                 new JournalData.Entry("hint.b", List.of(), List.of(), 2, JournalData.READ | JournalData.PINNED),
                 new JournalData.Entry("hint.c", List.of(), List.of(), 3, JournalData.NEW));
-        List<JournalPages.Block> b = JournalPages.blocks(JournalPages.Tab.NOTES, l);
+        List<RecordBlocks.Block> b = RecordBlocks.blocks(RecordBlocks.Tab.NOTES, l);
         assertEquals(List.of("hint.b", "hint.c", "hint.a"), b.stream().map(x -> x.ids().get(0)).toList());
-        assertTrue(JournalPages.hasNew(JournalPages.Tab.NOTES, l));
-        assertFalse(JournalPages.hasNew(JournalPages.Tab.NOTES, l.subList(0, 2)));
+        assertTrue(RecordBlocks.hasNew(RecordBlocks.Tab.NOTES, l));
+        assertFalse(RecordBlocks.hasNew(RecordBlocks.Tab.NOTES, l.subList(0, 2)));
     }
 
     static final String[] KINDS = {"hint", "species", "cultivar", "tool", "note"};
@@ -101,8 +102,8 @@ class JournalPagesTest {
                 }
                 entries.add(new JournalData.Entry(id, args, rows, r.nextInt(1000), r.nextInt(16)));
             }
-            for (JournalPages.Tab t : JournalPages.Tab.values()) {
-                List<JournalPages.Block> blocks = assertDoesNotThrow(() -> JournalPages.blocks(t, entries),
+            for (RecordBlocks.Tab t : RecordBlocks.Tab.values()) {
+                List<RecordBlocks.Block> blocks = assertDoesNotThrow(() -> RecordBlocks.blocks(t, entries),
                         () -> t + " " + entries);
                 blocks.forEach(b -> b.lines().forEach(c -> assertDoesNotThrow(() -> { c.getString(); })));
             }

@@ -31,7 +31,7 @@ class ProductionArchitectureTest {
     @Test
     void screensOnlyInClient() {
         ArchRules.screensOnlyInClient(ROOT).check(production);
-        org.junit.jupiter.api.Assertions.assertTrue(production.contain(ROOT + ".client.JournalScreen"),
+        org.junit.jupiter.api.Assertions.assertTrue(production.contain(ROOT + ".client.journal.book.JournalBookScreen"),
                 "the journal screen is not where the rule looks");
     }
 

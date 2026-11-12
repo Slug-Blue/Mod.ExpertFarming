@@ -39,7 +39,9 @@ public final class JournalHints {
     static {
         // start and selection
         core("welcome", "plant_together", "lone_plant", "small_population", "select_quarter", "mother_plant",
-                "left_on_stalk", "root_ripe");
+                "root_ripe");
+        // a plant waits at stage 3 for ever (В6, journal v2 §4.4): this hint cannot fire in wave 1
+        line(PENDING, "left_on_stalk");
         // traits one can see
         core("bitter");
         line("tomato", "toxic_tomato");

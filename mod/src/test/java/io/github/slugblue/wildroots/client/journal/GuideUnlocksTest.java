@@ -118,6 +118,23 @@ class GuideUnlocksTest {
     }
 
     @Test
+    void aToolRecordOpensItsGuideEntryAndMakesItNew() {
+        GuideEntry pouch = entry("guide.tool.seed_pouch", "first", 1, List.of("hint.never"), page("p"));
+        GuideEntry journal = entry("guide.tool.field_journal", "first", 2, List.of(), page("j"));
+        GuideEntry lens = entry("guide.lens", "first", 3, List.of(), page("l"));
+        GuideBook book = new GuideBook(BOOK.categories(), List.of(pouch, journal, lens), Map.of());
+        GuideUnlocks none = new GuideUnlocks(book, List.of(), false);
+        assertFalse(none.isOpen(pouch));
+        assertFalse(none.isNew(journal));
+        GuideUnlocks u = new GuideUnlocks(book, List.of(j("tool.seed_pouch", JournalData.NEW),
+                j("tool.field_journal", JournalData.NEW), j("tool.hand_lens", JournalData.NEW)), false);
+        assertTrue(u.isOpen(pouch), "opened early by the tool record");
+        assertTrue(u.isNew(pouch) && u.isNew(journal) && u.isNew(lens), "always-open entries get the new mark too");
+        assertEquals(Set.of("tool.hand_lens"), u.newOpeners(lens));
+        assertTrue(u.has("tool.seed_pouch"));
+    }
+
+    @Test
     void showAllGuidesOpensEverythingButNewFollowsTheJournal() {
         GuideUnlocks u = new GuideUnlocks(BOOK, List.of(j("hint.purple_root", JournalData.NEW)), true);
         assertEquals(BOOK.entries().stream().map(GuideEntry::id).toList(), open(u));

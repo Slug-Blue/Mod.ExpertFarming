@@ -30,6 +30,10 @@ import net.minecraftforge.api.distmarker.OnlyIn;
  *       simply skipped when closed; an entry with no shown page is
  *       closed.</li>
  * </ul>
+ * A tool record opens its guide entry too (В5): {@code tool.<id>} opens
+ * {@code guide.tool.<id>}, {@code tool.hand_lens} opens {@code guide.lens}
+ * (narrative §4.8), even before the entry's own {@code unlock}, and makes
+ * it new while the record is.
  * A silhouette ({@code LOCKED}, a cultivar not yet bred) opens nothing:
  * the player has not met that cultivar. {@code showAllGuides} (В4) opens
  * every entry and page; "new" still follows the journal.
@@ -108,8 +112,16 @@ public final class GuideUnlocks {
         return showAll || unlock.isEmpty() || !openers(unlock).isEmpty();
     }
 
+    /** Tool records that open an entry besides its {@code unlock} (В5). */
+    static List<String> toolOpeners(String entryId) {
+        if (entryId.startsWith("guide.tool.")) {
+            return List.of("tool." + entryId.substring("guide.tool.".length()));
+        }
+        return entryId.equals("guide.lens") ? List.of("tool.hand_lens") : List.of();
+    }
+
     private List<GuidePage> computePages(GuideEntry e) {
-        if (!opened(e.unlock())) {
+        if (!opened(e.unlock()) && openers(toolOpeners(e.id())).isEmpty()) {
             return List.of();
         }
         List<GuidePage> out = new ArrayList<>();
@@ -155,6 +167,7 @@ public final class GuideUnlocks {
             return out;
         }
         List<String> ids = new ArrayList<>(openers(e.unlock()));
+        ids.addAll(openers(toolOpeners(e.id())));
         for (GuidePage p : pages(e)) {
             ids.addAll(openers(p.unlock()));
         }

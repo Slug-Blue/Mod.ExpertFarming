@@ -1,6 +1,6 @@
 package io.github.slugblue.wildroots.client.journal.book;
 
-import io.github.slugblue.wildroots.client.JournalPages;
+import io.github.slugblue.wildroots.client.journal.records.RecordsLayout;
 import io.github.slugblue.wildroots.client.journal.GuideCategory;
 import io.github.slugblue.wildroots.client.journal.GuideEntry;
 import io.github.slugblue.wildroots.client.journal.GuideUnlocks;
@@ -13,7 +13,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Consumer;
-import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraftforge.api.distmarker.Dist;
@@ -69,8 +68,8 @@ final class BookPages {
         }
         entries.stream().filter(e -> e.is(JournalData.NEW) && !e.is(JournalData.LOCKED))
                 .sorted(Comparator.comparingInt(JournalData.Entry::order).reversed())
-                .forEach(e -> RecordsCategory.of(e.id()).ifPresent(rc -> news.add(new ListPageView.Row(BookIcon.NONE,
-                        recordTitle(e), Component.empty(), false, true, () -> jump.accept(BookLocation.records(rc))))));
+                .forEach(e -> whereIs(e.id()).ifPresent(at -> news.add(new ListPageView.Row(BookIcon.NONE,
+                        recordTitle(e), Component.empty(), false, true, () -> jump.accept(at)))));
         if (!news.isEmpty()) {
             left.add(new ListPageView.Gap());
             left.add(new ListPageView.Heading(heading("wildroots.journal.ui.new_list")));
@@ -96,9 +95,9 @@ final class BookPages {
                     Component.empty(), false, false, () -> { }));
         }
         List<ListPageView.Row> pinned = new ArrayList<>();
-        entries.stream().filter(e -> e.is(JournalData.PINNED)).forEach(e -> RecordsCategory.of(e.id())
-                .ifPresent(rc -> pinned.add(new ListPageView.Row(BookIcon.NONE, recordTitle(e), Component.empty(), false,
-                        true, () -> jump.accept(BookLocation.records(rc))))));
+        entries.stream().filter(e -> e.is(JournalData.PINNED)).forEach(e -> whereIs(e.id())
+                .ifPresent(at -> pinned.add(new ListPageView.Row(BookIcon.NONE, recordTitle(e), Component.empty(), false,
+                        true, () -> jump.accept(at)))));
         if (!pinned.isEmpty()) {
             right.add(new ListPageView.Gap());
             right.add(new ListPageView.Heading(heading("wildroots.journal.ui.pinned")));
@@ -144,26 +143,25 @@ final class BookPages {
         return ListPageView.pages(items);
     }
 
-    /**
-     * A records category, until WR-181e: the v1 blocks of its tab laid out
-     * as text (each block a heading and paragraphs), tagged with the entry
-     * they show so that showing them marks them read.
-     */
+    /** A records category (§4.2): grids, notes, lines, breeder's notes. */
     static List<LaidOutPage> records(io.github.slugblue.wildroots.client.journal.page.PageContext ctx,
-                                     RecordsCategory rc, List<JournalData.Entry> entries) {
-        Font font = ctx.font();
-        List<io.github.slugblue.wildroots.client.journal.book.Paginator.Block<TextLayout.Line>> blocks =
-                new ArrayList<>();
-        for (JournalPages.Block b : JournalPages.blocks(rc.tab, entries)) {
-            String id = b.ids().isEmpty() ? null : b.ids().get(0);
-            for (int i = 0; i < b.lines().size(); i++) {
-                blocks.add(TextLayout.block(font, b.lines().get(i), PageRect.HALF_WIDTH, i == 0, id));
-            }
+                                     RecordsCategory rc, List<JournalData.Entry> entries,
+                                     Consumer<BookLocation> jump) {
+        Consumer<String> openRecord = id -> jump.accept(BookLocation.record(id));
+        return switch (rc) {
+            case SPECIES -> RecordsLayout.speciesGrid(entries, openRecord);
+            case CULTIVARS -> RecordsLayout.cultivarGrid(entries, openRecord);
+            case LINES -> RecordsLayout.lines(ctx, entries);
+            case NOTES -> RecordsLayout.notes(ctx, entries);
+            case BREEDER -> RecordsLayout.breeder(ctx, entries);
+        };
+    }
+
+    /** Where a journal entry is shown: its own page (species, cultivar) or its category. */
+    static java.util.Optional<BookLocation> whereIs(String journalId) {
+        if (journalId.startsWith("species.") || journalId.startsWith("cultivar.")) {
+            return java.util.Optional.of(BookLocation.record(journalId));
         }
-        if (blocks.isEmpty()) {
-            blocks.add(TextLayout.block(font, Component.translatable("wildroots.journal.ui.empty"), PageRect.HALF_WIDTH,
-                    false, null));
-        }
-        return TextLayout.textPages(blocks, ctx);
+        return RecordsCategory.of(journalId).map(BookLocation::records);
     }
 }

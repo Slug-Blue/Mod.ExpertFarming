@@ -1,5 +1,6 @@
 package io.github.slugblue.wildroots.journal;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -37,6 +38,14 @@ class JournalHintsTest {
             assertFalse(JournalHints.enabled("hint." + id), id);
         }
         assertTrue(JournalHints.enabled("species.wild_carrot"), "non-hint entries are not gated");
+    }
+
+    /** WR-181e, В6: a plant waits at stage 3 for ever, so "left on the stalk" cannot fire in wave 1. */
+    @Test
+    void leftOnStalkIsPending() {
+        assertFalse(JournalHints.enabled("hint.left_on_stalk"));
+        assertEquals(java.util.Optional.of(JournalHints.PENDING), JournalHints.line("left_on_stalk"),
+                "kept, not deleted: the text stays for later");
     }
 
     @Test
