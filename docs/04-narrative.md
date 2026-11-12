@@ -8,6 +8,7 @@
 |---|---|---|---|
 | 0.1 | 2026-10-28 | Narrative Designer | Первая редакция: журнал, исторические справки, достижения, названия, тултипы, ключи |
 | 0.4 | 2026-11-10 | Narrative Designer | WR-192: строки волны 1 в `en_us`/`ru_ru` после ревью ND; итог и отличия от таблиц — §9.10; сняты `[ПРЕДЛОЖЕНИЕ]` служебных строк §9.6 |
+| 0.5 | 2026-11-12 | Narrative Designer | WR-181g, WR-181l: тексты руководства журнала v2 (M1a) и подписи двух 3D-сцен — §4.8; `hint.mother_plant` переписана под D1 (сбор даёт и еду, и маточник), `hand_lens.desc.cursor` — под панель лупы на курсоре (§7.8); из таблицы стадий §3.4 убрана случайно попавшая строка `mother_plant` |
 | 0.3 | 2026-10-29 | Narrative Designer | Под GDD v0.3 (промежуточная v0.2 не выпускалась отдельно): 8 новых линий (тыква, арбуз, картофель, свёкла, тростник, какао, малина, яблоня), урожай — предмет мода с одним классом «грубый / простой / добротный / отборный» и согласованием по роду, переработка с качеством, мешочек для семян, клоны и прививка, сорт яблони с именем игрока, селекционер и его записки, волны выпуска, «Analyser», 6 новых триггеров; закрытые вопросы убраны |
 
 **Решения, на которых стоит документ** (бывшие допущения Д1–Д3 закрыты):
@@ -217,7 +218,6 @@
 | `harvest_ready` | двулетники, 3 | Ready to harvest | Урожайная зрелость |
 | `flowering` | однолетники, 4; маточник | Flowering | Цветение |
 | `seed_ripening` | все, 5 | Ripening seed | Созревание семян |
-| `mother_plant` | Съесть или посадить / Eat or Plant | Первый сбор двулетника (морковь, капуста, свёкла, **FD** лук) | Сорванный корень можно съесть, а можно посадить. Посаженный, он зацветёт и даст семена — это то же растение, со всеми его достоинствами. Так и отбирают: выкопать, посмотреть, лучших — обратно в землю. | A pulled root can be eaten, or planted. Planted, it flowers and sets seed, and it's the same plant with all its merits. That's how selection goes: dig up, look, put the best back. |
 | `woody` | двулетник, оставленный на корню после зрелости (с D1 не показывается: своё растение ждёт на `harvest_ready`, `00-vision.md` п. 32) | Going woody | Одревесневает |
 | `bolting` | свёкла с `B_`: цветёт в первый год | Bolting | Пошла в стрелку |
 | `setting_fruit` | тыква, арбуз, стадия 3: плеть ставит плоды | Setting fruit | Завязывает плоды |
@@ -362,7 +362,7 @@
 | `lone_plant` | Одно в поле / Alone in the Field | Посадка лота перекрёстника (не пшеница, не рис), когда в радиусе 8 нет своих растений того же вида | Растение посажено в одиночку. Если рядом не зацветёт никто из своих, оно опылит само себя, и потомство может ослабнуть. | This plant stands alone. If none of its kind flowers nearby, it will pollinate itself, and the offspring may come out weak. |
 | `small_population` | Маловато / Too Few | Созревание своего растения, когда своих растений вида в радиусе 8 не больше 9 (GDD §12.2) | Грядка маловата. Из горстки трудно выбрать лучших, а редкие признаки легко потерять. Хороший ориентир — грядка пять на пять. | The bed is too small. A handful gives little to choose from, and rare traits slip away. A five-by-five bed is a good rule of thumb. |
 | `select_quarter` | Кого оставить / Whom to Keep | Сбор 16-го своего растения одного вида за один игровой день | На семена хватит каждого четвёртого — самых лучших. Строже — быстрее, но так легко потерять то, что ещё не проявилось. | Every fourth plant, the very best, is enough for seed. Choosier is faster, but it's easy to lose what hasn't shown itself yet. |
-| `mother_plant` | Съесть или посадить / Eat or Plant | Первый сбор двулетника (морковь, капуста, **FD** лук) | Сорванный корень можно съесть, а можно посадить. Посаженный, он зацветёт и даст семена — это то же растение, со всеми его достоинствами. Так и отбирают: выкопать, посмотреть, лучших — обратно в землю. | A pulled root can be eaten, or planted. Planted, it flowers and sets seed, and it's the same plant with all its merits. That's how selection goes: dig up, look, put the best back. |
+| `mother_plant` | Еда и маточник / Food and a Mother Root | Первый сбор двулетника на урожайной зрелости (морковь, капуста, **FD** лук) | Спелый корень при сборе даёт и еду, и маточник. Маточник — то же растение, со всеми его достоинствами: посаженный, он зацветёт и даст семена. Так и отбирают: выкопать, посмотреть, лучших — обратно в землю. | Pulling a ripe root gives two things: food, and a mother root. The mother root is the same plant with all its merits: planted, it flowers and sets seed. That's how selection goes: dig up, look, put the best back. |
 | `left_on_stalk` | Вслепую / Picking Blind | Первый лот с дикого двулетника, отцветшего на корню (своё растение само не зацветает, `00-vision.md` п. 32) | Этот дикий куст отцвёл сам, на второй год. Семена с него удобны, но корня так никто и не увидел — отбор вслепую. | This wild plant flowered on its own, in its second year. Its seed is handy, but nobody ever saw the root. Selection blindfolded. |
 | `root_ripe` | Корень созрел / The Root Is Ripe | Первое своё растение-двулетник (не маточник) дошло до урожайной зрелости (стадия 3) | Корень созрел. Сам он не зацветёт: морковь ждёт в земле, пока её не выкопают. Выкопай и посмотри, а потом съешь или посади лучших обратно маточниками. | The root is ripe. It won't flower by itself: a carrot waits in the ground until it's dug up. Pull it and look, then eat it or plant the best back as a mother root. |
 
@@ -581,6 +581,53 @@
 | `wildroots.tooltip.trade.kept` | Хранимые семена (ур. 5) | Хранили не просто так | Kept for a reason |
 | `wildroots.tooltip.trade.pair` | Проверенная пара (ур. 5) | Проверенная пара: скрестить с «%s» | A proven pair: cross with "%s" |
 | `wildroots.tooltip.trade.imported` | Привозной ландрас (ур. 3) | Привезено из других мест | Brought from elsewhere |
+
+### 4.8 Руководство журнала v2 (WR-181g, WR-181l)
+
+Журнал v2 (`docs/design/journal-v2.md` §2–§4) добавляет к записям статичное **руководство** — «как устроено». Голос тот же, что у заметок (§1): записная книжка натуралиста, безлично, без чисел механики, совет вместо приказа. Руководство не пересказывает подсказки, а собирает их в связный рассказ; каждая заметка ведёт на свою статью строкой «Подробнее →».
+
+**Ключи** (источник истины — lang-файлы):
+
+| Что | Ключ |
+|---|---|
+| Заголовок статьи | `wildroots.journal.guide.<id>.title` (`<id>` без префикса `guide.`: `guide.start` → `wildroots.journal.guide.start.title`) |
+| Текст страницы | `wildroots.journal.guide.<id>.<n>`, `<n>` — номер страницы в статье с 1. Страница, текст которой взят из существующего ключа (подсказка или `tool.*`), своего ключа не имеет |
+| Части легенды лупы | `wildroots.journal.guide.traits.intro`, `.how_to`, `.grade`, `.flags`, `.flag.<bitter\|pollination\|ailing\|looks_like>`, `.scale` (`%s` — имя шкалы), `.scale.<scale>` для 8 шкал §9.2 |
+| Подписи шагов сцены | `wildroots.journal.scene.<scene>.<n>`; вариант шага с кистью — `wildroots.journal.scene.carrot_cycle.5.brush` |
+| Тултипы стадий сцены | `wildroots.journal.scene.carrot_stages.stage.<0–5>` |
+| Метки рядов сцены | `wildroots.journal.scene.carrot_stages.label.from_seed`, `.label.mother` |
+| Группы и категории книги | `wildroots.journal.group.<guide\|records>`, `wildroots.journal.category.<first_steps\|plant\|lens\|breeding\|cultivars\|tools>` |
+| Интерфейс | `wildroots.journal.ui.*` (§9.7 и строки v2: поиск, история, закладки, шаги и управление сценой) |
+
+**Страницы статей M1a** (что за ключ на каждой странице):
+
+| Статья | Страницы |
+|---|---|
+| `guide.start` | 1 text `.1`; 2 spotlight дикого корня `.2` (свиньи и кролики); 3 ряд ссылок |
+| `guide.journal` | 1 text `.1`; 2 text `.2` (клавиши — по §3.11 дизайна) |
+| `guide.seed_lot` | 1 spotlight лота `.1`; 2 text `.2` |
+| `guide.stages` | 1 scene `scene.carrot_stages`; 2 text `.2` |
+| `guide.mother_root` | 1 spotlight маточника = `hint.mother_plant`; 2 text `.2` (лупа, посадка, еда по классу) |
+| `guide.cycle` | 1 scene `scene.carrot_cycle` |
+| `guide.lens` | 1 crafting, подпись `.1`; 2 spotlight = `tool.hand_lens`; 3 text `.3` (лупа на курсоре, D2) |
+| `guide.traits` | 1 trait_legend: части `traits.*` выше |
+| `guide.colors` | 3 spotlight = `hint.yellow_root`, `hint.purple_root`, `hint.orange_root` |
+| `guide.selection` | 1 text `.1`; 2 text `.2` |
+| `guide.pollination` | 1 text `.1`; 2 spotlight улья `.2`; 3 text `.3` |
+| `guide.inbreeding` | 1 text `.1`; 2 text `.2` |
+| `guide.cultivars` | 1 text `.1`; 2 ссылка на «Сорта», подпись `.2` |
+| `guide.tool.field_journal` | 1 crafting, подпись `.1`; 2 text = `tool.field_journal` |
+| `guide.tool.seed_pouch` | 1 spotlight = `tool.seed_pouch`; 2 text `.2` (рецепта в волне 1 нет) |
+
+**Факты, на которых стоят тексты** (сверено с кодом `main` 15af17c):
+
+- Сбор на стадиях 0–2 — выкопанный всход, растёт то же растение; на стадии 3 — урожай и маточник, у посаженного маточника — только маточник; на 4 — маточник; на 5 — лот семян, отцы — только при сборе игроком (`HarvestService`).
+- Не-маточник ждёт на стадии 3 сколько угодно, костная мука на него не действует; цветёт только посаженный маточник (`GrowthLogic`, D1).
+- Время поедания урожая и маточника зависит от класса: чем выше класс, тем быстрее (`ProduceStacks.eatTicks`, D3).
+- Свиньи и кролики идут за урожаем моркови и плодятся от него (`AnimalFeed`, теги `feeds/pig`, `feeds/rabbit`); маточника в тегах нет.
+- Панель лупы — когда лупу несут на курсоре в окне с ячейками над лотом, маточником или урожаем; у лота и маточника шкалы появляются после щелчка лупой, у урожая — класс из четырёх делений (`LensPanel`, `HandLensItem`, D2).
+
+**Подписи сцен** — без чисел и без разметки ссылок (разметка `[[…]]` только в `guide.*`, дизайн §2.4). Номер шага даёт интерфейс (`ui.step`). Шаг 5 цикла с кистью — отдельная подпись `.5.brush` под `unlock: ["tool.pollination_brush"]`.
 
 ## 5. Исторические справки
 
@@ -943,7 +990,7 @@
 | id | Тип | en_us | ru_ru | Строки тултипа (`item.wildroots.<id>.desc` или `block.wildroots.<id>.desc`) en / ru |
 |---|---|---|---|---|
 | `field_journal` | предмет | Field Journal | Полевой журнал | A naturalist's notes. Use to open. / Записки натуралиста. ПКМ — открыть. |
-| `hand_lens` | предмет | Hand Lens | Лупа | Use on a plant, or with seeds in the other hand. / ПКМ по растению или по семенам в другой руке. |
+| `hand_lens` | предмет | Hand Lens | Лупа | Use on a plant, or with seeds in the other hand. / ПКМ по растению или по семенам в другой руке. Вторая строка `item.wildroots.hand_lens.desc.cursor` (панель лупы на курсоре, D2): On the cursor: bars over seeds, roots and produce / На курсоре: шкалы над семенами, корнями, урожаем |
 | `pollination_brush` | предмет | Pollination Brush | Кисть опыления | Pick up pollen from one flower, carry it to another. / Наберите пыльцу с одного цветка и перенесите на другой. |
 | `seed_pouch` | предмет | Seed Pouch | Мешочек для семян | §7.3 |
 | `breeder_note` | предмет | Breeder's Note | Записка селекционера | §4.7 |
