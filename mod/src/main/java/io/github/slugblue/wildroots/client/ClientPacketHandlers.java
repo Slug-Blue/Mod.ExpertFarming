@@ -37,7 +37,7 @@ public final class ClientPacketHandlers {
         }
     }
 
-    /** {@code JournalSync}: store the entries; open the screen if the journal was used (WR-181). */
+    /** {@code JournalSync}: store the entries; open the journal v2 if it was used (WR-181, WR-181b). */
     public static void journalSync(io.github.slugblue.wildroots.journal.JournalSyncPacket packet) {
         if (packet == io.github.slugblue.wildroots.journal.JournalSyncPacket.BROKEN) {
             LOGGER.warn("Wild Roots: a journal sync did not decode; kept the previous copy (a later open repairs it)");
@@ -45,9 +45,9 @@ public final class ClientPacketHandlers {
         }
         ClientJournal.apply(packet);
         if (packet.open()) {
-            JournalScreen.openOrRefresh();
-        } else if (Minecraft.getInstance().screen instanceof JournalScreen s) {
-            s.rebuild();
+            io.github.slugblue.wildroots.client.journal.book.JournalBookScreen.openOrRefresh();
+        } else {
+            io.github.slugblue.wildroots.client.journal.book.JournalBookScreen.refreshIfOpen();
         }
     }
 

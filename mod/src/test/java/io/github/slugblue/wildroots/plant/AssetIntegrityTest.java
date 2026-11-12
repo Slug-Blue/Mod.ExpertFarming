@@ -91,7 +91,7 @@ class AssetIntegrityTest {
     }
 
     @Test
-    void pngsAreCleanRgbaSixteenPixelTiles() throws Exception {
+    void pngsAreCleanRgbaSixteenPixelTilesOrGuiAtlases() throws Exception {
         List<Path> pngs = files(assets().resolve("textures"), ".png");
         assertTrue(pngs.size() > 0, "textures present");
         for (Path png : pngs) {
@@ -109,8 +109,14 @@ class AssetIntegrityTest {
                         assertEquals("IHDR", type, png + ": IHDR first");
                         int w = ((data[0] & 0xFF) << 24) | ((data[1] & 0xFF) << 16) | ((data[2] & 0xFF) << 8) | (data[3] & 0xFF);
                         int h = ((data[4] & 0xFF) << 24) | ((data[5] & 0xFF) << 16) | ((data[6] & 0xFF) << 8) | (data[7] & 0xFF);
-                        assertEquals(16, w, png + ": width");
-                        assertTrue(h > 0 && h % 16 == 0, png + ": height " + h);
+                        if (png.getParent().endsWith("gui")) {
+                            // GUI atlases (journal v2 §4.5): power-of-two sides up to 512
+                            assertTrue(w > 0 && w <= 512 && Integer.bitCount(w) == 1, png + ": width " + w);
+                            assertTrue(h > 0 && h <= 512 && Integer.bitCount(h) == 1, png + ": height " + h);
+                        } else {
+                            assertEquals(16, w, png + ": width");
+                            assertTrue(h > 0 && h % 16 == 0, png + ": height " + h);
+                        }
                         assertEquals(8, data[8], png + ": bit depth");
                         assertEquals(6, data[9], png + ": colour type RGBA");
                         first = false;

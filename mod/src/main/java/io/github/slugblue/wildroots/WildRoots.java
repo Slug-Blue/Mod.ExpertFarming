@@ -44,6 +44,7 @@ public final class WildRoots {
         ModRegistries.register(modBus);
         context.registerConfig(ModConfig.Type.COMMON, CommonConfig.SPEC);
         context.registerConfig(ModConfig.Type.SERVER, ServerConfig.SPEC);
+        context.registerConfig(ModConfig.Type.CLIENT, io.github.slugblue.wildroots.core.config.ClientConfig.SPEC);
         modBus.addListener(ModConditions::onCommonSetup);
         modBus.addListener(EventPriority.NORMAL, false, FMLCommonSetupEvent.class, e -> LineRegistry.freeze());
         modBus.addListener(LinePackFinder::onAddPackFinders);
