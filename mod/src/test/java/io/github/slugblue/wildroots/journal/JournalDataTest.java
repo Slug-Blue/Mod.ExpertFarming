@@ -22,6 +22,28 @@ class JournalDataTest {
         return new ResourceLocation("wildroots", id);
     }
 
+    /** WR-181f, SEC-09: at most 16 pinned entries; a PIN past that is refused and changes nothing. */
+    @Test
+    void pinPastTheLimitIsRefused() {
+        JournalData j = new JournalData();
+        for (int i = 0; i <= JournalData.MAX_PINNED + 2; i++) {
+            j.unlock("hint.p" + i, List.of(), List.of());
+        }
+        for (int i = 0; i < JournalData.MAX_PINNED; i++) {
+            assertTrue(j.apply(rl("hint.p" + i), JournalActionPacket.PIN), "pin " + i);
+        }
+        int rev = j.revision();
+        assertFalse(j.apply(rl("hint.p" + JournalData.MAX_PINNED), JournalActionPacket.PIN), "the 17th pin");
+        assertEquals(rev, j.revision());
+        assertFalse(j.entry("hint.p" + JournalData.MAX_PINNED).orElseThrow().is(JournalData.PINNED));
+        assertTrue(j.apply(rl("hint.p0"), JournalActionPacket.PIN), "pinning a pinned entry again is fine");
+        assertTrue(j.apply(rl("hint.p0"), JournalActionPacket.UNPIN));
+        assertTrue(j.apply(rl("hint.p" + JournalData.MAX_PINNED), JournalActionPacket.PIN), "room again after an unpin");
+        assertTrue(j.apply(rl("hint.p" + JournalData.MAX_PINNED), JournalActionPacket.MARK_READ),
+                "other actions are not limited");
+        assertEquals(JournalData.MAX_PINNED, j.entries().stream().filter(e -> e.is(JournalData.PINNED)).count());
+    }
+
     @Test
     void journalActionWithAForeignOrUnknownIdIsDropped() {
         JournalData mine = new JournalData();

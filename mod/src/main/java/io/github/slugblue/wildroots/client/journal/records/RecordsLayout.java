@@ -229,14 +229,20 @@ public final class RecordsLayout {
     }
 
     /** Notes several to a page (§3.12): pinned first, then newest; each with "More →" if its entry is open. */
-    public static List<LaidOutPage> notes(PageContext ctx, List<JournalData.Entry> entries) {
+    public static List<LaidOutPage> notes(PageContext ctx, List<JournalData.Entry> entries,
+                                          Consumer<String> togglePin) {
         List<Paginator.Block<TextLayout.Line>> blocks = new ArrayList<>();
+        java.util.Map<TextLayout.Line, String> headings = new java.util.IdentityHashMap<>();
         String more = Component.translatable("wildroots.journal.ui.more").getString();
         boolean safeMore = !more.contains("|") && !more.contains("]]") && !more.contains("[[");
         for (RecordBlocks.Block b : RecordBlocks.blocks(RecordBlocks.Tab.NOTES, entries)) {
             String id = b.ids().get(0);
             List<Component> lines = b.lines();
-            blocks.add(TextLayout.block(ctx.font(), lines.get(0), PageRect.HALF_WIDTH, true, id));
+            // the heading leaves room for the star on its right
+            Paginator.Block<TextLayout.Line> head = TextLayout.block(ctx.font(), lines.get(0), PageRect.HALF_WIDTH - 14,
+                    true, id);
+            headings.put(head.lines().get(0), id);
+            blocks.add(head);
             for (int i = 1; i < lines.size(); i++) {
                 blocks.add(TextLayout.block(ctx.font(), lines.get(i), PageRect.HALF_WIDTH, false, id));
             }
@@ -246,7 +252,59 @@ public final class RecordsLayout {
                         ctx.unlocks()::isOpen), PageRect.HALF_WIDTH, false, id));
             }
         }
-        return textOrEmpty(ctx, blocks);
+        if (blocks.isEmpty()) {
+            return textOrEmpty(ctx, blocks);
+        }
+        java.util.Set<String> pinned = new java.util.HashSet<>();
+        entries.stream().filter(e -> e.is(JournalData.PINNED)).forEach(e -> pinned.add(e.id()));
+        List<LaidOutPage> out = new ArrayList<>();
+        for (List<TextLayout.Line> page : TextLayout.pages(blocks)) {
+            List<String> ids = page.stream().map(TextLayout.Line::entryId).filter(x -> x != null).distinct().toList();
+            out.add(new LaidOutPage(PageSpan.HALF, rect -> new NotesView(rect, page, headings, pinned, togglePin, ctx),
+                    ids));
+        }
+        return out;
+    }
+
+    /** A notes page: text, and a pin star at the right of each note's title (§3.12). */
+    static final class NotesView implements PageView {
+
+        private final PageRect rect;
+        private final TextPageView text;
+        private final List<AbstractWidget> widgets = new ArrayList<>();
+
+        NotesView(PageRect rect, List<TextLayout.Line> page, java.util.Map<TextLayout.Line, String> headings,
+                  java.util.Set<String> pinned, Consumer<String> togglePin, PageContext ctx) {
+            this.rect = rect;
+            this.text = new TextPageView(rect, page, ctx);
+            widgets.addAll(text.widgets());
+            for (int i = 0; i < page.size(); i++) {
+                String id = headings.get(page.get(i));
+                if (id != null) {
+                    boolean on = pinned.contains(id);
+                    widgets.add(new io.github.slugblue.wildroots.client.journal.book.BookWidgets.SpriteButton(
+                            rect.right() - 12, rect.y() + i * PageRect.LINE_HEIGHT - 2,
+                            on ? io.github.slugblue.wildroots.client.journal.book.JournalAtlas.Button.STAR_FULL
+                                    : io.github.slugblue.wildroots.client.journal.book.JournalAtlas.Button.STAR_EMPTY,
+                            Component.translatable("wildroots.journal.ui.pinned"), true, () -> togglePin.accept(id)));
+                }
+            }
+        }
+
+        @Override
+        public PageRect rect() {
+            return rect;
+        }
+
+        @Override
+        public List<AbstractWidget> widgets() {
+            return widgets;
+        }
+
+        @Override
+        public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+            text.render(g, mouseX, mouseY, partialTick);
+        }
     }
 
     /** Lines (M1a, §3.5): each bred cultivar with its line rows and path, as the server sends them. */

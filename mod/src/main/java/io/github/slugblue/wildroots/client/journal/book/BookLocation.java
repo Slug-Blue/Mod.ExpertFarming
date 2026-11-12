@@ -22,7 +22,9 @@ public record BookLocation(Kind kind, String id, int spread) {
         /** A records category (species, cultivars, lines, notes, breeder's notes). */
         RECORDS,
         /** One species or cultivar record; {@code id} is its journal entry id. */
-        RECORD
+        RECORD,
+        /** Search results; {@code id} is the query (§3.9). */
+        SEARCH
     }
 
     public static final BookLocation CONTENTS = new BookLocation(Kind.CONTENTS, "", 0);
@@ -41,6 +43,10 @@ public record BookLocation(Kind kind, String id, int spread) {
 
     public static BookLocation records(RecordsCategory c) {
         return new BookLocation(Kind.RECORDS, c.name(), 0);
+    }
+
+    public static BookLocation search(String query) {
+        return new BookLocation(Kind.SEARCH, query, 0);
     }
 
     public static BookLocation record(String journalId) {

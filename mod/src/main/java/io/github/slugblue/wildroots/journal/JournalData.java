@@ -37,6 +37,8 @@ public final class JournalData {
     public static final int MAX_ENTRIES = 256;
     public static final int MAX_ROWS = 16;
     public static final int MAX_COUNTERS = 128;
+    /** Most pinned entries (09-security.md, capability limits; journal v2 §3.10, WR-181f). */
+    public static final int MAX_PINNED = 16;
     /**
      * T3: a client copy that missed a delta (it did not decode there) is
      * repaired by a full sync on the next open, at most once per this many
@@ -287,8 +289,9 @@ public final class JournalData {
     /**
      * {@code JournalAction} (C→S, SEC-04/SEC-05): applies {@code action} to
      * an entry this player has unlocked. A foreign namespace, an unknown or
-     * locked id, another player's entry (not in this journal) or an unknown
-     * action are refused with {@code false} and change nothing.
+     * locked id, another player's entry (not in this journal), an unknown
+     * action, or a {@code PIN} past {@value #MAX_PINNED} pinned entries are
+     * refused with {@code false} and change nothing.
      */
     public boolean apply(ResourceLocation entry, int action) {
         if (inert() || entry == null || !"wildroots".equals(entry.getNamespace())) {
@@ -306,6 +309,10 @@ public final class JournalData {
             default -> -1;
         };
         if (f < 0) {
+            return false;
+        }
+        if (action == io.github.slugblue.wildroots.network.c2s.JournalActionPacket.PIN && !e.is(PINNED)
+                && entries.values().stream().filter(x -> x.is(PINNED)).count() >= MAX_PINNED) {
             return false;
         }
         if (f != e.flags()) {

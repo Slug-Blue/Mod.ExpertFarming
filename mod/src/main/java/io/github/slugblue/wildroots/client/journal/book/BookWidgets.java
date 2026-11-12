@@ -127,6 +127,41 @@ public final class BookWidgets {
         }
     }
 
+    /** A bookmark ribbon on the left edge, under the tabs (art doc: at book.x - 9, under the cover). */
+    public static final class RibbonButton extends AbstractButton {
+
+        private final Runnable action;
+
+        public RibbonButton(int x, int y, Component name, Runnable action) {
+            super(x, y, 9, JournalAtlas.RIBBON.height(), name);
+            this.action = action;
+            setTooltip(Tooltip.create(name));
+        }
+
+        /** Drawn by the screen before the spread, like the tabs. */
+        public void renderBack(GuiGraphics g) {
+            JournalAtlas.blit(g, isHoveredOrFocused() ? JournalAtlas.RIBBON.offset(JournalAtlas.RIBBON.width(), 0)
+                    : JournalAtlas.RIBBON, getX(), getY());
+        }
+
+        @Override
+        public void onPress() {
+            action.run();
+        }
+
+        @Override
+        protected void renderWidget(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+            if (isFocused()) {
+                focusFrame(g, getX() - 1, getY() - 1, width + 2, height + 2);
+            }
+        }
+
+        @Override
+        protected void updateWidgetNarration(NarrationElementOutput out) {
+            defaultButtonNarrationText(out);
+        }
+    }
+
     /** A row of a list page: icon, label, a count on the right, a "new" dot. */
     public static final class RowButton extends AbstractButton {
 

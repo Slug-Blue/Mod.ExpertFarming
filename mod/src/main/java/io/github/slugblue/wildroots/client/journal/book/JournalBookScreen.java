@@ -17,8 +17,6 @@ import io.github.slugblue.wildroots.core.Ids;
 import io.github.slugblue.wildroots.core.config.ClientConfig;
 import io.github.slugblue.wildroots.core.safety.LogThrottle;
 import io.github.slugblue.wildroots.journal.JournalData;
-import io.github.slugblue.wildroots.network.WrNetwork;
-import io.github.slugblue.wildroots.network.c2s.JournalActionPacket;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -37,6 +35,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import org.lwjgl.glfw.GLFW;
+import io.github.slugblue.wildroots.client.journal.search.JournalActions;
+import io.github.slugblue.wildroots.client.journal.search.JournalBookmarks;
+import io.github.slugblue.wildroots.client.journal.search.SearchIndex;
+import net.minecraft.client.gui.components.EditBox;
+import java.util.Map;
 import org.slf4j.Logger;
 
 /**
@@ -79,6 +82,10 @@ public final class JournalBookScreen extends Screen implements PageContext {
     private PageView dragView;
     private int dragButton;
     private ItemStack pendingItemTooltip = ItemStack.EMPTY;
+    /** The search field (§3.9): kept across layouts so typing is not interrupted. */
+    private EditBox searchBox;
+    /** Built on the first search, dropped with every layout (sync, reload, language). */
+    private SearchIndex<BookLocation> index;
 
     public JournalBookScreen() {
         super(Component.translatable("item.wildroots.field_journal"));
@@ -111,6 +118,16 @@ public final class JournalBookScreen extends Screen implements PageContext {
     @Override
     protected void init() {
         geo = BookGeometry.center(width, height);
+        String query = searchBox == null ? "" : searchBox.getValue();
+        searchBox = new EditBox(font, geo.x() + SEARCH_X + 4, geo.navY() + 4, SEARCH_W - 8, 9,
+                Component.translatable("wildroots.journal.ui.search"));
+        searchBox.setBordered(false);
+        searchBox.setMaxLength(48);
+        searchBox.setTextColor(JournalColors.INK & 0xFFFFFF);
+        searchBox.setHint(Component.translatable("wildroots.journal.ui.search")
+                .withStyle(s -> s.withColor(JournalColors.INK_FADED & 0xFFFFFF)));
+        searchBox.setValue(query);
+        searchBox.setResponder(this::onSearch);
         if (location == null) {
             location = JournalSession.openAt(newIds(ClientJournal.entries()));
         }
@@ -123,6 +140,7 @@ public final class JournalBookScreen extends Screen implements PageContext {
             return;
         }
         hideShown();
+        index = null;
         entries = ClientJournal.entries();
         unlocks = new GuideUnlocks(GuideBooks.current(), entries, ClientConfig.get(ClientConfig.SHOW_ALL_GUIDES),
                 PageTypes::available);
@@ -168,15 +186,18 @@ public final class JournalBookScreen extends Screen implements PageContext {
             case ENTRY -> unlocks.isOpen(l.id());
             case RECORDS -> RecordsCategory.byName(l.id()).map(rc -> rc.visible(entries)).orElse(false);
             case RECORD -> record(l.id()).isPresent();
+            case SEARCH -> true;
         };
         return ok ? l : BookLocation.CONTENTS;
     }
 
     private List<LaidOutPage> build(BookLocation l) {
         return switch (l.kind()) {
-            case CONTENTS -> BookPages.contents(unlocks, entries, this::jump);
+            case CONTENTS -> BookPages.contents(unlocks, entries, JournalBookmarks.list(), this::jump);
+            case SEARCH -> BookPages.searchResults(search(l.id()), this::jump);
             case CATEGORY -> BookPages.category(unlocks, unlocks.book().category(l.id()).orElseThrow(), this::jump);
-            case RECORDS -> BookPages.records(this, RecordsCategory.byName(l.id()).orElseThrow(), entries, this::jump);
+            case RECORDS -> BookPages.records(this, RecordsCategory.byName(l.id()).orElseThrow(), entries, this::jump,
+                    this::togglePin);
             case RECORD -> io.github.slugblue.wildroots.client.journal.records.RecordsLayout.record(this,
                     record(l.id()).orElseThrow());
             case ENTRY -> entryPages(unlocks.book().entry(l.id()).orElseThrow());
@@ -205,6 +226,7 @@ public final class JournalBookScreen extends Screen implements PageContext {
                     .orElse(Component.empty());
             case RECORDS -> RecordsCategory.byName(l.id()).map(rc -> Component.translatable(rc.titleKey()))
                     .orElse(Component.empty());
+            case SEARCH -> Component.translatable("wildroots.journal.ui.search").append(": " + l.id());
             case RECORD -> record(l.id()).map(e -> e.is(JournalData.LOCKED)
                     ? Component.translatable("wildroots.journal.ui.locked") : BookPages.recordTitle(e))
                     .orElse(Component.empty());
@@ -302,6 +324,19 @@ public final class JournalBookScreen extends Screen implements PageContext {
             addRenderableWidget(new BookWidgets.SpriteButton(geo.x() + BookGeometry.INSET - 2, geo.headerY() - 2,
                     JournalAtlas.Button.UP, Component.translatable("wildroots.journal.ui.up"), true, this::up));
         }
+        bookmarkable().ifPresent(on -> addRenderableWidget(new BookWidgets.SpriteButton(
+                geo.x() + BookGeometry.INSET + PageRect.HALF_WIDTH - 12, geo.headerY() - 2,
+                on ? JournalAtlas.Button.STAR_FULL : JournalAtlas.Button.STAR_EMPTY,
+                Component.translatable("wildroots.journal.ui.bookmarks"), true, this::toggleBookmark)));
+        int ry = geo.tabY(t) + 2;
+        for (Map.Entry<Component, BookLocation> b : BookPages.bookmarks(unlocks, entries, JournalBookmarks.list())) {
+            if (ry + JournalAtlas.RIBBON.height() > geo.y() + BookGeometry.SPREAD_H) {
+                break;
+            }
+            addRenderableWidget(new BookWidgets.RibbonButton(geo.x() - 9, ry, b.getKey(), () -> jump(b.getValue())));
+            ry += JournalAtlas.RIBBON.height() + 2;
+        }
+        addRenderableWidget(searchBox);
         int ny = geo.navY();
         int x = geo.x();
         int w = BookGeometry.SPREAD_W;
@@ -382,7 +417,7 @@ public final class JournalBookScreen extends Screen implements PageContext {
         Set<String> isNew = newIds(entries);
         for (String id : ids) {
             if (isNew.contains(id) && markedRead.add(id)) {
-                WrNetwork.CHANNEL.sendToServer(new JournalActionPacket(Ids.mod(id), JournalActionPacket.MARK_READ));
+                JournalActions.markRead(id);
             }
         }
     }
@@ -410,10 +445,14 @@ public final class JournalBookScreen extends Screen implements PageContext {
         for (var c : children()) {
             if (c instanceof BookWidgets.TabButton t) {
                 t.renderBack(g);
+            } else if (c instanceof BookWidgets.RibbonButton r) {
+                r.renderBack(g);
             }
         }
         JournalAtlas.blit(g, JournalAtlas.SPREAD, geo.x(), geo.y());
         JournalAtlas.blit(g, JournalAtlas.NAV, geo.x(), geo.navY());
+        JournalAtlas.nineSlice(g, searchBox.isFocused() ? JournalAtlas.SEARCH_FIELD_FOCUSED : JournalAtlas.SEARCH_FIELD, 3,
+                geo.x() + SEARCH_X, geo.navY() + 1, SEARCH_W, 14);
         int tx = geo.x() + BookGeometry.INSET + (location.kind() == BookLocation.Kind.CONTENTS ? 0 : 14);
         g.drawString(font, titleLine, tx, geo.headerY(), JournalColors.INK, false);
         if (spreads.size() > 1) {
@@ -464,8 +503,20 @@ public final class JournalBookScreen extends Screen implements PageContext {
 
     @Override
     public boolean keyPressed(int key, int scan, int mods) {
+        boolean ctrlDown = (mods & GLFW.GLFW_MOD_CONTROL) != 0;
+        if (searchBox.isFocused() && getFocused() == searchBox) {
+            return searchKey(key, scan, mods);
+        }
         if (key == GLFW.GLFW_KEY_ESCAPE) {
             onClose();
+            return true;
+        }
+        if (ctrlDown && key == GLFW.GLFW_KEY_F) {
+            focusSearch();
+            return true;
+        }
+        if (ctrlDown && key == GLFW.GLFW_KEY_D) {
+            toggleBookmark();
             return true;
         }
         if (focusedView != null && focusedView.keyPressed(key, scan, mods, true)) {
@@ -549,8 +600,16 @@ public final class JournalBookScreen extends Screen implements PageContext {
 
     @Override
     public boolean charTyped(char c, int mods) {
+        if (searchBox.isFocused() && getFocused() == searchBox) {
+            return searchBox.charTyped(c, mods);
+        }
         if (focusedView != null && focusedView.charTyped(c, mods)) {
             return true;
+        }
+        // on the contents, just start typing to search (§3.9)
+        if (location.kind() == BookLocation.Kind.CONTENTS && getFocused() == null && Character.isLetterOrDigit(c)) {
+            focusSearch();
+            return searchBox.charTyped(c, mods);
         }
         return super.charTyped(c, mods);
     }
@@ -613,6 +672,104 @@ public final class JournalBookScreen extends Screen implements PageContext {
             return true;
         }
         return super.mouseScrolled(mx, my, delta);
+    }
+
+    // ------------------------------------------------------------------ search and bookmarks
+
+    static final int SEARCH_X = 64;
+    static final int SEARCH_W = 176;
+
+    private void focusSearch() {
+        focusedView = null;
+        setFocused(searchBox);
+        searchBox.setFocused(true);
+    }
+
+    /** Results of a query; the index is built on the first search after a layout. */
+    List<SearchIndex.Doc<BookLocation>> search(String query) {
+        if (index == null) {
+            index = new SearchIndex<>(BookSearch.docs(unlocks, entries));
+        }
+        return index.search(query);
+    }
+
+    /** Typing updates the results; the first keystroke of a search is one history step, the rest replace it. */
+    private void onSearch(String query) {
+        if (query.isBlank() || geo == null) {
+            return;
+        }
+        if (location.kind() == BookLocation.Kind.SEARCH) {
+            location = BookLocation.search(query);
+            rebuild();
+        } else {
+            jump(BookLocation.search(query));
+        }
+    }
+
+    private boolean searchKey(int key, int scan, int mods) {
+        switch (key) {
+            case GLFW.GLFW_KEY_ESCAPE -> {
+                if (!searchBox.getValue().isEmpty()) {
+                    searchBox.setValue("");
+                } else {
+                    searchBox.setFocused(false);
+                    setFocused(null);
+                }
+                return true;
+            }
+            case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> {
+                if (!searchBox.getValue().isBlank()) {
+                    List<SearchIndex.Doc<BookLocation>> r = search(searchBox.getValue());
+                    if (!r.isEmpty()) {
+                        searchBox.setFocused(false);
+                        setFocused(null);
+                        jump(r.get(0).target());
+                    }
+                }
+                return true;
+            }
+            case GLFW.GLFW_KEY_DOWN, GLFW.GLFW_KEY_TAB -> {
+                for (GuiEventListener c : children()) {
+                    if (c instanceof BookWidgets.RowButton row) {
+                        searchBox.setFocused(false);
+                        setFocused(row);
+                        return true;
+                    }
+                }
+                return true;
+            }
+            default -> {
+                searchBox.keyPressed(key, scan, mods);
+                return true;
+            }
+        }
+    }
+
+    /** Whether the open page can carry a bookmark, and whether it does: guide entries (local), records (pin). */
+    private Optional<Boolean> bookmarkable() {
+        return switch (location.kind()) {
+            case ENTRY -> Optional.of(JournalBookmarks.has(location.id()));
+            case RECORD -> record(location.id()).filter(e -> !e.is(JournalData.LOCKED))
+                    .map(e -> e.is(JournalData.PINNED));
+            default -> Optional.empty();
+        };
+    }
+
+    /** Ctrl+D or the star: a guide entry goes to the local file, a record is pinned on the server. */
+    void toggleBookmark() {
+        if (location.kind() == BookLocation.Kind.ENTRY) {
+            JournalBookmarks.toggle(location.id());
+            showSpread(shown);
+        } else if (location.kind() == BookLocation.Kind.RECORD) {
+            record(location.id()).filter(e -> !e.is(JournalData.LOCKED))
+                    .ifPresent(e -> JournalActions.pin(e.id(), !e.is(JournalData.PINNED)));
+        }
+    }
+
+    /** Pins or unpins a note (its star in the notes, §3.12); the sync that follows redraws it. */
+    void togglePin(String journalId) {
+        entries.stream().filter(e -> e.id().equals(journalId) && !e.is(JournalData.LOCKED)).findFirst()
+                .ifPresent(e -> JournalActions.pin(e.id(), !e.is(JournalData.PINNED)));
     }
 
     // ------------------------------------------------------------------ PageContext

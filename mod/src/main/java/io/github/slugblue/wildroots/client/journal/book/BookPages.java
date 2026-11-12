@@ -12,6 +12,8 @@ import io.github.slugblue.wildroots.journal.JournalData;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import io.github.slugblue.wildroots.client.journal.search.SearchIndex;
 import java.util.function.Consumer;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -54,7 +56,7 @@ final class BookPages {
      * pinned ones). If a side runs over, both sides go on in step.
      */
     static List<LaidOutPage> contents(GuideUnlocks unlocks, List<JournalData.Entry> entries,
-                                      Consumer<BookLocation> jump) {
+                                      List<String> localBookmarks, Consumer<BookLocation> jump) {
         List<ListPageView.Item> left = new ArrayList<>();
         left.add(new ListPageView.Heading(heading("wildroots.journal.group.guide")));
         for (GuideCategory c : unlocks.openCategories()) {
@@ -95,9 +97,10 @@ final class BookPages {
                     Component.empty(), false, false, () -> { }));
         }
         List<ListPageView.Row> pinned = new ArrayList<>();
-        entries.stream().filter(e -> e.is(JournalData.PINNED)).forEach(e -> whereIs(e.id())
-                .ifPresent(at -> pinned.add(new ListPageView.Row(BookIcon.NONE, recordTitle(e), Component.empty(), false,
-                        true, () -> jump.accept(at)))));
+        for (Map.Entry<Component, BookLocation> b : bookmarks(unlocks, entries, localBookmarks)) {
+            pinned.add(new ListPageView.Row(BookIcon.NONE, b.getKey(), Component.empty(), false, true,
+                    () -> jump.accept(b.getValue())));
+        }
         if (!pinned.isEmpty()) {
             right.add(new ListPageView.Gap());
             right.add(new ListPageView.Heading(heading("wildroots.journal.ui.pinned")));
@@ -146,15 +149,46 @@ final class BookPages {
     /** A records category (§4.2): grids, notes, lines, breeder's notes. */
     static List<LaidOutPage> records(io.github.slugblue.wildroots.client.journal.page.PageContext ctx,
                                      RecordsCategory rc, List<JournalData.Entry> entries,
-                                     Consumer<BookLocation> jump) {
+                                     Consumer<BookLocation> jump, Consumer<String> togglePin) {
         Consumer<String> openRecord = id -> jump.accept(BookLocation.record(id));
         return switch (rc) {
             case SPECIES -> RecordsLayout.speciesGrid(entries, openRecord);
             case CULTIVARS -> RecordsLayout.cultivarGrid(entries, openRecord);
             case LINES -> RecordsLayout.lines(ctx, entries);
-            case NOTES -> RecordsLayout.notes(ctx, entries);
+            case NOTES -> RecordsLayout.notes(ctx, entries, togglePin);
             case BREEDER -> RecordsLayout.breeder(ctx, entries);
         };
+    }
+
+    /** Search results (§3.9): title and category, a click opens it; none: one line saying so. */
+    static List<LaidOutPage> searchResults(List<SearchIndex.Doc<BookLocation>> results, Consumer<BookLocation> jump) {
+        List<ListPageView.Item> items = new ArrayList<>();
+        for (SearchIndex.Doc<BookLocation> d : results) {
+            items.add(new ListPageView.Row(BookIcon.NONE, Component.literal(d.title()).append(
+                    Component.literal(" · " + d.category()).withStyle(s -> s.withItalic(true))), Component.empty(),
+                    false, true, () -> jump.accept(d.target())));
+        }
+        if (items.isEmpty()) {
+            items.add(new ListPageView.Row(BookIcon.NONE, Component.translatable("wildroots.journal.ui.search.none"),
+                    Component.empty(), false, false, () -> { }));
+        }
+        return ListPageView.pages(items);
+    }
+
+    /** The bookmarks (§3.10): local guide entries that are open, then records pinned on the server. */
+    static List<Map.Entry<Component, BookLocation>> bookmarks(GuideUnlocks unlocks, List<JournalData.Entry> entries,
+                                                             List<String> local) {
+        List<Map.Entry<Component, BookLocation>> out = new ArrayList<>();
+        for (String id : local) {
+            unlocks.openEntry(id).ifPresent(e -> out.add(Map.entry(Component.translatable(e.titleKey()),
+                    BookLocation.entry(id))));
+        }
+        for (JournalData.Entry e : entries) {
+            if (e.is(JournalData.PINNED)) {
+                whereIs(e.id()).ifPresent(at -> out.add(Map.entry(recordTitle(e), at)));
+            }
+        }
+        return out;
     }
 
     /** Where a journal entry is shown: its own page (species, cultivar) or its category. */
