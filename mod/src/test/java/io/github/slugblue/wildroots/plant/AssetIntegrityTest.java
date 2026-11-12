@@ -22,7 +22,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * WR-193, WR-194: every {@code wildroots:} model parent, override model and texture a model
- * names exists; every PNG is RGBA, 16 wide and a multiple of 16 high, and carries only
+ * names exists; every PNG is RGBA, 16 wide and a multiple of 16 high (GUI atlases under
+ * {@code textures/gui/}: any size up to 512), and carries only
  * IHDR/PLTE/tRNS/IDAT/IEND chunks (no metadata). The wave-1 M1a items have item models.
  */
 class AssetIntegrityTest {
@@ -90,11 +91,15 @@ class AssetIntegrityTest {
         assertEquals(List.of(), missing);
     }
 
+    /** Largest side of a GUI atlas under {@code textures/gui/}. */
+    static final int GUI_MAX = 512;
+
     @Test
     void pngsAreCleanRgbaSixteenPixelTiles() throws Exception {
         List<Path> pngs = files(assets().resolve("textures"), ".png");
         assertTrue(pngs.size() > 0, "textures present");
         for (Path png : pngs) {
+            boolean gui = assets().resolve("textures").relativize(png).getName(0).toString().equals("gui");
             try (InputStream raw = Files.newInputStream(png); DataInputStream in = new DataInputStream(raw)) {
                 byte[] sig = in.readNBytes(8);
                 assertEquals(0x89, sig[0] & 0xFF, png + ": PNG signature");
@@ -109,8 +114,13 @@ class AssetIntegrityTest {
                         assertEquals("IHDR", type, png + ": IHDR first");
                         int w = ((data[0] & 0xFF) << 24) | ((data[1] & 0xFF) << 16) | ((data[2] & 0xFF) << 8) | (data[3] & 0xFF);
                         int h = ((data[4] & 0xFF) << 24) | ((data[5] & 0xFF) << 16) | ((data[6] & 0xFF) << 8) | (data[7] & 0xFF);
-                        assertEquals(16, w, png + ": width");
-                        assertTrue(h > 0 && h % 16 == 0, png + ": height " + h);
+                        if (gui) {
+                            // GUI atlases (journal v2) are not tiles: any size up to 512, still RGBA
+                            assertTrue(w > 0 && w <= GUI_MAX && h > 0 && h <= GUI_MAX, png + ": GUI size " + w + "x" + h);
+                        } else {
+                            assertEquals(16, w, png + ": width");
+                            assertTrue(h > 0 && h % 16 == 0, png + ": height " + h);
+                        }
                         assertEquals(8, data[8], png + ": bit depth");
                         assertEquals(6, data[9], png + ": colour type RGBA");
                         first = false;
