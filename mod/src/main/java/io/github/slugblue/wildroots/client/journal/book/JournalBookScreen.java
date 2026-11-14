@@ -82,6 +82,8 @@ public final class JournalBookScreen extends Screen implements PageContext {
     private PageView dragView;
     private int dragButton;
     private ItemStack pendingItemTooltip = ItemStack.EMPTY;
+    /** The last key was a book key with a character (A, D): its charTyped is not text. */
+    private boolean swallowChar;
     /** The search field (§3.9): kept across layouts so typing is not interrupted. */
     private EditBox searchBox;
     /** Built on the first search; dropped on a sync, a guide reload, a resize or language change (§3.9). */
@@ -506,6 +508,7 @@ public final class JournalBookScreen extends Screen implements PageContext {
 
     @Override
     public boolean keyPressed(int key, int scan, int mods) {
+        swallowChar = false;
         boolean ctrlDown = (mods & GLFW.GLFW_MOD_CONTROL) != 0;
         // a focused text field gets its keys before the book and before any page view (scene keys included)
         if (searchBox.isFocused() && getFocused() == searchBox) {
@@ -537,6 +540,8 @@ public final class JournalBookScreen extends Screen implements PageContext {
             return true;
         }
         if (bookKey(key, scan, mods)) {
+            // A and D turn the page: their character must not also start a search on the contents (review m2)
+            swallowChar = key >= GLFW.GLFW_KEY_A && key <= GLFW.GLFW_KEY_Z;
             return true;
         }
         for (PageView v : visible()) {
@@ -609,6 +614,10 @@ public final class JournalBookScreen extends Screen implements PageContext {
 
     @Override
     public boolean charTyped(char c, int mods) {
+        if (swallowChar) {
+            swallowChar = false;
+            return true;
+        }
         if (getFocused() instanceof EditBox box && box.isFocused()) {
             return box.charTyped(c, mods);
         }
