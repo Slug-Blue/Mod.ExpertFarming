@@ -301,7 +301,8 @@ public final class ScenePageView implements PageView {
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         Font font = Minecraft.getInstance().font;
         if (timeline == null) {
-            g.drawString(font, "[" + page.scene() + "]", rect.x(), windowY(), JournalColors.INK_FADED, false);
+            g.drawString(font, Component.translatable("wildroots.journal.ui.scene.unavailable"), rect.x(), windowY(),
+                    JournalColors.INK_FADED, false);
             return;
         }
         play.set(timeline.playing() ? JournalAtlas.Button.PAUSE : JournalAtlas.Button.PLAY,

@@ -64,8 +64,14 @@ public final class FallbackFrameView implements PageView {
                 : List.of(LaidOutPage.spread(rect -> new FallbackFrameView(rect, f, ctx)))).orElse(List.of());
     }
 
+    /** Steps shown to this reader, by the engine's rule: {@code unlock} open, and {@code unless} (if any) not. */
     static List<SceneFrame.Step> visibleSteps(SceneFrame f, PageContext ctx) {
-        return f.steps().stream().filter(s -> ctx.unlocks().opened(s.unlock())).toList();
+        return visibleSteps(f, ctx.unlocks()::opened);
+    }
+
+    static List<SceneFrame.Step> visibleSteps(SceneFrame f, java.util.function.Predicate<List<String>> opened) {
+        return f.steps().stream().filter(s -> opened.test(s.unlock())
+                && (s.unless().isEmpty() || !opened.test(s.unless()))).toList();
     }
 
     public FallbackFrameView(PageRect rect, SceneFrame frame, PageContext ctx) {
@@ -147,20 +153,35 @@ public final class FallbackFrameView implements PageView {
         return rect.y() + PageRect.CONTROLS_Y + 6;
     }
 
-    /** Where icon {@code i} of the current picture goes (top-left) and its size. */
+    /** The window being drawn: the page's own, or the one a 3D scene hands over ({@link #renderWindow}). */
+    private int winX;
+    private int winY;
+    private int winW = PageRect.SCENE_WINDOW_W;
+    private int winH = PageRect.SCENE_WINDOW_H;
+
+    private void ownWindow() {
+        winX = rect.x();
+        winY = windowY();
+        winW = PageRect.SCENE_WINDOW_W;
+        winH = PageRect.SCENE_WINDOW_H;
+    }
+
+    /** Where icon {@code i} of the current picture goes (top-left) and its size, in the current window. */
     int[] place(int i, int n) {
-        int wy = windowY();
         if (layout == SceneFrame.Layout.RING) {
-            int size = 24;
+            int size = Math.max(8, Math.min(24, winH / 4));
             double a = -Math.PI / 2 + 2 * Math.PI * i / Math.max(1, n);
-            int cx = rect.x() + PageRect.SCENE_WINDOW_W / 2 + (int) Math.round(Math.cos(a) * 100);
-            int cy = wy + PageRect.SCENE_WINDOW_H / 2 + (int) Math.round(Math.sin(a) * 36);
+            int rx = Math.max(0, winW / 2 - size / 2 - 8);
+            int ry = Math.max(0, winH / 2 - size / 2 - 8);
+            int cx = winX + winW / 2 + (int) Math.round(Math.cos(a) * Math.min(100, rx));
+            int cy = winY + winH / 2 + (int) Math.round(Math.sin(a) * Math.min(36, ry));
             return new int[] {cx - size / 2, cy - size / 2, size};
         }
-        int size = Math.max(8, Math.min(ICON_MAX, (PageRect.SCENE_WINDOW_W - 16 - (n - 1) * ARROW_GAP) / Math.max(1, n)));
+        int size = Math.max(8, Math.min(Math.min(ICON_MAX, winH - 8),
+                (winW - 16 - (n - 1) * ARROW_GAP) / Math.max(1, n)));
         int total = n * size + (n - 1) * ARROW_GAP;
-        int x = rect.x() + (PageRect.SCENE_WINDOW_W - total) / 2 + i * (size + ARROW_GAP);
-        return new int[] {x, wy + (PageRect.SCENE_WINDOW_H - size) / 2, size};
+        int x = winX + (winW - total) / 2 + i * (size + ARROW_GAP);
+        return new int[] {x, winY + (winH - size) / 2, size};
     }
 
     /** The icons drawn now: the current step's (row), or each step's first (ring). */
@@ -178,19 +199,42 @@ public final class FallbackFrameView implements PageView {
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         Font font = Minecraft.getInstance().font;
-        int wy = windowY();
-        JournalAtlas.nineSlice(g, JournalAtlas.SCENE_FRAME, JournalAtlas.SCENE_FRAME_BORDER, rect.x() - 4, wy - 4,
+        ownWindow();
+        JournalAtlas.nineSlice(g, JournalAtlas.SCENE_FRAME, JournalAtlas.SCENE_FRAME_BORDER, rect.x() - 4, winY - 4,
                 PageRect.SCENE_WINDOW_W + 8, PageRect.SCENE_WINDOW_H + 8);
         if (steps.isEmpty()) {
             return;
         }
+        drawWindow(g, mouseX, mouseY);
+        renderControls(g, font, mouseX, mouseY);
+    }
+
+    /**
+     * Only the picture, inside a window {@code (x, y, w, h)} that someone
+     * else frames: no caption, slider or buttons (the 3D scene page in 2D
+     * mode keeps its own, WR-181k).
+     */
+    public void renderWindow(GuiGraphics g, int x, int y, int w, int h, int mouseX, int mouseY, float partialTick) {
+        winX = x;
+        winY = y;
+        winW = w;
+        winH = h;
+        if (!steps.isEmpty()) {
+            drawWindow(g, mouseX, mouseY);
+        }
+        ownWindow();
+    }
+
+    private void drawWindow(GuiGraphics g, int mouseX, int mouseY) {
+        Font font = Minecraft.getInstance().font;
+        int wy = winY;
         if (textOnly) {
             int y = wy + 4;
             for (FormattedCharSequence l : captionList) {
-                if (y + PageRect.LINE_HEIGHT > wy + PageRect.SCENE_WINDOW_H) {
+                if (y + PageRect.LINE_HEIGHT > wy + winH) {
                     break;
                 }
-                g.drawString(font, l, rect.x() + 4, y, JournalColors.INK, false);
+                g.drawString(font, l, winX + 4, y, JournalColors.INK, false);
                 y += PageRect.LINE_HEIGHT;
             }
         } else {
@@ -214,10 +258,12 @@ public final class FallbackFrameView implements PageView {
                 }
             }
             if (layout == SceneFrame.Layout.RING) {
-                JournalAtlas.blit(g, JournalAtlas.Arrow.LOOP.sprite(), rect.x() + PageRect.SCENE_WINDOW_W / 2 - 4,
-                        wy + PageRect.SCENE_WINDOW_H / 2 - 4);
+                JournalAtlas.blit(g, JournalAtlas.Arrow.LOOP.sprite(), winX + winW / 2 - 4, wy + winH / 2 - 4);
             }
         }
+    }
+
+    private void renderControls(GuiGraphics g, Font font, int mouseX, int mouseY) {
         int cy = rect.y() + PageRect.CAPTION_Y;
         for (FormattedCharSequence l : captions.get(step)) {
             g.drawString(font, l, rect.x(), cy, JournalColors.INK, false);
@@ -280,6 +326,7 @@ public final class FallbackFrameView implements PageView {
             return true;
         }
         if (!textOnly) {
+            ownWindow();
             List<Shown> pic = picture();
             for (int i = 0; i < pic.size(); i++) {
                 int[] p = place(i, pic.size());

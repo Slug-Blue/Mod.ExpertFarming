@@ -365,6 +365,7 @@
   "wildroots.journal.ui.scene.prev": "Previous step",
   "wildroots.journal.ui.scene.next": "Next step",
   "wildroots.journal.ui.scene.controls": "Drag to turn, scroll to zoom, double-click to reset",
+  "wildroots.journal.ui.scene.unavailable": "This picture could not be drawn.",
   "wildroots.journal.guide.start.title": "Getting Started",
   "wildroots.journal.guide.start.1": "Wild plants grow in patches; wild carrot shows from far off by its white umbels. Pulled when ripe, it gives a root and a [[guide.mother_root|mother root]]. Pulled in seed, it gives a packet of seeds. Both go on farmland, close together: [[guide.pollination|neighbours]] pollinate each other.",
   "wildroots.journal.guide.start.2": "No two roots from one patch are quite alike: one thicker, one paler, one less bitter. Pigs and rabbits like them too: they follow, and they breed.",

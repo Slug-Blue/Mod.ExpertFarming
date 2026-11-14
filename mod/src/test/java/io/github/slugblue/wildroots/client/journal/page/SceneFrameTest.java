@@ -59,6 +59,26 @@ class SceneFrameTest {
         assertEquals(List.of(), f.steps().get(2).icons(), "a step without frame: its caption only");
     }
 
+    /** The shipped cycle: 6 steps with or without the brush, as in 3D (the brush step replaces the bee step). */
+    @Test
+    void theShippedCycleShowsSixStepsWithOrWithoutTheBrush() throws Exception {
+        java.nio.file.Path p = java.nio.file.Path.of(System.getProperty("user.dir"))
+                .resolve("src/main/resources/assets/wildroots/journal/scenes/carrot_cycle.json");
+        if (!java.nio.file.Files.exists(p)) {
+            p = java.nio.file.Path.of("mod").resolve("src/main/resources/assets/wildroots/journal/scenes/carrot_cycle.json");
+        }
+        SceneFrame f = SceneFrame.parse(io.github.slugblue.wildroots.client.journal.GuideLoader
+                .parseObject(java.nio.file.Files.readAllBytes(p)));
+        java.util.function.Predicate<List<String>> noBrush = u -> u.isEmpty();
+        java.util.function.Predicate<List<String>> brush = u -> u.isEmpty() || u.contains("tool.pollination_brush");
+        List<SceneFrame.Step> without = FallbackFrameView.visibleSteps(f, noBrush);
+        List<SceneFrame.Step> with = FallbackFrameView.visibleSteps(f, brush);
+        assertEquals(6, without.size());
+        assertEquals(6, with.size());
+        assertTrue(with.stream().anyMatch(s -> s.caption().endsWith(".5.brush")));
+        assertTrue(without.stream().noneMatch(s -> s.caption().endsWith(".5.brush")));
+    }
+
     @Test
     void brokenFramesAreOneLineEach() {
         String nine = "[" + "{\"item\":\"wildroots:seed_lot\"},".repeat(8) + "{\"item\":\"wildroots:seed_lot\"}]";

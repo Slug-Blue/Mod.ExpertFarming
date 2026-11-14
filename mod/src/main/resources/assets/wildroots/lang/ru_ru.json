@@ -365,6 +365,7 @@
   "wildroots.journal.ui.scene.prev": "Предыдущий шаг",
   "wildroots.journal.ui.scene.next": "Следующий шаг",
   "wildroots.journal.ui.scene.controls": "Тянуть — поворот, колесо — масштаб, двойной щелчок — сброс",
+  "wildroots.journal.ui.scene.unavailable": "Эту картинку не удалось нарисовать.",
   "wildroots.journal.guide.start.title": "С чего начать",
   "wildroots.journal.guide.start.1": "Дикие растения растут зарослями; дикую морковь видно издалека по белым зонтикам. Спелое растение даёт корень и [[guide.mother_root|маточник]], растение в семенах — пакетик семян. И то и другое сажают на пашню, рядом: [[guide.pollination|соседи]] опыляют друг друга.",
   "wildroots.journal.guide.start.2": "Корни из одних зарослей не одинаковые: один толще, другой светлее, третий меньше горчит. Свиньи и кролики их тоже ценят: идут следом и плодятся.",

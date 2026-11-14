@@ -504,8 +504,14 @@ public final class JournalBookScreen extends Screen implements PageContext {
     @Override
     public boolean keyPressed(int key, int scan, int mods) {
         boolean ctrlDown = (mods & GLFW.GLFW_MOD_CONTROL) != 0;
+        // a focused text field gets its keys before the book and before any page view (scene keys included)
         if (searchBox.isFocused() && getFocused() == searchBox) {
             return searchKey(key, scan, mods);
+        }
+        if (getFocused() instanceof EditBox box && box.isFocused() && key != GLFW.GLFW_KEY_ESCAPE
+                && key != GLFW.GLFW_KEY_TAB) {
+            box.keyPressed(key, scan, mods);
+            return true;
         }
         if (key == GLFW.GLFW_KEY_ESCAPE) {
             onClose();
@@ -600,8 +606,8 @@ public final class JournalBookScreen extends Screen implements PageContext {
 
     @Override
     public boolean charTyped(char c, int mods) {
-        if (searchBox.isFocused() && getFocused() == searchBox) {
-            return searchBox.charTyped(c, mods);
+        if (getFocused() instanceof EditBox box && box.isFocused()) {
+            return box.charTyped(c, mods);
         }
         if (focusedView != null && focusedView.charTyped(c, mods)) {
             return true;

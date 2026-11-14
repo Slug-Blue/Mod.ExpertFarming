@@ -39,10 +39,12 @@ public record SceneFrame(String id, Layout layout, List<Step> steps) {
     public record Icon(Optional<ResourceLocation> item, Optional<ResourceLocation> sprite) {
     }
 
-    public record Step(String caption, List<String> unlock, List<Icon> icons) {
+    /** {@code unless}: the step is left out when one of these is open (the step a variant replaces). */
+    public record Step(String caption, List<String> unlock, List<String> unless, List<Icon> icons) {
 
         public Step {
             unlock = List.copyOf(unlock);
+            unless = List.copyOf(unless);
             icons = List.copyOf(icons);
         }
     }
@@ -91,7 +93,8 @@ public record SceneFrame(String id, Layout layout, List<Step> steps) {
                 throw new GuideFormatException("\"frame\" is not a list");
             }
             steps.add(new Step(GuideJson.string(s, "caption", GuideLimits.LANG_KEY),
-                    GuideJson.list(s, "unlock", GuideLimits.UNLOCK), icons));
+                    GuideJson.list(s, "unlock", GuideLimits.UNLOCK), GuideJson.list(s, "unless", GuideLimits.UNLOCK),
+                    icons));
         }
         return new SceneFrame(id, l, steps);
     }
