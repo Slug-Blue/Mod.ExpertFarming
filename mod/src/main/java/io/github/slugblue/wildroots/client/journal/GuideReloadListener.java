@@ -68,7 +68,7 @@ public final class GuideReloadListener extends SimplePreparableReloadListener<Gu
                 log.add("journal/" + s.folder() + ": failed (" + GuideLoader.message(e) + ")");
             }
         }
-        return new Prepared(result.book(), prepared, List.copyOf(log));
+        return new Prepared(result.book(), prepared, GuideLoader.capLog(log, "journal/"));
     }
 
     @Override

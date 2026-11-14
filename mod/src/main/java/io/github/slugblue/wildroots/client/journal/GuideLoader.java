@@ -80,6 +80,7 @@ public final class GuideLoader {
         ResourceLocation linksFile = null;
         long total = 0;
         boolean totalWarned = false;
+        int candidates = 0;
         for (Map.Entry<ResourceLocation, IoSupplier<InputStream>> f : new TreeMap<>(files).entrySet()) {
             ResourceLocation rl = f.getKey();
             String path = rl.getPath();
@@ -88,6 +89,11 @@ public final class GuideLoader {
             boolean isLinks = path.equals(HINT_LINKS);
             if (!rl.getNamespace().equals(NAMESPACE) || !(isCat || isEntry || isLinks)) {
                 continue;
+            }
+            if (++candidates > GuideLimits.MAX_CANDIDATES) {
+                log.add(rl + ": more than " + GuideLimits.MAX_CANDIDATES
+                        + " guide files; this and later files not read");
+                break;
             }
             byte[] bytes;
             try (InputStream in = f.getValue().get()) {
@@ -172,7 +178,7 @@ public final class GuideLoader {
         if (links != null) {
             hintLinks(linksFile, links, entryIds, hintLinks, log);
         }
-        return new Result(new GuideBook(categories, list, hintLinks), List.copyOf(log));
+        return new Result(new GuideBook(categories, list, hintLinks), capLog(log, "journal/"));
     }
 
     static GuideCategory category(JsonObject o, Registries reg) throws GuideFormatException {
@@ -274,6 +280,19 @@ public final class GuideLoader {
             }
             out.put(hint, v.getAsString());
         }
+    }
+
+    /**
+     * At most {@link GuideLimits#MAX_LOG_LINES} lines, then one line saying
+     * how many more there were (review M1).
+     */
+    public static List<String> capLog(List<String> log, String where) {
+        if (log.size() <= GuideLimits.MAX_LOG_LINES + 1) {
+            return List.copyOf(log);
+        }
+        List<String> out = new ArrayList<>(log.subList(0, GuideLimits.MAX_LOG_LINES));
+        out.add((log.size() - GuideLimits.MAX_LOG_LINES) + " more problems in " + where + " suppressed");
+        return List.copyOf(out);
     }
 
     /** The bytes of {@code in}, or {@code null} if there are more than {@code max}. */

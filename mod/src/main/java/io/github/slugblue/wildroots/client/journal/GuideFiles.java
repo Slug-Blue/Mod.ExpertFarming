@@ -31,11 +31,18 @@ public final class GuideFiles {
         long total = 0;
         boolean countWarned = false;
         boolean totalWarned = false;
+        int candidates = 0;
         for (Map.Entry<ResourceLocation, IoSupplier<InputStream>> f : new TreeMap<>(files).entrySet()) {
             ResourceLocation rl = f.getKey();
             if (!rl.getNamespace().equals(GuideLoader.NAMESPACE) || !rl.getPath().startsWith(prefix)
                     || !rl.getPath().endsWith(".json")) {
                 continue;
+            }
+            // oversized and unreadable files count too: the work per reload is bounded (review M1)
+            if (++candidates > maxFiles + GuideLimits.SECTION_SLACK) {
+                log.add(rl + ": more than " + (maxFiles + GuideLimits.SECTION_SLACK) + " candidate files in " + prefix
+                        + "; this and later files not read");
+                break;
             }
             if (out.size() >= maxFiles) {
                 if (!countWarned) {

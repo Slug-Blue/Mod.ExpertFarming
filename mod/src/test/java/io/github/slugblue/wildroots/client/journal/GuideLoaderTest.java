@@ -357,6 +357,38 @@ class GuideLoaderTest {
         }
     }
 
+    /** Review M1: a pack with 10 000 broken or oversized files costs a bounded number of reads and log lines. */
+    @Test
+    void aFloodOfBadFilesIsReadAndLoggedBoundedly() {
+        int[] reads = {0};
+        Map<ResourceLocation, IoSupplier<InputStream>> flood = new LinkedHashMap<>();
+        for (int i = 0; i < 10_000; i++) {
+            flood.put(rl(String.format("journal/entries/e%05d.json", i)), () -> {
+                reads[0]++;
+                return new ByteArrayInputStream("x".getBytes(StandardCharsets.UTF_8));
+            });
+        }
+        GuideLoader.Result r = GuideLoader.load(flood, REG);
+        assertTrue(reads[0] <= GuideLimits.MAX_CANDIDATES, "reads " + reads[0]);
+        assertEquals(GuideLimits.MAX_LOG_LINES + 1, r.log().size(), "16 lines and one summary");
+        assertTrue(r.log().get(GuideLimits.MAX_LOG_LINES).contains("more problems"), r.log()::toString);
+
+        reads[0] = 0;
+        Map<ResourceLocation, IoSupplier<InputStream>> big = new LinkedHashMap<>();
+        byte[] oversized = new byte[100];
+        for (int i = 0; i < 10_000; i++) {
+            big.put(rl(String.format("journal/scenes/s%05d.json", i)), () -> {
+                reads[0]++;
+                return new ByteArrayInputStream(oversized);
+            });
+        }
+        List<String> log = new ArrayList<>();
+        SortedMap<ResourceLocation, byte[]> got = GuideFiles.read(big, "scenes", 10, 32, 1000, log);
+        assertEquals(0, got.size());
+        assertTrue(reads[0] <= 32 + GuideLimits.SECTION_SLACK, "oversized files count as candidates: " + reads[0]);
+        assertTrue(GuideLoader.capLog(log, "journal/scenes/").size() <= GuideLimits.MAX_LOG_LINES + 1);
+    }
+
     @Test
     void sectionFilesFollowTheirOwnLimits() {
         Map<String, String> m = new LinkedHashMap<>();

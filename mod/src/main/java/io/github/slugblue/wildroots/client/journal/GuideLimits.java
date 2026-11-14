@@ -25,6 +25,17 @@ public final class GuideLimits {
     public static final int MAX_STRING = 128;
     /** Deepest JSON nesting of a guide file (checked by a strict reader before the tree is built). */
     public static final int MAX_JSON_DEPTH = 16;
+    /**
+     * Candidate files the guide loader looks at in all, broken and oversized
+     * ones included; past this it stops reading (review M1: a pack with
+     * 100 000 files must not cost 100 000 reads or log lines).
+     */
+    public static final int MAX_CANDIDATES = MAX_CATEGORIES + MAX_ENTRIES + 1 + 32;
+    /** Extra candidates a {@link GuideSection} folder may hold beyond its file limit before reading stops. */
+    public static final int SECTION_SLACK = 32;
+    /** Log lines kept from one reload; the rest become one "N more" line. */
+    public static final int MAX_LOG_LINES = 16;
+
     /** Pairs in {@code hint_links.json}: one per hint at most. */
     public static final int MAX_HINT_LINKS = 256;
 
