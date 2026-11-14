@@ -184,14 +184,20 @@ public final class FallbackFrameView implements PageView {
         return new int[] {x, winY + (winH - size) / 2, size};
     }
 
+    /** Each step's first icon, for the ring; built once (review m4). */
+    private List<Shown> ring;
+
     /** The icons drawn now: the current step's (row), or each step's first (ring). */
     List<Shown> picture() {
         if (layout == SceneFrame.Layout.RING) {
-            List<Shown> out = new ArrayList<>();
-            for (List<Shown> r : icons) {
-                out.add(r.isEmpty() ? new Shown(ItemStack.EMPTY, null) : r.get(0));
+            if (ring == null) {
+                List<Shown> out = new ArrayList<>();
+                for (List<Shown> r : icons) {
+                    out.add(r.isEmpty() ? new Shown(ItemStack.EMPTY, null) : r.get(0));
+                }
+                ring = List.copyOf(out);
             }
-            return out;
+            return ring;
         }
         return steps.isEmpty() ? List.of() : icons.get(step);
     }

@@ -73,6 +73,15 @@ public final class ScenePageView implements PageView {
     private final List<AbstractWidget> widgets = new ArrayList<>();
     private final Map<SceneAction.PopItem, ItemStack> popStacks = new IdentityHashMap<>();
     private final Map<ResourceLocation, ItemStack> frameStacks = new HashMap<>();
+    /** Reused every frame (review m4): no per-frame lists, maps, label text or tooltip wrapping. */
+    private final List<SceneRenderer.BeeAt> beesNow = new ArrayList<>(SceneLimits.MAX_BEES);
+    private final Map<SceneAction.Cell, Integer> popsPerCell = new HashMap<>();
+    private final Map<SceneAction.Cell, Integer> popsSeen = new HashMap<>();
+    private final float[] projected = new float[2];
+    private final Map<String, Component> labelText = new HashMap<>();
+    private final Map<String, Integer> labelWidth = new HashMap<>();
+    private final Map<String, List<Component>> tooltipLines = new HashMap<>();
+    private Boolean playShown;
     private SceneWidgets.Button play;
     private SceneWidgets.Button reset;
 
@@ -305,9 +314,12 @@ public final class ScenePageView implements PageView {
                     JournalColors.INK_FADED, false);
             return;
         }
-        play.set(timeline.playing() ? JournalAtlas.Button.PAUSE : JournalAtlas.Button.PLAY,
-                Component.translatable(timeline.playing() ? "wildroots.journal.ui.scene.pause"
-                        : "wildroots.journal.ui.scene.play"));
+        if (playShown == null || playShown != timeline.playing()) {
+            playShown = timeline.playing();
+            play.set(playShown ? JournalAtlas.Button.PAUSE : JournalAtlas.Button.PLAY,
+                    Component.translatable(playShown ? "wildroots.journal.ui.scene.pause"
+                            : "wildroots.journal.ui.scene.play"));
+        }
         reset.active = threeD();
         int wx = windowX();
         int wy = windowY();
@@ -359,7 +371,8 @@ public final class ScenePageView implements PageView {
         SceneCamera cam = camera.current(partialTick);
         SceneStep step = timeline.current();
         float time = timeline.time(partialTick);
-        List<SceneRenderer.BeeAt> bees = new ArrayList<>(SceneLimits.MAX_BEES);
+        List<SceneRenderer.BeeAt> bees = beesNow;
+        bees.clear();
         for (SceneAction a : step.actions()) {
             if (a instanceof SceneAction.Bee b && time >= b.at() && time < b.at() + b.ticks()) {
                 float k = (time - b.at()) / b.ticks();
@@ -383,7 +396,7 @@ public final class ScenePageView implements PageView {
                 highlight(g, m, h);
             }
         }
-        Map<SceneAction.Cell, Integer> popsPerCell = new HashMap<>();
+        popsPerCell.clear();
         for (SceneAction a : step.actions()) {
             if (a instanceof SceneAction.PopItem p && time >= p.at()) {
                 popsPerCell.merge(p.pos(), 1, Integer::sum);
@@ -391,11 +404,11 @@ public final class ScenePageView implements PageView {
         }
         for (SceneAction a : step.actions()) {
             if (a instanceof SceneAction.Label l && time >= l.at()) {
-                float[] s = SceneRenderer.project(m, l.pos().x() + 0.5, l.pos().y() + 0.3, l.pos().z() + 0.5);
+                float[] s = SceneRenderer.project(m, l.pos().x() + 0.5, l.pos().y() + 0.3, l.pos().z() + 0.5, projected);
                 label(g, font, Math.round(s[0]), Math.round(s[1]), l);
             } else if (a instanceof SceneAction.Icon i && time >= i.at() && time < i.at() + i.ticks()) {
                 double[] p = SceneMotion.along(i.path(), (time - i.at()) / i.ticks());
-                float[] s = SceneRenderer.project(m, p[0], p[1], p[2]);
+                float[] s = SceneRenderer.project(m, p[0], p[1], p[2], projected);
                 int x = Math.round(s[0]) - 8;
                 int y = Math.round(s[1]) - (i.icon().bottom ? 15 : 8);
                 g.blit(JournalAtlas.SCENE, x, y, i.icon().u, i.icon().v, 16, 16, JournalAtlas.SCENE_W,
@@ -403,7 +416,8 @@ public final class ScenePageView implements PageView {
             }
         }
         int size = Mth.clamp(Math.round(scale * 0.75f), ITEM_MIN, ITEM_MAX);
-        Map<SceneAction.Cell, Integer> seen = new HashMap<>();
+        Map<SceneAction.Cell, Integer> seen = popsSeen;
+        seen.clear();
         for (SceneAction a : step.actions()) {
             if (a instanceof SceneAction.PopItem p && time >= p.at()) {
                 ItemStack stack = popStacks.getOrDefault(p, ItemStack.EMPTY);
@@ -412,7 +426,7 @@ public final class ScenePageView implements PageView {
                 }
                 int index = seen.merge(p.pos(), 1, Integer::sum) - 1;
                 double[] w = SceneMotion.pop(p.pos(), index, popsPerCell.get(p.pos()), time - p.at());
-                float[] s = SceneRenderer.project(m, w[0], w[1], w[2]);
+                float[] s = SceneRenderer.project(m, w[0], w[1], w[2], projected);
                 int x = Math.round(s[0] - size / 2f);
                 int y = Math.round(s[1] - size / 2f);
                 g.pose().pushPose();
@@ -425,6 +439,8 @@ public final class ScenePageView implements PageView {
         }
     }
 
+    /** Render thread only: scratch of {@link #highlight}. */
+    private static final float[] CORNER = new float[2];
     private static final int[][] CORNERS = {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {1, 1, 0}, {1, 0, 1},
             {0, 1, 1}, {1, 1, 1}};
 
@@ -436,7 +452,7 @@ public final class ScenePageView implements PageView {
         float y1 = -Float.MAX_VALUE;
         for (int[] c : CORNERS) {
             float[] s = SceneRenderer.project(m, c[0] == 0 ? h.from().x() : h.to().x() + 1,
-                    c[1] == 0 ? h.from().y() : h.to().y() + 1, c[2] == 0 ? h.from().z() : h.to().z() + 1);
+                    c[1] == 0 ? h.from().y() : h.to().y() + 1, c[2] == 0 ? h.from().z() : h.to().z() + 1, CORNER);
             x0 = Math.min(x0, s[0]);
             y0 = Math.min(y0, s[1]);
             x1 = Math.max(x1, s[0]);
@@ -448,8 +464,8 @@ public final class ScenePageView implements PageView {
 
     /** A callout (9-slice, border 3, text at +3, +2, 13 tall) with its tail pointing down at (x, y). */
     private void label(GuiGraphics g, Font font, int x, int y, SceneAction.Label l) {
-        Component text = Component.translatable(l.key());
-        int w = font.width(text) + 6;
+        Component text = labelText.computeIfAbsent(l.key(), Component::translatable);
+        int w = labelWidth.computeIfAbsent(l.key(), k -> font.width(text)) + 6;
         int h = 13;
         int bx = x - w / 2;
         int by = y - 4 - h + 1;
@@ -588,13 +604,15 @@ public final class ScenePageView implements PageView {
             if (!h.stack().isEmpty()) {
                 ctx.itemTooltip(h.stack());
             } else if (h.tooltip() != null) {
-                Font font = Minecraft.getInstance().font;
-                List<Component> lines = new ArrayList<>();
-                for (FormattedText t : font.getSplitter().splitLines(Component.translatable(h.tooltip()), 180,
-                        Style.EMPTY)) {
-                    lines.add(Component.literal(t.getString()));
-                }
-                ctx.tooltip(lines);
+                ctx.tooltip(tooltipLines.computeIfAbsent(h.tooltip(), key -> {
+                    Font font = Minecraft.getInstance().font;
+                    List<Component> lines = new ArrayList<>();
+                    for (FormattedText t : font.getSplitter().splitLines(Component.translatable(key), 180,
+                            Style.EMPTY)) {
+                        lines.add(Component.literal(t.getString()));
+                    }
+                    return List.copyOf(lines);
+                }));
             }
             return;
         }

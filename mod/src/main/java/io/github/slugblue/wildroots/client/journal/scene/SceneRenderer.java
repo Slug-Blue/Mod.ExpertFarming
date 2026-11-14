@@ -82,16 +82,27 @@ final class SceneRenderer implements AutoCloseable {
         pose.translate(-def.sizeX() / 2f, -def.sizeY() / 2f, -def.sizeZ() / 2f);
     }
 
+    /** Reused every frame (review m4): one pose and one matrix per renderer. */
+    private final PoseStack matrixPose = new PoseStack();
+    private final Matrix4f matrix = new Matrix4f();
+
+    /** The scene pose as a matrix; the same object every call, valid until the next call. */
     Matrix4f matrix(SceneCamera cam, int wx, int wy, int ww, int wh) {
-        PoseStack p = new PoseStack();
-        applyPose(p, cam, wx, wy, ww, wh);
-        return new Matrix4f(p.last().pose());
+        matrixPose.last().pose().identity();
+        matrixPose.last().normal().identity();
+        applyPose(matrixPose, cam, wx, wy, ww, wh);
+        return matrix.set(matrixPose.last().pose());
     }
 
-    /** Where a structure point lands on the screen (GUI x, y). */
-    static float[] project(Matrix4f m, double x, double y, double z) {
-        Vector4f v = m.transform(new Vector4f((float) x, (float) y, (float) z, 1));
-        return new float[] {v.x(), v.y()};
+    /** Render thread only: the scratch vector of {@link #project}. */
+    private static final Vector4f PROJECT = new Vector4f();
+
+    /** Where a structure point lands on the screen (GUI x, y), written into {@code out}; render thread only. */
+    static float[] project(Matrix4f m, double x, double y, double z, float[] out) {
+        m.transform(PROJECT.set((float) x, (float) y, (float) z, 1));
+        out[0] = PROJECT.x();
+        out[1] = PROJECT.y();
+        return out;
     }
 
     /** A bee to draw: position in structure coordinates, heading, age. */
