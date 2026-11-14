@@ -163,17 +163,37 @@ public final class JournalSceneHarvestGameTests {
         helper.succeed();
     }
 
-    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, timeoutTicks = 200)
+    /**
+     * В2, В6: a plant from seed stays at stage 3 under 5000 random ticks.
+     * Positive control (review m8): in the same cell and light, a planted
+     * mother root at stage 3 does move on under the same ticks, so "stays
+     * at 3" is not just a cell where nothing grows.
+     */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, timeoutTicks = PlantFixtures.LIT_WAIT + 200)
     public static void plantFromSeedWaitsAtStageThree(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        PlantFixtures.plant(PlantFixtures.place(helper, PlantFixtures.PLANT, FieldPlantBlock.HARVEST_STAGE), 9120);
-        BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
-        RandomSource r = RandomSource.create(9121);
-        for (int i = 0; i < 5000; i++) {
-            level.getBlockState(abs).randomTick(level, abs, r);
-        }
-        helper.assertTrue(PlantFixtures.stage(helper, PlantFixtures.PLANT) == FieldPlantBlock.HARVEST_STAGE,
-                "left stage 3: " + PlantFixtures.stage(helper, PlantFixtures.PLANT));
-        helper.succeed();
+        PlantFixtures.litFarmland(helper, PlantFixtures.PLANT);
+        PlantFixtures.whenLit(helper, List.of(PlantFixtures.PLANT), () -> {
+            BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
+            PlantFixtures.plant(PlantFixtures.place(helper, PlantFixtures.PLANT, FieldPlantBlock.HARVEST_STAGE), 9120);
+            RandomSource r = RandomSource.create(9121);
+            for (int i = 0; i < 5000; i++) {
+                level.getBlockState(abs).randomTick(level, abs, r);
+            }
+            helper.assertTrue(PlantFixtures.stage(helper, PlantFixtures.PLANT) == FieldPlantBlock.HARVEST_STAGE,
+                    "left stage 3: " + PlantFixtures.stage(helper, PlantFixtures.PLANT));
+
+            helper.setBlock(PlantFixtures.PLANT, Blocks.AIR);
+            PlantFixtures.mother(PlantFixtures.place(helper, PlantFixtures.PLANT, FieldPlantBlock.HARVEST_STAGE), 9122);
+            RandomSource r2 = RandomSource.create(9123);
+            for (int i = 0; i < 5000 && PlantFixtures.stage(helper, PlantFixtures.PLANT) == FieldPlantBlock.HARVEST_STAGE;
+                 i++) {
+                level.getBlockState(abs).randomTick(level, abs, r2);
+            }
+            helper.assertTrue(PlantFixtures.stage(helper, PlantFixtures.PLANT) > FieldPlantBlock.HARVEST_STAGE,
+                    "control: a mother root at stage 3 did not grow in this cell either: stage "
+                            + PlantFixtures.stage(helper, PlantFixtures.PLANT));
+            helper.succeed();
+        }, 0);
     }
 }
