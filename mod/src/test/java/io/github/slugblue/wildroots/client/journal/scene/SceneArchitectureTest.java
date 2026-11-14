@@ -1,6 +1,5 @@
 package io.github.slugblue.wildroots.client.journal.scene;
 
-import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -29,9 +28,33 @@ class SceneArchitectureTest {
         assertTrue(classes.contain(SCENE + ".SceneBlockGetter"), "scene classes not found");
     }
 
+    /**
+     * Review m9: what "scene classes are client classes" means and can fail
+     * on: no class outside {@code ..client..} reaches the journal v2
+     * ({@code ..client.journal..}, scenes included), so a dedicated server
+     * never loads it. (ArchRules.modClientOnlyFromLambdas allows reaching
+     * {@code ..client..} from DistExecutor lambdas; the journal is never
+     * reached that way.)
+     */
+    static com.tngtech.archunit.lang.ArchRule journalOnlyFromClient() {
+        return noClasses().that().resideOutsideOfPackage(ROOT + ".client..")
+                .should().dependOnClassesThat().resideInAPackage(ROOT + ".client.journal..")
+                .because("the journal v2 is client code (journal v2 §5.1)");
+    }
+
     @Test
-    void sceneClassesAreClientClasses() {
-        classes().that().resideInAPackage(SCENE + "..").should().resideInAPackage(ROOT + "..client..").check(classes);
+    void theJournalIsReachedOnlyFromClientCode() {
+        JavaClasses production = new ClassFileImporter().withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
+                .importPackages(ROOT);
+        journalOnlyFromClient().check(production);
+    }
+
+    @Test
+    void theRuleFailsOnALeak() {
+        JavaClasses leak = new ClassFileImporter().importClasses(
+                io.github.slugblue.wildroots.archfixtures.JournalLeak.class,
+                io.github.slugblue.wildroots.client.journal.GuideBook.class);
+        org.junit.jupiter.api.Assertions.assertThrows(AssertionError.class, () -> journalOnlyFromClient().check(leak));
     }
 
     @Test
