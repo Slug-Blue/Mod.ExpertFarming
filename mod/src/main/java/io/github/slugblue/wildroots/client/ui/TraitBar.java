@@ -6,8 +6,8 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 
 /**
- * A trait bar in the style of the experience bar (D2, 2026-11-11; shared
- * with the journal v2): {@value #SEGMENTS} segments, the step shown by how
+ * A trait bar, one style for the lens panel and the journal v2 (§5.4):
+ * segment sprites of {@code trait_bar.png} (WR-181h); {@value #SEGMENTS} segments, the step shown by how
  * many are filled (never by colour), then the label to the right. The lens
  * steps are the word scale of {@code lens.LensScale} (bounds 0.20 / 0.35 /
  * 0.55 / 0.75). Draws only what it is given.
@@ -23,8 +23,8 @@ public final class TraitBar {
     /** Space between the bar and its label. */
     public static final int LABEL_GAP = 4;
 
-    static final int FILLED = 0xFF80FF20;
-    static final int EMPTY = 0xFF2A2A2A;
+    /** Paper behind the segments of the lens panel's bar (the journal's paper, art doc). */
+    static final int PAPER = 0xFFF4EEDE;
     static final int FRAME = 0xFF000000;
     static final int TEXT = 0xFFE0E0E0;
 
@@ -90,10 +90,13 @@ public final class TraitBar {
         int n = Math.max(1, segments);
         int f = Math.max(0, Math.min(n, filled));
         int top = y + (ROW_HEIGHT - BAR_HEIGHT) / 2 - 1;
-        g.fill(x - 1, top - 1, x + barWidth(n) + 1, top + BAR_HEIGHT + 1, FRAME);
+        // one style with the journal (§5.4): the same segment sprites, on a small paper strip with an ink
+        // frame and a black outline, so the bar reads on the dark tooltip and inventory background too
+        g.fill(x - 2, top - 2, x + barWidth(n) + 2, top + BAR_HEIGHT + 2, FRAME);
+        g.fill(x - 1, top - 1, x + barWidth(n) + 1, top + BAR_HEIGHT + 1, PAPER);
         for (int i = 0; i < n; i++) {
             int sx = x + i * (SEGMENT_WIDTH + GAP);
-            g.fill(sx, top, sx + SEGMENT_WIDTH, top + BAR_HEIGHT, i < f ? FILLED : EMPTY);
+            g.blit(SPRITES, sx, top, i < f ? 0 : 8, 0, SEGMENT_WIDTH, BAR_HEIGHT, SPRITES_W, SPRITES_H);
         }
         Font font = Minecraft.getInstance().font;
         g.drawString(font, label, x + barWidth(n) + LABEL_GAP, y, TEXT);
