@@ -37,6 +37,8 @@ final class SceneRenderer implements AutoCloseable {
     private final BlockState[] scratch;
     private SceneMesh mesh;
     private long builtKey = Long.MIN_VALUE;
+    /** GUI tick of the last mesh build: at most one rebuild a tick (§5.8), also while the slider is dragged. */
+    private int builtTick = Integer.MIN_VALUE;
     private SceneBee bee;
 
     SceneRenderer(SceneDef<BlockState> def) {
@@ -108,7 +110,10 @@ final class SceneRenderer implements AutoCloseable {
             live = this;
         }
         long key = timeline.blocksKey();
-        if (mesh == null || key != builtKey) {
+        int tick = Minecraft.getInstance().gui.getGuiTicks();
+        // a changed key waits for the next tick if this tick already built (review m3): the old mesh shows
+        // for at most one tick while the slider is dragged at the frame rate
+        if (mesh == null || key != builtKey && tick != builtTick) {
             int[] cells = timeline.blocks();
             List<BlockState> states = def.states();
             for (int i = 0; i < cells.length; i++) {
@@ -119,6 +124,7 @@ final class SceneRenderer implements AutoCloseable {
             }
             mesh.build(new SceneBlockGetter(def.sizeX(), def.sizeY(), def.sizeZ(), scratch.clone()));
             builtKey = key;
+            builtTick = tick;
         }
         g.flush();
         float fog = RenderSystem.getShaderFogStart();
@@ -160,6 +166,7 @@ final class SceneRenderer implements AutoCloseable {
             mesh = null;
         }
         builtKey = Long.MIN_VALUE;
+        builtTick = Integer.MIN_VALUE;
         if (live == this) {
             live = null;
         }
