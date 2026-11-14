@@ -30,6 +30,9 @@ public final class LinkMarkup {
         }
     }
 
+    /** Longest text searched for links (one paragraph of a guide page is far shorter). */
+    public static final int MAX_PARSE = 8 * 1024;
+
     private LinkMarkup() {
     }
 
@@ -39,6 +42,11 @@ public final class LinkMarkup {
     public static List<Segment> parse(String text, Predicate<String> open) {
         List<Segment> out = new ArrayList<>();
         StringBuilder plain = new StringBuilder();
+        // only the first MAX_PARSE characters can hold links; the rest of an absurd value is plain text
+        String rest = text.length() > MAX_PARSE ? text.substring(MAX_PARSE) : "";
+        if (!rest.isEmpty()) {
+            text = text.substring(0, MAX_PARSE);
+        }
         int i = 0;
         while (i < text.length()) {
             int start = text.indexOf("[[", i);
@@ -51,13 +59,15 @@ public final class LinkMarkup {
                 plain.append(text, i, text.length());
                 break;
             }
-            String inner = text.substring(start + 2, end);
-            if (inner.contains("[[")) {
-                // nesting is not supported: keep the outer "[[" literal and look again after it
-                plain.append(text, i, start + 2);
-                i = start + 2;
+            int last = text.lastIndexOf("[[", end - 1);
+            if (last > start) {
+                // nesting is not supported: every "[[" before the innermost one is literal text; jumping
+                // straight to it keeps the parse linear (review M2: "[[" x k + "]]" was quadratic)
+                plain.append(text, i, last);
+                i = last;
                 continue;
             }
+            String inner = text.substring(start + 2, end);
             int bar = inner.indexOf('|');
             String id = bar < 0 ? inner : inner.substring(0, bar);
             String shown = bar < 0 ? null : inner.substring(bar + 1);
@@ -85,6 +95,7 @@ public final class LinkMarkup {
             }
             i = end + 2;
         }
+        plain.append(rest);
         if (!plain.isEmpty()) {
             out.add(Segment.plain(plain.toString()));
         }

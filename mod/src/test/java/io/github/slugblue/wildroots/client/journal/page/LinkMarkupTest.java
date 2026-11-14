@@ -1,6 +1,7 @@
 package io.github.slugblue.wildroots.client.journal.page;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.slugblue.wildroots.client.journal.page.LinkMarkup.Segment;
 import java.util.List;
@@ -59,6 +60,29 @@ class LinkMarkupTest {
         }
         assertEquals(List.of(plain("[[a "), link("b", "guide.cycle"), plain("]]")),
                 LinkMarkup.parse("[[a [[guide.cycle|b]]]]", OPEN), "no nesting");
+    }
+
+    /** Review M2: nested "[[" and huge values stay linear (a pack's lang value could hang the client). */
+    @Test
+    void adversarialTextIsLinear() {
+        String nested = "[[".repeat(100 * 1024) + "]]";
+        String alternating = "[[guide.cycle|a]][[".repeat(10 * 1024);
+        String unclosed = "[[x ".repeat(50 * 1024);
+        for (String s : List.of(nested, alternating, unclosed)) {
+            long t0 = System.nanoTime();
+            List<Segment> segs = LinkMarkup.parse(s, OPEN);
+            long ms = (System.nanoTime() - t0) / 1_000_000;
+            assertTrue(ms < 100, "took " + ms + " ms on " + s.length() + " chars");
+            assertEquals(s.length(), segs.stream().mapToInt(x -> x.text().length()).sum()
+                    + segs.stream().filter(x -> x.target().isPresent())
+                    .mapToInt(x -> "[[guide.cycle|]]".length()).sum(), "nothing lost");
+        }
+        String head = "[[guide.cycle|a]]";
+        String tail = "x".repeat(LinkMarkup.MAX_PARSE) + head;
+        List<Segment> segs = LinkMarkup.parse(head + tail, OPEN);
+        assertEquals(link("a", "guide.cycle"), segs.get(0));
+        assertEquals(plain(tail.substring(0, LinkMarkup.MAX_PARSE - head.length()) + tail.substring(
+                LinkMarkup.MAX_PARSE - head.length())), segs.get(1), "past MAX_PARSE: plain text");
     }
 
     @Test
