@@ -42,6 +42,44 @@ public final class TraitBar {
         return barWidth(segments) + LABEL_GAP + font.width(label);
     }
 
+    /** The shared art of bars and flags (WR-181h): 64 × 32, segments 6 × 5, flags 9 × 9. */
+    public static final net.minecraft.resources.ResourceLocation SPRITES =
+            io.github.slugblue.wildroots.core.Ids.mod("textures/gui/journal/trait_bar.png");
+    static final int SPRITES_W = 64;
+    static final int SPRITES_H = 32;
+    /** Frame and label ink on the journal's paper. */
+    static final int PAPER_INK = 0xFF3A2A1A;
+
+    /** Flag icons of {@link #SPRITES}, in atlas order (u = 9 × ordinal, v = 8). */
+    public enum Flag {
+        BITTER, POLLINATION_B, POLLINATION_H, POLLINATION_N, POLLINATION_S, AILING, LIKE_CULTIVAR
+    }
+
+    /**
+     * The same bar in the journal's paper style (journal v2 §3.4, §5.4):
+     * segments from {@link #SPRITES}, a 1 px ink frame, the label in ink
+     * without shadow. The step still reads by the number of filled
+     * segments, not by colour.
+     */
+    public static void drawOnPaper(GuiGraphics g, int x, int y, int filled, int segments, Component label) {
+        int n = Math.max(1, segments);
+        int f = Math.max(0, Math.min(n, filled));
+        int top = y + (ROW_HEIGHT - BAR_HEIGHT) / 2 - 1;
+        g.renderOutline(x - 1, top - 1, barWidth(n) + 2, BAR_HEIGHT + 2, PAPER_INK);
+        for (int i = 0; i < n; i++) {
+            int sx = x + i * (SEGMENT_WIDTH + GAP);
+            g.blit(SPRITES, sx, top, i < f ? 0 : 8, 0, SEGMENT_WIDTH, BAR_HEIGHT, SPRITES_W, SPRITES_H);
+        }
+        if (!label.getString().isEmpty()) {
+            g.drawString(Minecraft.getInstance().font, label, x + barWidth(n) + LABEL_GAP, y, PAPER_INK, false);
+        }
+    }
+
+    /** A 9 × 9 flag icon of {@link #SPRITES}. */
+    public static void drawFlag(GuiGraphics g, Flag flag, int x, int y) {
+        g.blit(SPRITES, x, y, flag.ordinal() * 9, 8, 9, 9, SPRITES_W, SPRITES_H);
+    }
+
     /** A {@value #SEGMENTS}-segment bar with {@code filled} segments filled and the label after it. */
     public static void draw(GuiGraphics g, int x, int y, int filled, Component label) {
         draw(g, x, y, filled, SEGMENTS, label);

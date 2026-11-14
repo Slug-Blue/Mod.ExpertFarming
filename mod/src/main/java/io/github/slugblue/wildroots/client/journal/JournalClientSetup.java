@@ -19,6 +19,7 @@ public final class JournalClientSetup {
 
     @SubscribeEvent
     public static void onRegisterReloadListeners(RegisterClientReloadListenersEvent event) {
+        GuideReloadListener.addSection(io.github.slugblue.wildroots.client.journal.page.SceneFrames.INSTANCE);
         event.registerReloadListener(GuideReloadListener.INSTANCE);
     }
 }

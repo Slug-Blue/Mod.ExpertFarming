@@ -37,6 +37,9 @@ public final class PageTypes {
         register(SpotlightPage.TYPE, SpotlightPage.class, GuidePageTypes::spotlight);
         register(CraftingPage.TYPE, CraftingPage.class, GuidePageTypes::crafting);
         register(LinksPage.TYPE, LinksPage.class, GuidePageTypes::links);
+        register(TraitLegendPage.TYPE, TraitLegendPage.class, TraitLegendView::layout);
+        // until the scene engine registers its own type (WR-181k), a scene page is its 2D frame
+        register(ScenePage.TYPE, ScenePage.class, (data, page, ctx) -> FallbackFrameView.layout(data.scene(), ctx));
     }
 
     private PageTypes() {
