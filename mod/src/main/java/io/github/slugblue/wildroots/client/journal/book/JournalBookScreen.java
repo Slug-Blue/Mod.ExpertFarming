@@ -84,7 +84,7 @@ public final class JournalBookScreen extends Screen implements PageContext {
     private ItemStack pendingItemTooltip = ItemStack.EMPTY;
     /** The search field (§3.9): kept across layouts so typing is not interrupted. */
     private EditBox searchBox;
-    /** Built on the first search, dropped with every layout (sync, reload, language). */
+    /** Built on the first search; dropped on a sync, a guide reload, a resize or language change (§3.9). */
     private SearchIndex<BookLocation> index;
 
     public JournalBookScreen() {
@@ -95,6 +95,7 @@ public final class JournalBookScreen extends Screen implements PageContext {
     public static void openOrRefresh() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.screen instanceof JournalBookScreen s) {
+            s.index = null;
             s.rebuild();
         } else {
             mc.setScreen(new JournalBookScreen());
@@ -104,6 +105,7 @@ public final class JournalBookScreen extends Screen implements PageContext {
     /** Rebuilds an open journal (a sync without {@code open}, or a guide reload). */
     public static void refreshIfOpen() {
         if (Minecraft.getInstance().screen instanceof JournalBookScreen s) {
+            s.index = null;
             s.rebuild();
         }
     }
@@ -118,6 +120,8 @@ public final class JournalBookScreen extends Screen implements PageContext {
     @Override
     protected void init() {
         geo = BookGeometry.center(width, height);
+        // a resize or a language change (resources reload): the search text may differ
+        index = null;
         String query = searchBox == null ? "" : searchBox.getValue();
         searchBox = new EditBox(font, geo.x() + SEARCH_X + 4, geo.navY() + 4, SEARCH_W - 8, 9,
                 Component.translatable("wildroots.journal.ui.search"));
@@ -140,7 +144,6 @@ public final class JournalBookScreen extends Screen implements PageContext {
             return;
         }
         hideShown();
-        index = null;
         entries = ClientJournal.entries();
         unlocks = new GuideUnlocks(GuideBooks.current(), entries, ClientConfig.get(ClientConfig.SHOW_ALL_GUIDES),
                 PageTypes::available);
