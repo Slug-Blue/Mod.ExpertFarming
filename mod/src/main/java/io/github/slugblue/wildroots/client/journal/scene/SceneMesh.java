@@ -148,6 +148,9 @@ final class SceneMesh implements AutoCloseable {
         for (Map.Entry<RenderType, VertexBuffer> e : buffers.entrySet()) {
             RenderType type = e.getKey();
             type.setupRenderState();
+            // a full-bright lightmap of our own (review m5): the chunk layers bind the world's light texture,
+            // whose colour follows the time of day, the dimension, gamma and Blindness/Darkness
+            RenderSystem.setShaderTexture(2, whiteLightmap());
             ShaderInstance shader = RenderSystem.getShader();
             if (shader != null) {
                 if (shader.CHUNK_OFFSET != null) {
@@ -160,6 +163,19 @@ final class SceneMesh implements AutoCloseable {
             }
             type.clearRenderState();
         }
+    }
+
+    private static net.minecraft.client.renderer.texture.DynamicTexture white;
+
+    /** A 16 × 16 white texture standing in for the lightmap (light 15/15 then samples pure white); render thread. */
+    static int whiteLightmap() {
+        if (white == null) {
+            com.mojang.blaze3d.platform.NativeImage img = new com.mojang.blaze3d.platform.NativeImage(16, 16, false);
+            img.fillRect(0, 0, 16, 16, 0xFFFFFFFF);
+            white = new net.minecraft.client.renderer.texture.DynamicTexture(img);
+            white.upload();
+        }
+        return white.getId();
     }
 
     boolean isEmpty() {
