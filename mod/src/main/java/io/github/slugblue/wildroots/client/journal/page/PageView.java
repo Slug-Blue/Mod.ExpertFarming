@@ -98,4 +98,19 @@ public interface PageView {
     default boolean charTyped(char c, int modifiers) {
         return false;
     }
+
+    /**
+     * What the reader did on this page that a new layout of the same place
+     * should keep (a scene's step, play state, 2D mode, camera): asked before
+     * the book rebuilds the layout of the place it shows (a JournalSync, a
+     * guide reload), and handed to the view at the same position of the new
+     * layout through {@link #restoreState}. {@code null}: nothing to keep.
+     */
+    default Object saveState() {
+        return null;
+    }
+
+    /** Takes back what {@link #saveState} gave, if it still fits (same scene, same steps); else ignores it. */
+    default void restoreState(Object state) {
+    }
 }

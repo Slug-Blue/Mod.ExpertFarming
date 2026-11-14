@@ -93,6 +93,22 @@ public final class SceneCameraState {
         jumped(steps, n);
     }
 
+    /** The whole camera state, to keep it across a new layout of the same page. */
+    public record State(SceneCamera from, SceneCamera to, int ease, int easeTick, boolean userOwned) {
+    }
+
+    public State state() {
+        return new State(from, to, ease, easeTick, userOwned);
+    }
+
+    public void restore(State s) {
+        from = s.from();
+        to = s.to();
+        ease = s.ease();
+        easeTick = s.easeTick();
+        userOwned = s.userOwned();
+    }
+
     public boolean userOwned() {
         return userOwned;
     }

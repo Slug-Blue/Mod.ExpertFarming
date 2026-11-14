@@ -202,4 +202,22 @@ class SceneTimelineTest {
         SceneAction.Cell c = new SceneAction.Cell(1, 1, 1);
         assertArrayEquals(SceneMotion.pop(c, 0, 2, 17.5f), SceneMotion.pop(c, 0, 2, 17.5f));
     }
+
+    /** Review m7: a new layout of the same page takes back the step, tick and play state. */
+    @Test
+    void aSavedStateComesBack() {
+        SceneTimeline t = new SceneTimeline(threeSteps(), ALL_OPEN);
+        t.jump(1);
+        t.seek(7);
+        t.play();
+        SceneTimeline.State s = t.state();
+        SceneTimeline again = new SceneTimeline(threeSteps(), ALL_OPEN);
+        assertEquals(0, again.step());
+        again.restore(s);
+        assertEquals(s, again.state());
+        assertArrayEquals(t.blocks(), again.blocks(), "the same blocks after the restore");
+        again.restore(new SceneTimeline.State(99, 9999, false, false));
+        assertEquals(again.steps().size() - 1, again.step(), "a step past the end is clamped");
+        assertTrue(again.tick() <= again.current().duration());
+    }
 }

@@ -729,6 +729,29 @@ public final class ScenePageView implements PageView {
         return true;
     }
 
+    /** What a new layout of this page keeps (review m7): the scene, its visible steps, playback, camera, 2D. */
+    private record Saved(String scene, List<SceneStep> steps, SceneTimeline.State timeline,
+                         SceneCameraState.State camera, boolean flat) {
+    }
+
+    @Override
+    public Object saveState() {
+        return timeline == null ? null
+                : new Saved(page.scene(), timeline.steps(), timeline.state(), camera.state(), flat);
+    }
+
+    @Override
+    public void restoreState(Object state) {
+        // the same scene with the same visible steps (an unlock may have added the brush step): else start over
+        if (timeline != null && state instanceof Saved s && s.scene().equals(page.scene())
+                && s.steps().equals(timeline.steps())) {
+            timeline.restore(s.timeline());
+            camera.restore(s.camera());
+            flat = s.flat();
+            captionStep = -1;
+        }
+    }
+
     /** The 2D frame data of this page's scene, for WR-181d's frame (null when the scene did not load). */
     public SceneDef.FrameData frameData() {
         return def == null ? null : def.frameData();

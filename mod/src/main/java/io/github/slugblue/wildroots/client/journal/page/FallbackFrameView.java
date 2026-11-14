@@ -120,6 +120,22 @@ public final class FallbackFrameView implements PageView {
         return step;
     }
 
+    /** The step, kept across a new layout when the visible steps are the same (review m7). */
+    private record Saved(List<SceneFrame.Step> steps, int step) {
+    }
+
+    @Override
+    public Object saveState() {
+        return new Saved(steps, step);
+    }
+
+    @Override
+    public void restoreState(Object state) {
+        if (state instanceof Saved s && s.steps().equals(steps)) {
+            setStep(s.step());
+        }
+    }
+
     public int stepCount() {
         return steps.size();
     }

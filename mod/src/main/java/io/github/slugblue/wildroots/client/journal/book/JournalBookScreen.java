@@ -145,6 +145,9 @@ public final class JournalBookScreen extends Screen implements PageContext {
         if (geo == null) {
             return;
         }
+        // what the reader did on the place shown, kept when the same place is laid out again (review m7:
+        // a JournalSync, e.g. the one after MARK_READ, must not restart a scene)
+        List<List<Object>> kept = builtFor != null && builtFor.sameTarget(location) ? saveStates() : null;
         hideShown();
         entries = ClientJournal.entries();
         unlocks = new GuideUnlocks(GuideBooks.current(), entries, ClientConfig.get(ClientConfig.SHOW_ALL_GUIDES),
@@ -165,11 +168,52 @@ public final class JournalBookScreen extends Screen implements PageContext {
             out.add(new Spread(List.of(), List.of()));
         }
         spreads = out;
+        if (kept != null && location.sameTarget(builtFor)) {
+            restoreStates(kept);
+        }
+        builtFor = location;
         int maxTitle = PageRect.HALF_WIDTH - 14 - (location.kind() == BookLocation.Kind.CONTENTS ? 0 : 14);
         titleLine = fit(titleOf(location), maxTitle);
         layoutBuilds++;
         location = location.withSpread(Math.min(location.spread(), spreads.size() - 1));
         showSpread(location.spread());
+    }
+
+    /** The location the current spreads were built for. */
+    private BookLocation builtFor;
+
+    private List<List<Object>> saveStates() {
+        List<List<Object>> out = new ArrayList<>();
+        for (Spread s : spreads) {
+            List<Object> one = new ArrayList<>();
+            for (PageView v : s.views()) {
+                Object st = null;
+                try {
+                    st = v.saveState();
+                } catch (RuntimeException e) {
+                    warn("a page view failed to save its state", e);
+                }
+                one.add(st);
+            }
+            out.add(one);
+        }
+        return out;
+    }
+
+    private void restoreStates(List<List<Object>> kept) {
+        for (int i = 0; i < spreads.size() && i < kept.size(); i++) {
+            List<PageView> views = spreads.get(i).views();
+            List<Object> states = kept.get(i);
+            for (int j = 0; j < views.size() && j < states.size(); j++) {
+                if (states.get(j) != null) {
+                    try {
+                        views.get(j).restoreState(states.get(j));
+                    } catch (RuntimeException e) {
+                        warn("a page view failed to restore its state", e);
+                    }
+                }
+            }
+        }
     }
 
     private void place(LaidOutPage p, PageRect rect, List<PageView> views, List<String> ids) {

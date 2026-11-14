@@ -126,6 +126,25 @@ public final class SceneTimeline {
         }
     }
 
+    /** Where playback is: step, tick, playing, finished. */
+    public record State(int step, int tick, boolean playing, boolean finished) {
+    }
+
+    public State state() {
+        return new State(step, tick, playing, finished);
+    }
+
+    /** Back to a saved place; a step past the end is clamped. */
+    public void restore(State s) {
+        if (steps.isEmpty()) {
+            return;
+        }
+        step = Math.max(0, Math.min(steps.size() - 1, s.step()));
+        tick = Math.max(0, Math.min(current().duration(), s.tick()));
+        playing = s.playing();
+        finished = s.finished();
+    }
+
     public void play() {
         if (steps.isEmpty()) {
             return;
