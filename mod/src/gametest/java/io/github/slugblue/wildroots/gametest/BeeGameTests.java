@@ -255,6 +255,9 @@ public final class BeeGameTests {
         field(helper, false, FLOWERS_NEAR);
         helper.succeedWhen(() -> {
             for (BlockPos p : PLANTS) {
+                helper.assertTrue(helper.getBlockEntity(p) instanceof PlantBlockEntity, "the plant at " + p
+                        + " is gone: " + helper.getBlockState(p) + ", light " + helper.getLevel().getRawBrightness(
+                        helper.absolutePos(p), 0));
                 PlantBlockEntity be = (PlantBlockEntity) helper.getBlockEntity(p);
                 helper.assertTrue(be.data().pending() == null, "our goal visited a plant out of flower at " + p);
             }
@@ -325,6 +328,8 @@ public final class BeeGameTests {
         helper.runAtTickTime(71_000, () -> {
             int donors = 0;
             for (BlockPos p : PLANTS) {
+                helper.assertTrue(helper.getBlockEntity(p) instanceof PlantBlockEntity, "the plant at " + p
+                        + " is gone: " + helper.getBlockState(p));
                 donors += donors((PlantBlockEntity) helper.getBlockEntity(p));
             }
             int honey = maxHoney(helper);
@@ -341,13 +346,15 @@ public final class BeeGameTests {
         for (BlockPos h : HIVES) {
             helper.setBlock(h, Blocks.BEEHIVE.defaultBlockState());
         }
+        // flowers first: a flower set next to a plant updates its shape, and a plant whose cell the light
+        // engine has not lit yet (it can lag well over the setup ticks on a busy server) pops, as a crop does
+        for (BlockPos f : flowers) {
+            helper.setBlock(f, Blocks.POPPY.defaultBlockState());
+        }
         long key = 500;
         for (BlockPos p : PLANTS) {
             PlantFixtures.plant(PlantFixtures.place(helper, p,
                     flowering ? FieldPlantBlock.FLOWER_STAGE : FieldPlantBlock.HARVEST_STAGE), key++);
-        }
-        for (BlockPos f : flowers) {
-            helper.setBlock(f, Blocks.POPPY.defaultBlockState());
         }
         List<Bee> bees = new java.util.ArrayList<>();
         for (int i = 0; i < 10; i++) {
