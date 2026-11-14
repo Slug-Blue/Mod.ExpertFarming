@@ -25,6 +25,19 @@ public interface SceneFallback {
     /** Draws the frame inside the scene window {@code (x, y, w, h)}; no caption, no controls. */
     void renderWindow(GuiGraphics g, int x, int y, int w, int h, int mouseX, int mouseY, float partialTick);
 
+    /**
+     * A click in the window last drawn by {@link #renderWindow}: a ring icon
+     * picks its step, a frame item opens its entry. Whether it was taken.
+     */
+    default boolean mouseClicked(double mouseX, double mouseY) {
+        return false;
+    }
+
+    /** The frame's step after a click (0-based, of the steps shown to this reader). */
+    default int step() {
+        return -1;
+    }
+
     /** Creates the frame of one scene page; {@code null} = use the built-in frame. */
     @FunctionalInterface
     interface Factory {

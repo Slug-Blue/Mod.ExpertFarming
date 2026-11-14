@@ -221,6 +221,11 @@ public final class FallbackFrameView implements PageView {
      * mode keeps its own, WR-181k).
      */
     public void renderWindow(GuiGraphics g, int x, int y, int w, int h, int mouseX, int mouseY, float partialTick) {
+        handed[0] = x;
+        handed[1] = y;
+        handed[2] = w;
+        handed[3] = h;
+        wasHanded = true;
         winX = x;
         winY = y;
         winW = w;
@@ -331,8 +336,36 @@ public final class FallbackFrameView implements PageView {
             setStep(d);
             return true;
         }
-        if (!textOnly) {
+        ownWindow();
+        return clickPicture(mx, my);
+    }
+
+    /** The window a 3D page last handed over ({@link #renderWindow}), for its clicks. */
+    private final int[] handed = new int[4];
+    private boolean wasHanded;
+
+    /**
+     * A click inside the window a 3D scene page handed over (its 2D mode,
+     * review m6): a ring icon goes to its step, a frame item opens its entry.
+     * The page reads {@link #step()} afterwards to follow.
+     */
+    public boolean clickWindow(double mx, double my) {
+        if (!wasHanded) {
+            return false;
+        }
+        winX = handed[0];
+        winY = handed[1];
+        winW = handed[2];
+        winH = handed[3];
+        try {
+            return clickPicture(mx, my);
+        } finally {
             ownWindow();
+        }
+    }
+
+    private boolean clickPicture(double mx, double my) {
+        if (!textOnly) {
             List<Shown> pic = picture();
             for (int i = 0; i < pic.size(); i++) {
                 int[] p = place(i, pic.size());

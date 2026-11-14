@@ -637,6 +637,13 @@ public final class ScenePageView implements PageView {
             }
         }
         if (!threeD()) {
+            // 2D mode: ring icons and frame items of the handed-over frame take the click (review m6)
+            SceneFallback f = fallback();
+            if (f != null && f.mouseClicked(mx, my)) {
+                if (f.step() >= 0 && f.step() != timeline.step()) {
+                    jump(f.step());
+                }
+            }
             return true;
         }
         long now = Util.getMillis();

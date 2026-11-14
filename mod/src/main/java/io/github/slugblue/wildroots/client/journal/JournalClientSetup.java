@@ -58,6 +58,16 @@ public final class JournalClientSetup {
                                          float partialTick) {
                     v.renderWindow(g, x, y, w, h, mouseX, mouseY, partialTick);
                 }
+
+                @Override
+                public boolean mouseClicked(double mouseX, double mouseY) {
+                    return v.clickWindow(mouseX, mouseY);
+                }
+
+                @Override
+                public int step() {
+                    return v.step();
+                }
             };
         }).orElse(null));
         event.registerReloadListener(GuideReloadListener.INSTANCE);
