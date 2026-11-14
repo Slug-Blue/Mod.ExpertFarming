@@ -43,7 +43,8 @@ public final class JournalActions {
         if (event.phase != TickEvent.Phase.END || QUEUE.size() == 0 || Minecraft.getInstance().getConnection() == null) {
             return;
         }
-        QUEUE.drain(System.currentTimeMillis(),
+        // monotonic: a wall clock set back must not stall the queue (review nit)
+        QUEUE.drain(net.minecraft.Util.getMillis(),
                 a -> WrNetwork.CHANNEL.sendToServer(new JournalActionPacket(Ids.mod(a.entryId()), a.action())));
     }
 

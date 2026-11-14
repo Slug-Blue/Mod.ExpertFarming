@@ -22,6 +22,7 @@ import net.minecraftforge.fml.common.Mod;
  * 3D scenes, WR-181k), the scene page type, and the 2D frame the scene
  * page falls back to.
  */
+@net.minecraftforge.api.distmarker.OnlyIn(Dist.CLIENT)
 @Mod.EventBusSubscriber(modid = WildRoots.MOD_ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class JournalClientSetup {
 

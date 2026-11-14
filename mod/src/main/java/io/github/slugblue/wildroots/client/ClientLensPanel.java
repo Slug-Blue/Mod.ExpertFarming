@@ -47,7 +47,8 @@ public final class ClientLensPanel implements ClientTooltipComponent {
     public int getWidth(Font font) {
         int w = 0;
         for (LensPanel.Bar b : data.bars()) {
-            w = Math.max(w, TraitBar.width(font, b.max(), label(b)) + 2);
+            // + 4: the bar's outline reaches 2 px left of the bar (one style with the journal)
+            w = Math.max(w, TraitBar.width(font, b.max(), label(b)) + 4);
         }
         return w;
     }
@@ -62,7 +63,7 @@ public final class ClientLensPanel implements ClientTooltipComponent {
         Guarded.run("lens panel render", "client", () -> {
             for (int i = 0; i < data.bars().size(); i++) {
                 LensPanel.Bar b = data.bars().get(i);
-                TraitBar.draw(g, x + 1, y + 1 + i * TraitBar.ROW_HEIGHT, b.step(), b.max(), label(b));
+                TraitBar.draw(g, x + 2, y + 1 + i * TraitBar.ROW_HEIGHT, b.step(), b.max(), label(b));
             }
         });
     }
