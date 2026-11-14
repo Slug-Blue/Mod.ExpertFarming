@@ -70,10 +70,40 @@ final class PlantFixtures {
         return helper.getLevel().getRawBrightness(abs, 0) >= 8 || helper.getLevel().canSeeSky(abs);
     }
 
-    /** Runs {@code body} once every cell is {@link #lit} (at most 40 ticks, then runs it anyway). */
+    /**
+     * Most ticks {@link #whenLit} waits for the light engine. It runs on its
+     * own thread and on a busy GameTest server (sky patches, a batch of
+     * journal tests in the same seconds) a light block can take well over
+     * the 40 ticks this used to allow; planting in the dark then fails in
+     * vanilla {@code CropBlock#canSurvive} (WR-162 flake, 2026-11-14). Tests
+     * that wait here need a timeout above this.
+     */
+    static final int LIT_WAIT = 300;
+
+    /**
+     * Runs {@code body} once every cell is {@link #lit}. Never runs it in the
+     * dark: after {@value #LIT_WAIT} ticks the test fails and says which
+     * cell is dark and what lights it.
+     */
     static void whenLit(GameTestHelper helper, List<BlockPos> cells, Runnable body, int waited) {
-        if (waited >= 40 || cells.stream().allMatch(c -> lit(helper, c))) {
+        if (cells.stream().allMatch(c -> lit(helper, c))) {
+            if (waited > 40) {
+                org.slf4j.LoggerFactory.getLogger(PlantFixtures.class)
+                        .info("whenLit: lit after {} ticks (light engine behind)", waited);
+            }
             body.run();
+            return;
+        }
+        if (waited >= LIT_WAIT) {
+            StringBuilder dark = new StringBuilder();
+            for (BlockPos c : cells) {
+                if (!lit(helper, c)) {
+                    BlockPos abs = helper.absolutePos(c);
+                    dark.append(c).append(" (raw ").append(helper.getLevel().getRawBrightness(abs, 0))
+                            .append(", above ").append(helper.getLevel().getBlockState(abs.above())).append(") ");
+                }
+            }
+            helper.fail("cells not lit after " + waited + " ticks: " + dark);
             return;
         }
         helper.runAfterDelay(1, () -> whenLit(helper, cells, body, waited + 1));

@@ -76,7 +76,48 @@ public final class VanillaCropGameTests {
         return helper.getBlockState(plantRel).is(Blocks.CARROTS);
     }
 
-    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "wr162_strict", timeoutTicks = 100)
+    /**
+     * Plants as {@link #use} and, if no carrot stands afterwards, says why:
+     * the use result, the cell and the block under it, the light at the cell,
+     * the mode at the moment of the use, whether a place event for the cell
+     * ran and was cancelled, the player position. Empty when planted.
+     */
+    static String plantDiagnosed(Player p, ItemStack stack, GameTestHelper helper, BlockPos plantRel) {
+        ServerLevel level = helper.getLevel();
+        BlockPos abs = helper.absolutePos(plantRel);
+        BlockPos farm = abs.below();
+        String[] place = {"no place event"};
+        java.util.function.Consumer<net.minecraftforge.event.level.BlockEvent.EntityPlaceEvent> probe = e -> {
+            if (e.getPos().equals(abs)) {
+                place[0] = "place event " + e.getPlacedBlock() + (e.isCanceled() ? " CANCELLED" : " allowed");
+            }
+        };
+        net.minecraftforge.common.MinecraftForge.EVENT_BUS.addListener(
+                net.minecraftforge.eventbus.api.EventPriority.LOWEST, true,
+                net.minecraftforge.event.level.BlockEvent.EntityPlaceEvent.class, probe);
+        String before = level.getBlockState(abs) + " on " + level.getBlockState(farm) + ", block light "
+                + level.getBrightness(net.minecraft.world.level.LightLayer.BLOCK, abs) + ", sky light "
+                + level.getBrightness(net.minecraft.world.level.LightLayer.SKY, abs) + ", raw "
+                + level.getRawBrightness(abs, 0) + ", sees sky " + level.canSeeSky(abs);
+        ServerConfig.Mode mode = ServerConfig.MODE.get();
+        net.minecraft.world.InteractionResult result;
+        try {
+            p.setItemInHand(InteractionHand.MAIN_HAND, stack);
+            result = stack.useOn(new UseOnContext(p, InteractionHand.MAIN_HAND,
+                    new BlockHitResult(Vec3.atCenterOf(farm).add(0, 0.5, 0), Direction.UP, farm, false)));
+        } finally {
+            net.minecraftforge.common.MinecraftForge.EVENT_BUS.unregister(probe);
+        }
+        if (helper.getBlockState(plantRel).is(Blocks.CARROTS)) {
+            return "";
+        }
+        return "use " + result + ", mode " + mode + ", before: " + before + ", after: " + level.getBlockState(abs)
+                + " on " + level.getBlockState(farm) + ", " + place[0] + ", player at " + p.position()
+                + ", entities in the cell " + level.getEntities(null, new net.minecraft.world.phys.AABB(abs))
+                + ", stack " + stack.getCount() + " " + stack.getItem();
+    }
+
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "wr162_strict", timeoutTicks = PlantFixtures.LIT_WAIT + 100)
     public static void strictCancelsVanillaCarrotPlantingByAnyone(GameTestHelper helper) {
         BlockPos a = new BlockPos(0, 2, 0);
         BlockPos b = new BlockPos(2, 2, 2);
@@ -123,7 +164,7 @@ public final class VanillaCropGameTests {
         }, 0);
     }
 
-    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "wr162_soft", timeoutTicks = 100)
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "wr162_soft", timeoutTicks = PlantFixtures.LIT_WAIT + 100)
     public static void softLetsThePlayerPlantAVanillaCarrotThatStaysVanilla(GameTestHelper helper) {
         BlockPos a = new BlockPos(1, 2, 1);
         PlantFixtures.litFarmland(helper, a);
@@ -133,7 +174,10 @@ public final class VanillaCropGameTests {
             ServerPlayer p = JournalGameTests.survival(helper, "wr162_soft");
             try {
                 ItemStack mine = new ItemStack(Items.CARROT, 2);
-                helper.assertTrue(use(p, mine, helper, a), "soft: the player could not plant a vanilla carrot");
+                // regression (2026-11-14): whenLit used to give up after 40 ticks and plant in the dark
+                helper.assertTrue(PlantFixtures.lit(helper, a), "planting in the dark: whenLit gave up");
+                String why = plantDiagnosed(p, mine, helper, a);
+                helper.assertTrue(why.isEmpty(), "soft: the player could not plant a vanilla carrot: " + why);
                 helper.assertTrue(mine.getCount() == 1, "carrot not spent");
                 helper.assertTrue(growTick(helper, a), "soft: vanilla growth denied");
                 helper.assertTrue(helper.getBlockState(a).is(Blocks.CARROTS), "soft: converted");

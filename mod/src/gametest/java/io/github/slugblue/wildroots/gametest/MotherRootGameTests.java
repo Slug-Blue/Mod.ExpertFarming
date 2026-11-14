@@ -199,7 +199,8 @@ public final class MotherRootGameTests {
      * under the new one, get the noise migrated like the block entity does
      * (trait order of the new layout), not the stored bytes as they are.
      */
-    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "wr13x_noise_migration", timeoutTicks = 200)
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "wr13x_noise_migration",
+            timeoutTicks = PlantFixtures.LIT_WAIT + 200)
     public static void storedNoiseMigratesWhenPlantedUnderANewLayout(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         Player player = helper.makeMockSurvivalPlayer();
@@ -261,7 +262,7 @@ public final class MotherRootGameTests {
      * next shape update of a neighbour (vanilla {@code CropBlock#canSurvive});
      * the same cell lit by {@link PlantFixtures#litFarmland} keeps it.
      */
-    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, timeoutTicks = 100)
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, timeoutTicks = PlantFixtures.LIT_WAIT + 100)
     public static void darkCellPopsOnANeighbourUpdateLitCellKeepsThePlant(GameTestHelper helper) {
         BlockPos cell = PlantFixtures.PLANT;
         PlantFixtures.farmland(helper, cell);

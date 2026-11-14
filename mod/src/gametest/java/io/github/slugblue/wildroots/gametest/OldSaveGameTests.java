@@ -108,7 +108,8 @@ public final class OldSaveGameTests {
                 Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE), "template not placed");
     }
 
-    @GameTest(template = SeedSetGameTests.FIELD, setupTicks = SeedSetGameTests.SETUP, timeoutTicks = 200)
+    @GameTest(template = SeedSetGameTests.FIELD, setupTicks = SeedSetGameTests.SETUP,
+            timeoutTicks = PlantFixtures.LIT_WAIT + 200)
     public static void old_save_v1(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         placeTemplate(helper);
