@@ -153,15 +153,22 @@ public final class GuideUnlocks {
 
     /** "New": at least one journal entry that opens it is new. An always-open entry is never new. */
     public boolean isNew(GuideEntry e) {
-        return isOpen(e) && !newOpeners(e).isEmpty();
+        return isOpen(e) && !newOpeners(e, true).isEmpty();
     }
 
     /**
-     * The new journal entries that open {@code e} or one of its shown pages:
-     * the client sends {@code MARK_READ} for these when the entry is shown
-     * (§2.3, guide entries have no "read" of their own).
+     * The new journal entries that open {@code e} or one of its shown pages
+     * by their exact id: the client sends {@code MARK_READ} for these when
+     * the entry is shown (§2.3, guide entries have no "read" of their own).
+     * A record matched only by a wildcard ({@code species.*}) is not
+     * included (review M3): the player has not seen that record.
      */
     public Set<String> newOpeners(GuideEntry e) {
+        return newOpeners(e, false);
+    }
+
+    /** {@code all}: also openers matched by a wildcard (for the "new" mark, not for MARK_READ). */
+    private Set<String> newOpeners(GuideEntry e, boolean all) {
         Set<String> out = new LinkedHashSet<>();
         if (!isOpen(e)) {
             return out;
@@ -172,7 +179,9 @@ public final class GuideUnlocks {
             ids.addAll(openers(p.unlock()));
         }
         for (String id : ids) {
-            if ((flags.get(id) & JournalData.NEW) != 0) {
+            // only an exact id (a hint, a tool) is read by reading this entry; a wildcard (species.*,
+            // cultivar.*) opens it, but the records it matches stay new until their own pages are shown
+            if ((flags.get(id) & JournalData.NEW) != 0 && (all || exactlyNamed(id, e))) {
                 out.add(id);
             }
         }
@@ -195,6 +204,14 @@ public final class GuideUnlocks {
     /** Categories with at least one open entry, in display order. */
     public List<GuideCategory> openCategories() {
         return book.categories().stream().filter(this::isOpen).toList();
+    }
+
+    /** Whether {@code journalId} is named as itself (not by a wildcard) in the entry's or a page's unlock, or opens it as its tool. */
+    private boolean exactlyNamed(String journalId, GuideEntry e) {
+        if (e.unlock().contains(journalId) || toolOpeners(e.id()).contains(journalId)) {
+            return true;
+        }
+        return pages(e).stream().anyMatch(p -> p.unlock().contains(journalId));
     }
 
     /** Open new entries, in display order. */

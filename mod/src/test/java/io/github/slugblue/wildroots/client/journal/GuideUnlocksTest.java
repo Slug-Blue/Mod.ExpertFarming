@@ -83,6 +83,18 @@ class GuideUnlocksTest {
         assertFalse(new GuideUnlocks(BOOK, List.of(j("hint.species", 0)), false).isOpen(STAGES));
     }
 
+    /** Review M3: opening "Growth Stages" (unlock species.*) does not mark the new species records read. */
+    @Test
+    void aWildcardOpenerIsNotMarkedRead() {
+        GuideUnlocks u = new GuideUnlocks(BOOK, List.of(j("species.wild_carrot", JournalData.NEW),
+                j("species.wild_beet", JournalData.NEW)), false);
+        assertTrue(u.isOpen(STAGES));
+        assertEquals(Set.of(), u.newOpeners(STAGES), "no MARK_READ for records matched by a wildcard");
+        assertTrue(u.isNew(STAGES), "the entry still shows new while the record is new");
+        GuideUnlocks h = new GuideUnlocks(BOOK, List.of(j("hint.mother_plant", JournalData.NEW)), false);
+        assertEquals(Set.of("hint.mother_plant"), h.newOpeners(CYCLE), "an exact id is read with its entry");
+    }
+
     @Test
     void aSilhouetteOpensNothing() {
         assertFalse(new GuideUnlocks(BOOK, List.of(j("cultivar.carrot", JournalData.LOCKED | JournalData.NEW)), false)
