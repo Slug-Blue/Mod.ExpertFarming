@@ -155,8 +155,17 @@ public final class LensSheetView {
         return cy - y;
     }
 
+    /** The journal legend's sprite of an icon ({@link LensSheet.Icon#NONE} has none and is never drawn). */
     static TraitBar.Flag flag(LensSheet.Icon icon) {
-        return TraitBar.Flag.values()[Math.min(icon.ordinal(), TraitBar.Flag.values().length - 1)];
+        return switch (icon) {
+            case BITTER -> TraitBar.Flag.BITTER;
+            case POLLINATION_B -> TraitBar.Flag.POLLINATION_B;
+            case POLLINATION_H -> TraitBar.Flag.POLLINATION_H;
+            case POLLINATION_N -> TraitBar.Flag.POLLINATION_N;
+            case POLLINATION_S -> TraitBar.Flag.POLLINATION_S;
+            case AILING -> TraitBar.Flag.AILING;
+            case LIKE_CULTIVAR, NONE -> TraitBar.Flag.LIKE_CULTIVAR;
+        };
     }
 
     static int text(GuiGraphics g, Font font, Component c, int x, int y, int width, int colour) {

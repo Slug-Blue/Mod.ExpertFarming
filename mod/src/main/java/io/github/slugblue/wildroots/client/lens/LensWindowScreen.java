@@ -130,7 +130,9 @@ public final class LensWindowScreen extends Screen {
 
     @Override
     public boolean mouseDragged(double x, double y, int button, double dx, double dy) {
-        if (plant.isPresent()) {
+        int mx = left + PAD + SHEET_WIDTH + PAD;
+        int my = top + PAD;
+        if (plant.isPresent() && x >= mx && x < mx + MODEL && y >= my && y < my + MODEL) {
             yaw += (float) dx * 2;
             pitch = Math.max(-10, Math.min(80, pitch + (float) dy));
             return true;
@@ -173,7 +175,7 @@ public final class LensWindowScreen extends Screen {
         ps.mulPose(Axis.YP.rotationDegrees(yaw));
         ps.translate(-0.5, -0.5, -0.5);
         RenderSystem.enableDepthTest();
-        Lighting.setupForFlatItems();
+        Lighting.setupFor3DItems();
         var dispatcher = Minecraft.getInstance().getBlockRenderer();
         var buffers = g.bufferSource();
         BlockState farmland = Blocks.FARMLAND.defaultBlockState().setValue(FarmBlock.MOISTURE, 7);

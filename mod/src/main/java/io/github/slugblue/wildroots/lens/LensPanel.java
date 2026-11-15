@@ -293,9 +293,21 @@ public record LensPanel(LensSheet sheet) implements TooltipComponent {
      * which keeps its short text tooltip.
      */
     public static Optional<TooltipComponent> tooltipImage(ItemStack stack) {
-        if (stack.getItem() instanceof ProduceItem || inspected(stack)) {
-            return of(stack, true).map(p -> p);
+        // one entry per thread, keyed by the stack and its tag: hovering one stack parses it once
+        Object[] last = LAST_IMAGE.get();
+        if (last[0] == stack && last[1] == stack.getTag() && last[2] == stack.getItem()) {
+            @SuppressWarnings("unchecked")
+            Optional<TooltipComponent> cached = (Optional<TooltipComponent>) last[3];
+            return cached;
         }
-        return Optional.empty();
+        Optional<TooltipComponent> image = stack.getItem() instanceof ProduceItem || inspected(stack)
+                ? of(stack, true).map(p -> p) : Optional.empty();
+        last[0] = stack;
+        last[1] = stack.getTag();
+        last[2] = stack.getItem();
+        last[3] = image;
+        return image;
     }
+
+    private static final ThreadLocal<Object[]> LAST_IMAGE = ThreadLocal.withInitial(() -> new Object[4]);
 }

@@ -46,7 +46,8 @@ public final class EnvModifiers {
         } else if (t > hi) {
             bits |= HOT;
         }
-        if (!env.moisturized()) {
+        // dry farmland costs 0.05 · (1 − P_drought): a fully drought-hardy plant loses nothing
+        if (!env.moisturized() && tolerance(def, p, Traits.DROUGHT_TOLERANCE) < 1) {
             bits |= DRY;
         }
         if (env.light() < Defaults.ENV_DARK_LIGHT) {
