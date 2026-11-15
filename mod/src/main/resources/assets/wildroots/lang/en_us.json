@@ -199,6 +199,7 @@
   "wildroots.panel.lens.root_vary": "Shaded: how the planted root may turn out.",
   "wildroots.panel.lens.shift": "Shift: as text",
   "wildroots.window.lens.lot": "%1$s · seeds",
+  "wildroots.window.lens.seedling": "%1$s · seedling",
   "wildroots.window.lens.mother": "Mother plant",
   "wildroots.window.lens.vary": "Seeds vary: offspring differ by about ±1 mark. Shaded: where most of them land.",
   "wildroots.window.lens.env.minus": "− %s",

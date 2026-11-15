@@ -147,12 +147,26 @@ public record LensSheet(Component title, List<Component> header, Icon headIcon, 
      * and a note says that the seeds vary (item 6).
      */
     public static LensSheet lot(Component title, List<Component> header, LensRow row, String species) {
+        return lot(title, header, row, species, false);
+    }
+
+    /**
+     * Same; a realised seedling lot (review 1, m4) is one young plant that
+     * keeps its genome and noise: its bars are its own, with no band, no
+     * "Mother plant" and no "seeds vary".
+     */
+    public static LensSheet lot(Component title, List<Component> header, LensRow row, String species,
+                                boolean seedling) {
         List<Component> notes = new ArrayList<>();
-        notes.add(Component.translatable(VARY));
+        if (!seedling) {
+            notes.add(Component.translatable(VARY));
+        }
         if (row.more()) {
             notes.add(Component.translatable(LensRow.MORE_KEY));
         }
+        LensRow shown = seedling ? row.withBands(null) : row;
         return new LensSheet(title, header, pollinationIcon(row.pollination()),
-                Optional.of(Component.translatable(MOTHER)), bars(row, species), flags(row), notes);
+                seedling ? Optional.empty() : Optional.of(Component.translatable(MOTHER)), bars(shown, species),
+                flags(row), notes);
     }
 }

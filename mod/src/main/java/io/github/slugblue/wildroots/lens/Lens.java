@@ -112,6 +112,8 @@ public final class Lens {
 
     /** Header key of the lot window: "%s · seeds". */
     public static final String LOT_HEADER = "wildroots.window.lens.lot";
+    /** Header key of the window of a realised seedling lot: "%s · seedling" (review 1, m4). */
+    public static final String SEEDLING_HEADER = "wildroots.window.lens.seedling";
 
     /**
      * The lens window of an inspected lot (item 3): its name and the row the
@@ -128,7 +130,8 @@ public final class Lens {
         String name = lot.cultivar().map(c -> JournalTriggers.nameKey("cultivar", c))
                 .orElse(JournalTriggers.nameKey("species", lot.species()));
         return LensWindowPacket.of(LensWindowPacket.Kind.LOT, lot.species(),
-                DispCodec.Line.of(LOT_HEADER, DispCodec.keyArg(name)), row.get().line(), 0, LensWindowPacket.NO_MODEL);
+                DispCodec.Line.of(lot.seedling() ? SEEDLING_HEADER : LOT_HEADER, DispCodec.keyArg(name)),
+                row.get().line(), 0, LensWindowPacket.NO_MODEL);
     }
 
     /** Appends the tier-1 lines; returns the cultivar the plant looks like, if any. */
@@ -250,8 +253,7 @@ public final class Lens {
         Optional<CultivarDef> looks = LensReading.looksLike(snap, def, p.get(), lot.cultivar(), tier);
         // the seeds spread around the mother's value: the band of item 6 (segregation and noise)
         // a realised seedling keeps its own genome and noise: it does not spread
-        double[] sd = lot.seedling() ? new double[def.quantitative().size()]
-                : OffspringBand.ofLot(rec.get(), def, p.get().vigor());
+        double[] sd = lot.seedling() ? null : OffspringBand.ofLot(rec.get(), def, p.get().vigor());
         LensRow row = LensRow.of(def, e.get().info(), p.get(), lotPollination(lot), looks, sd);
         if (!LotStacks.inspect(stack, lot, row.degradations().stream().map(LensRow::line).toList())) {
             return false;

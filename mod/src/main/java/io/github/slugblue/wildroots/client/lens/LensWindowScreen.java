@@ -69,7 +69,7 @@ public final class LensWindowScreen extends Screen {
                     java.util.List.of(), java.util.List.of(), LensSheet.environment(p.env())));
         }
         return Optional.of(p.kind() == LensWindowPacket.Kind.LOT ? LensSheet.lot(title, java.util.List.of(), row.get(),
-                p.species()) : LensSheet.plant(title, row.get(), p.species(), p.env()));
+                p.species(), io.github.slugblue.wildroots.lens.Lens.SEEDLING_HEADER.equals(p.header().key())) : LensSheet.plant(title, row.get(), p.species(), p.env()));
     }
 
     /** The plant's block state for the model, only a known non-air state. */

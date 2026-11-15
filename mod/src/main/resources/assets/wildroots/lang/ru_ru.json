@@ -199,6 +199,7 @@
   "wildroots.panel.lens.root_vary": "Тенью — каким может вырасти посаженный корень.",
   "wildroots.panel.lens.shift": "Shift — текстом",
   "wildroots.window.lens.lot": "%1$s · семена",
+  "wildroots.window.lens.seedling": "%1$s · сеянец",
   "wildroots.window.lens.mother": "Материнское растение",
   "wildroots.window.lens.vary": "Семена разные: потомки отличаются примерно на ±1 деление. Тенью — где окажется большинство.",
   "wildroots.window.lens.env.minus": "− %s",

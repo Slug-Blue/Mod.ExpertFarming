@@ -71,6 +71,26 @@ class LensPanelModelTest {
                 .anyMatch(c -> key(c).equals(LensPanel.SHIFT)));
     }
 
+    /** Review 1, m4: a realised seedling lot keeps its genome and noise: no band, no "Mother plant", no "seeds vary". */
+    @Test
+    void seedlingLotHasNoBandAndNoVaryNote() {
+        LotStacks.Parent parent = new LotStacks.Parent(LotNbtTest.SP, Optional.empty(), LotNbtTest.genome(5),
+                Optional.empty(), 2, 0);
+        CompoundTag root = LotStacks.seedlingTag(parent, new byte[] {1, 2, 3, 4, 5, 6, 7}, 0x77L);
+        LotNbt.Lot lot = (LotNbt.Lot) LotNbt.read(root);
+        assertTrue(lot.seedling());
+        LotNbt.Lot marked = new LotNbt.Lot(lot.lotId(), lot.species(), lot.cultivar(), lot.mother(), lot.fathers(),
+                lot.pOut(), lot.generation(), lot.lineName(), lot.flags() | LotFlags.INSPECTED, lot.rare(),
+                lot.seedlingNoise());
+        List<DispCodec.Line> d = new ArrayList<>(LotStacks.disp(marked));
+        d.add(ROW.line()); // even a forged band on a seedling row is not drawn
+        LensSheet s = LensPanel.ofLot(LotNbt.write(marked, d), false).orElseThrow().sheet();
+        assertEquals(7, s.bars().size());
+        assertTrue(s.bars().stream().noneMatch(LensSheet.Bar::hasBand), "seedling with a band");
+        assertTrue(s.barsTitle().isEmpty(), "seedling bars titled Mother plant");
+        assertTrue(s.notes().stream().noneMatch(c -> key(c).equals(LensSheet.VARY)), "seedling says seeds vary");
+    }
+
     @Test
     void uninspectedLotShowsOnlyTheHint() {
         LensSheet s = LensPanel.ofLot(LotNbtTest.typical(), true).orElseThrow().sheet();

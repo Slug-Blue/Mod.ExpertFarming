@@ -136,7 +136,8 @@ public record LensPanel(LensSheet sheet) implements TooltipComponent {
             return Optional.of(new LensPanel(new LensSheet(title, header, LensSheet.Icon.NONE, Optional.empty(),
                     List.of(), List.of(), List.of(Component.translatable(CLICK)))));
         }
-        LensSheet s = LensSheet.lot(title, header, row.get(), species);
+        boolean seedling = r instanceof LotNbt.Lot l && l.seedling();
+        LensSheet s = LensSheet.lot(title, header, row.get(), species, seedling);
         return Optional.of(new LensPanel(shiftHint ? withNote(s, Component.translatable(SHIFT)) : s));
     }
 
