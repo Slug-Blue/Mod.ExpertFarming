@@ -33,7 +33,9 @@
     "bitterness": { "dominant": "wild", "wild_freq": 0.40, "toxic": false },
     "color_y1":   { "dominant": "wild", "wild_freq": 0.30, "note": "y1y1 = yellow root" },
     "color_y2":   { "dominant": "wild", "wild_freq": 0.12, "note": "y1y1 y2y2 = orange root" },
-    "color_p":    { "dominant": "domestic", "wild_freq": 0.05, "note": "P_ = purple root, epistatic over yellow/orange" }
+    "color_p":    { "dominant": "domestic", "wild_freq": 0.05, "note": "P_ = purple root, epistatic over yellow/orange" },
+    "color_r":    { "dominant": "wild", "wild_freq": 0.15, "legacy_default": "wild",
+                    "note": "y1y1 rr = red root (lycopene); a genome saved without this locus migrates as RR [PLACEHOLDER frequency]" }
   },
   "rare_allele": "color_y2",
   "load": { "loci": 8, "freq": 0.25, "step": 0.90 },
@@ -42,5 +44,23 @@
                    "bees": { "outcross": 0.95, "carry_range": 16 }, "seed_set_no_pollinator": 0.5 },
   "timing": { "to_harvest_min": 13, "seed_stage_min": 5 },
   "propagation": "seed",
-  "quality_axes": { "fruit_size": 0.5, "flavor": 0.5 }
+  "quality_axes": { "fruit_size": 0.5, "flavor": 0.5 },
+  "colours": {
+    "note": "[PLACEHOLDER] every number: balance pass WR-715 (docs/design/carrot-colours-climate.md 2.1, appendix A). First matching rule wins; the position in ids is the block variant.",
+    "ids": ["white", "yellow", "orange", "purple", "red"],
+    "rules": [
+      { "id": "purple", "when": { "color_p": "domestic" } },
+      { "id": "red",    "when": { "color_y1": "domestic", "color_r": "domestic" } },
+      { "id": "orange", "when": { "color_y1": "domestic", "color_y2": "domestic" } },
+      { "id": "yellow", "when": { "color_y1": "domestic" } },
+      { "id": "white" }
+    ],
+    "properties": {
+      "purple": { "heat": 0.25, "cold": -0.10, "drought": 0.15, "saturation_mult": 1.15 },
+      "yellow": { "heat": 0.15, "cold": -0.05, "drought": 0.30 },
+      "red":    { "heat": 0.08, "cold": -0.10 },
+      "white":  { "cold": 0.05 },
+      "orange": { "heat": -0.05 }
+    }
+  }
 }

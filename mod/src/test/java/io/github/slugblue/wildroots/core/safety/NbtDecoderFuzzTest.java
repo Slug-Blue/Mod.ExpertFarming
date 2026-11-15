@@ -118,7 +118,17 @@ class NbtDecoderFuzzTest {
     /** The genome compound as every decoder reads it, then {@code GenomeCodec.decode} with the shipped layout. */
     @Test
     void genome() {
-        CompoundTag g = fixture("v1/plant_v1.snbt").getCompound("g");
+        CompoundTag v1 = fixture("v1/plant_v1.snbt").getCompound("g");
+        // the v1 genome is a released layout (no color_r, WR-701): the seed is its migration into the current one
+        GenomeRecord old = new GenomeRecord(v1.getInt("v"), v1.getString("sp"), v1.getLong("lh"), v1.getLongArray("a"));
+        DecodeResult.Valid migrated = (DecodeResult.Valid) SNAP.genetics().decode(old, CarrotLineDataTestAccess.wildCarrot());
+        assertTrue(migrated.migrated());
+        GenomeRecord now = GenomeCodec.encode(migrated.genome());
+        CompoundTag g = new CompoundTag();
+        g.putInt("v", now.v());
+        g.putString("sp", now.species());
+        g.putLong("lh", now.lh());
+        g.putLongArray("a", now.a());
         fuzz("genome", 1971, List.of(g), t -> {
             // the raw getters never throw; GenomeCodec must judge whatever they return
             GenomeRecord r = new GenomeRecord(t.getInt("v"), t.getString("sp"), t.getLong("lh"), t.getLongArray("a"));

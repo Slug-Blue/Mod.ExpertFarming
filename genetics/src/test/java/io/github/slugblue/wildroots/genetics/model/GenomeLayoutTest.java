@@ -14,13 +14,24 @@ import org.junit.jupiter.api.Test;
 class GenomeLayoutTest {
 
     @Test
-    void carrotIs142BitsInThreeLongs() {
+    void carrotIs144BitsInThreeLongs() {
         GenomeLayout l = Carrot.LAYOUT;
-        assertEquals(142, l.totalBits());
+        assertEquals(144, l.totalBits(), "142 bits before the colour locus color_r (WR-701)");
         assertEquals(3, l.longCount());
         assertEquals(116, l.quantitative().stream().mapToInt(Locus::bits).sum());
         assertEquals(16, l.load().bits());
-        assertEquals(10, l.qualitative().stream().mapToInt(Locus::bits).sum());
+        assertEquals(12, l.qualitative().stream().mapToInt(Locus::bits).sum());
+    }
+
+    /** The layout of the released M1a version stays what it was: its hash is what old saves carry. */
+    @Test
+    void releasedM1aLayoutIsFrozen() {
+        String[] golden = MiniJson.resourceText("/golden/layout_wild_carrot_m1a.txt").trim().split("	");
+        GenomeLayout m1a = GenomeLayout.of(DefJson.species("/species/wild_carrot_m1a.json"));
+        assertEquals(golden[1], m1a.canonical());
+        assertEquals(Long.parseUnsignedLong(golden[0], 16), m1a.hash());
+        assertEquals(142, m1a.totalBits());
+        assertEquals(3, m1a.longCount());
     }
 
     @Test
@@ -28,7 +39,7 @@ class GenomeLayoutTest {
         List<String> order = Carrot.LAYOUT.sections().stream().map(s -> s.kind().code() + ":" + s.trait()).toList();
         assertEquals(List.of("q:cold_tolerance", "q:drought_tolerance", "q:flavor", "q:fruit_size",
                 "q:growth_speed", "q:heat_tolerance", "q:yield", "l:load", "c:bitterness", "c:color_p",
-                "c:color_y1", "c:color_y2", "c:dormancy"), order);
+                "c:color_r", "c:color_y1", "c:color_y2", "c:dormancy"), order);
         int offset = 0;
         for (Locus s : Carrot.LAYOUT.sections()) {
             assertEquals(offset, s.bitOffset(), s.toString());

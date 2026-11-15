@@ -1,5 +1,6 @@
 package io.github.slugblue.wildroots.genetics.phenotype;
 
+import io.github.slugblue.wildroots.genetics.api.ColourProps;
 import io.github.slugblue.wildroots.genetics.api.Defaults;
 import io.github.slugblue.wildroots.genetics.api.Environment;
 import io.github.slugblue.wildroots.genetics.api.Phenotype;
@@ -59,36 +60,44 @@ public final class PhenotypeCalculator {
                 p[i] = clamp01(eff[i] + noise.eps(i));
             }
         }
-        double e = environment(cs, env, p);
-        for (int i = 0; i < n; i++) {
-            if (cs.vigorAffected[i]) {
-                p[i] = clamp01(eff[i] * v + e + noise.eps(i));
-            }
-        }
         boolean[] dom = new boolean[cs.qual.length];
         for (int i = 0; i < dom.length; i++) {
             QualTrait q = cs.qualDefs[i];
             dom[i] = q.alleles() == 2
                     && q.domesticPhenotype(g.allele(cs.qual[i], 0, 0), g.allele(cs.qual[i], 0, 1));
         }
+        int colour = cs.colourOf(dom);
+        ColourProps cp = cs.colourProps(colour);
+        double e = environment(cs, env, p, cp);
+        for (int i = 0; i < n; i++) {
+            if (cs.vigorAffected[i]) {
+                p[i] = clamp01(eff[i] * v + e + noise.eps(i));
+            }
+        }
         boolean bitter = cs.bitterIndex >= 0 && !dom[cs.bitterIndex];
-        return new Phenotype(cs.quantIds, gv, eff, p, v, cs.qualIds, dom, bitter);
+        return new Phenotype(cs.quantIds, gv, eff, p, v, cs.qualIds, dom, bitter, colour, cp);
     }
 
     /**
      * {@code E} for {@code vigor_affected} traits (GDD §3.5): temperature out of
      * the window widened by {@code 0.6·P} of the tolerances, −0.10 per 0.1 down
      * to −0.30; dry farmland {@code −0.05·(1 − P_drought)}; light below 9
-     * −0.05; compost up to +0.05.
+     * −0.05; compost up to +0.05. The colour moves the window limits (heat up, cold down:
+     * a positive {@code cold} widens the window downwards) and adds
+     * to {@code P_drought} ({@link ColourProps}, carrot-colours-climate §2); with
+     * neutral properties the result is bit for bit the one without a colour.
      */
-    static double environment(CompiledSpecies cs, Environment env, double[] p) {
-        double lo = cs.def.tempMin() - Defaults.TOLERANCE_WIDENING * (cs.coldIndex >= 0 ? p[cs.coldIndex] : 0);
-        double hi = cs.def.tempMax() + Defaults.TOLERANCE_WIDENING * (cs.heatIndex >= 0 ? p[cs.heatIndex] : 0);
+    static double environment(CompiledSpecies cs, Environment env, double[] p, ColourProps colour) {
+        double lo = cs.def.tempMin() - Defaults.TOLERANCE_WIDENING * (cs.coldIndex >= 0 ? p[cs.coldIndex] : 0)
+                - colour.cold();
+        double hi = cs.def.tempMax() + Defaults.TOLERANCE_WIDENING * (cs.heatIndex >= 0 ? p[cs.heatIndex] : 0)
+                + colour.heat();
         double t = env.temperature();
         double out = t < lo ? lo - t : t > hi ? t - hi : 0;
         double e = -Math.min(Defaults.ENV_TEMP_CAP, Defaults.ENV_TEMP_SLOPE * out);
         if (!env.moisturized()) {
-            e -= Defaults.ENV_DRY * (1 - (cs.droughtIndex >= 0 ? p[cs.droughtIndex] : 0));
+            double drought = cs.droughtIndex >= 0 ? p[cs.droughtIndex] : 0;
+            e -= Defaults.ENV_DRY * (1 - Math.min(1, drought + colour.drought()));
         }
         if (env.light() < Defaults.ENV_DARK_LIGHT) {
             e -= Defaults.ENV_DARK;

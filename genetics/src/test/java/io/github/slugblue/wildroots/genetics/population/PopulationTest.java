@@ -31,6 +31,40 @@ class PopulationTest {
     static final String SP = Carrot.SPECIES.id();
     static final PatchPassport MEADOW = new PatchPassport(SP, "meadow", false, 12345L, false, SEED);
 
+    /**
+     * WR-701: the colour locus {@code color_r} is drawn last, so a lazy wild or village plant of an existing
+     * world has every allele the released M1a species would have drawn for it; only the new locus is added.
+     */
+    @Test
+    void theColourLocusDoesNotMoveTheDrawsOfOlderLoci() {
+        var m1a = io.github.slugblue.wildroots.genetics.testutil.DefJson.species("/species/wild_carrot_m1a.json");
+        var oldLayout = io.github.slugblue.wildroots.genetics.model.GenomeLayout.of(m1a);
+        var village = VillageTemplate.fromLandrace(Carrot.SPECIES, Carrot.EASTERN, Map.of(Carrot.Y2, 0.30), Map.of());
+        var villageOld = VillageTemplate.fromLandrace(m1a,
+                io.github.slugblue.wildroots.genetics.testutil.DefJson.cultivar("/cultivars/eastern_carrot.json"),
+                Map.of(Carrot.Y2, 0.30), Map.of());
+        for (int i = 0; i < 300; i++) {
+            PatchPassport pp = new PatchPassport(SP, i % 2 == 0 ? "meadow" : "plains", i % 3 == 0, 9000L + i, i % 5 == 0, SEED);
+            Genome before = WildPopulation.wildPlant(m1a, oldLayout, pp, Hash64.of(SEED, i));
+            Genome now = WildPopulation.wildPlant(Carrot.SPECIES, Carrot.LAYOUT, pp, Hash64.of(SEED, i));
+            assertSameOldAlleles(before, now, "wild " + i);
+            Genome vb = villageOld.plant(new CompiledSpecies(m1a), Hash64.of(SEED, 42L, i));
+            Genome vn = village.plant(new CompiledSpecies(Carrot.SPECIES), Hash64.of(SEED, 42L, i));
+            assertSameOldAlleles(vb, vn, "village " + i);
+        }
+    }
+
+    static void assertSameOldAlleles(Genome before, Genome now, String what) {
+        for (Locus s : before.layout().sections()) {
+            Locus t = now.layout().section(s.trait());
+            for (int l = 0; l < s.loci(); l++) {
+                for (int w = 0; w < 2; w++) {
+                    assertEquals(before.allele(s, l, w), now.allele(t, l, w), what + " " + s.trait() + " " + l + "/" + w);
+                }
+            }
+        }
+    }
+
     @Test
     void eliteLociAreAFunctionOfSeedSpeciesAndCategory() {
         long k1 = WildPopulation.categoryKey(SEED, SP, "meadow");

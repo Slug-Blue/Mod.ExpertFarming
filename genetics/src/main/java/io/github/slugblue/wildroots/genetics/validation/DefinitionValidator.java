@@ -4,6 +4,8 @@ import static io.github.slugblue.wildroots.genetics.validation.DataLimits.range;
 
 import io.github.slugblue.wildroots.genetics.api.AlleleFreq;
 import io.github.slugblue.wildroots.genetics.api.Bees;
+import io.github.slugblue.wildroots.genetics.api.ColourProps;
+import io.github.slugblue.wildroots.genetics.api.ColourRules;
 import io.github.slugblue.wildroots.genetics.api.CultivarDef;
 import io.github.slugblue.wildroots.genetics.api.QualReq;
 import io.github.slugblue.wildroots.genetics.api.QualTrait;
@@ -100,10 +102,16 @@ public final class DefinitionValidator {
             } else if (q.alleles() != 2) {
                 out.add(Problem.error(p + ".alleles", "only the S-locus may have " + q.alleles() + " alleles"));
             }
+            if (q.legacyAllele() != QualTrait.NO_LEGACY && (q.selfIncompat() || q.legacyAllele() < 0
+                    || q.legacyAllele() > 1)) {
+                out.add(Problem.error(p + ".legacy_default", "only a biallelic trait may have a legacy default"));
+            }
         }
         if (sLoci > 1) {
             out.add(Problem.error("qualitative", "more than one S-locus"));
         }
+
+        colours(s.colours(), qual, out);
 
         intRange(s.load().loci(), 0, DataLimits.MAX_LOAD_LOCI, "load.loci", out);
         range(s.load().freq(), 0, 1, "load.freq", out);
@@ -210,6 +218,62 @@ public final class DefinitionValidator {
         }
         axes(s.qualityAxes(), quant.keySet(), "quality_axes", out);
         return out;
+    }
+
+    private static final Pattern COLOUR_ID = Pattern.compile("[a-z0-9_]{1,32}");
+
+    /**
+     * Colour rules (carrot-colours-climate §1.3): at most 8 ids, each unique; a rule names a declared
+     * colour and conditions on declared biallelic qualitative traits; properties belong to declared
+     * colours and are finite and small.
+     */
+    private static void colours(ColourRules c, Map<TraitId, QualTrait> qual, List<Problem> out) {
+        if (c.isNone()) {
+            if (!c.rules().isEmpty() || !c.properties().isEmpty()) {
+                out.add(Problem.error("colours.ids", "rules or properties without colour ids"));
+            }
+            return;
+        }
+        if (c.ids().size() > DataLimits.MAX_COLOURS) {
+            out.add(Problem.error("colours.ids", c.ids().size() + " colours > " + DataLimits.MAX_COLOURS));
+        }
+        Set<String> seen = new HashSet<>();
+        for (int i = 0; i < c.ids().size(); i++) {
+            String id = c.ids().get(i);
+            if (!COLOUR_ID.matcher(id).matches()) {
+                out.add(Problem.error("colours.ids[" + i + "]", "colour id must match " + COLOUR_ID.pattern()));
+            }
+            if (!seen.add(id)) {
+                out.add(Problem.error("colours.ids[" + i + "]", "duplicate colour " + id));
+            }
+        }
+        if (c.rules().size() > DataLimits.MAX_COLOUR_RULES) {
+            out.add(Problem.error("colours.rules", c.rules().size() + " rules > " + DataLimits.MAX_COLOUR_RULES));
+        }
+        for (int i = 0; i < c.rules().size(); i++) {
+            ColourRules.Rule r = c.rules().get(i);
+            String p = "colours.rules[" + i + "]";
+            if (!seen.contains(r.id())) {
+                out.add(Problem.error(p + ".id", "undeclared colour " + r.id()));
+            }
+            for (TraitId t : r.when().keySet()) {
+                QualTrait q = qual.get(t);
+                if (q == null || q.alleles() != 2) {
+                    out.add(Problem.error(p + ".when." + t, "not a biallelic qualitative trait"));
+                }
+            }
+        }
+        for (Map.Entry<String, ColourProps> e : c.properties().entrySet()) {
+            String p = "colours.properties." + e.getKey();
+            if (!seen.contains(e.getKey())) {
+                out.add(Problem.error(p, "undeclared colour " + e.getKey()));
+            }
+            ColourProps v = e.getValue();
+            range(v.heat(), -DataLimits.MAX_COLOUR_MODIFIER, DataLimits.MAX_COLOUR_MODIFIER, p + ".heat", out);
+            range(v.cold(), -DataLimits.MAX_COLOUR_MODIFIER, DataLimits.MAX_COLOUR_MODIFIER, p + ".cold", out);
+            range(v.drought(), -DataLimits.MAX_COLOUR_MODIFIER, DataLimits.MAX_COLOUR_MODIFIER, p + ".drought", out);
+            range(v.saturationMult(), 0, DataLimits.MAX_COLOUR_SATURATION, p + ".saturation_mult", out);
+        }
     }
 
     // ----------------------------------------------------------------- cultivar

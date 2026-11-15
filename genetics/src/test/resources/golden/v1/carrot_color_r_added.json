@@ -1,0 +1,15 @@
+{
+  "description": "WR-701: locus color_r added with legacy_default wild: old alleles kept, color_r = RR (no old plant changes colour)",
+  "old_species": "wild_carrot_m1a",
+  "old_layout_registered": true,
+  "current_species": "wild_carrot",
+  "record": { "v": 1, "sp": "wildroots:wild_carrot", "lh": "cee0bc2c52916ae3", "a": ["19a968a92a098450", "0fb49a62a5a11095", "000000000000148f"] },
+  "expected": {
+    "status": "MIGRATED",
+    "lh": "7b203d634fab35cb",
+    "a": ["19a968a92a098450", "0fb49a62a5a11095", "000000000000508f"],
+    "warnings": [
+      "new trait color_r: legacy default"
+    ]
+  }
+}

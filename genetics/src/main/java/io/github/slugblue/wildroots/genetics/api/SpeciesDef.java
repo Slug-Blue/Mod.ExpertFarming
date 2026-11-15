@@ -29,20 +29,32 @@ import java.util.SortedMap;
  * @param pollination  pollination
  * @param timing       stage timing
  * @param qualityAxes  quality axes of the line for wild plants (GDD §6.4: like the main cultivar)
+ * @param colours      colour rules and properties ({@link ColourRules#NONE} when the species has no colours)
  */
 public record SpeciesDef(String id, double tempMin, double tempMax, List<QuantTrait> quantitative,
                          List<Tradeoff> tradeoffs, Budget budget, WildFrequencies wild, double wildF,
                          List<QualTrait> qualitative, SortedMap<TraitId, Double> starterFreq, LoadDef load,
                          MutationRates mutation, Pollination pollination, Timing timing,
-                         SortedMap<TraitId, Double> qualityAxes) {
+                         SortedMap<TraitId, Double> qualityAxes, ColourRules colours) {
 
     public SpeciesDef(String id, double tempMin, double tempMax, List<QuantTrait> quantitative,
                       List<Tradeoff> tradeoffs, Budget budget, WildFrequencies wild, double wildF,
                       List<QualTrait> qualitative, Map<TraitId, Double> starterFreq, LoadDef load,
                       MutationRates mutation, Pollination pollination, Timing timing,
-                      Map<TraitId, Double> qualityAxes) {
+                      Map<TraitId, Double> qualityAxes, ColourRules colours) {
         this(id, tempMin, tempMax, quantitative, tradeoffs, budget, wild, wildF, qualitative,
-                Immutable.sorted(starterFreq), load, mutation, pollination, timing, Immutable.sorted(qualityAxes));
+                Immutable.sorted(starterFreq), load, mutation, pollination, timing, Immutable.sorted(qualityAxes),
+                colours);
+    }
+
+    /** A species without colours. */
+    public SpeciesDef(String id, double tempMin, double tempMax, List<QuantTrait> quantitative,
+                      List<Tradeoff> tradeoffs, Budget budget, WildFrequencies wild, double wildF,
+                      List<QualTrait> qualitative, Map<TraitId, Double> starterFreq, LoadDef load,
+                      MutationRates mutation, Pollination pollination, Timing timing,
+                      Map<TraitId, Double> qualityAxes) {
+        this(id, tempMin, tempMax, quantitative, tradeoffs, budget, wild, wildF, qualitative, starterFreq, load,
+                mutation, pollination, timing, qualityAxes, ColourRules.NONE);
     }
 
     public SpeciesDef {
@@ -54,6 +66,7 @@ public record SpeciesDef(String id, double tempMin, double tempMax, List<QuantTr
         budget = budget == null ? Budget.NONE : budget;
         starterFreq = Immutable.sorted(starterFreq);
         qualityAxes = Immutable.sorted(qualityAxes);
+        colours = colours == null ? ColourRules.NONE : colours;
     }
 
     /** Quantitative trait by id or {@code null}. */

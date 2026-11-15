@@ -1,5 +1,8 @@
 package io.github.slugblue.wildroots.genetics.phenotype;
 
+import io.github.slugblue.wildroots.genetics.api.ColourProps;
+import io.github.slugblue.wildroots.genetics.api.ColourRules;
+import io.github.slugblue.wildroots.genetics.api.QualReq;
 import io.github.slugblue.wildroots.genetics.api.QualTrait;
 import io.github.slugblue.wildroots.genetics.api.QuantTrait;
 import io.github.slugblue.wildroots.genetics.api.SpeciesDef;
@@ -36,6 +39,11 @@ public final class CompiledSpecies {
     final int coldIndex;
     final int heatIndex;
     final int droughtIndex;
+    /** Colour rules: per rule the qualitative index (-1 = unknown trait, the rule never matches) and the wanted phenotype. */
+    final int[][] colourTraits;
+    final boolean[][] colourWanted;
+    final int[] colourOfRule;
+    final ColourProps[] colourProps;
 
     public CompiledSpecies(SpeciesDef def) {
         this(def, GenomeLayout.of(def));
@@ -89,6 +97,49 @@ public final class CompiledSpecies {
         coldIndex = quantIds.indexOf(Traits.COLD_TOLERANCE);
         heatIndex = quantIds.indexOf(Traits.HEAT_TOLERANCE);
         droughtIndex = quantIds.indexOf(Traits.DROUGHT_TOLERANCE);
+        ColourRules cr = def.colours();
+        int nr = cr.rules().size();
+        colourTraits = new int[nr][];
+        colourWanted = new boolean[nr][];
+        colourOfRule = new int[nr];
+        for (int k = 0; k < nr; k++) {
+            ColourRules.Rule r = cr.rules().get(k);
+            colourOfRule[k] = cr.indexOf(r.id());
+            colourTraits[k] = new int[r.when().size()];
+            colourWanted[k] = new boolean[r.when().size()];
+            int j = 0;
+            for (var e : r.when().entrySet()) {
+                colourTraits[k][j] = qualIds.indexOf(e.getKey());
+                colourWanted[k][j] = e.getValue() == QualReq.DOMESTIC;
+                j++;
+            }
+        }
+        colourProps = new ColourProps[cr.ids().size()];
+        for (int c = 0; c < colourProps.length; c++) {
+            colourProps[c] = cr.props(c);
+        }
+    }
+
+    /**
+     * Colour number from the visible qualitative phenotypes {@code dom} (layout order of
+     * {@link #qualIds}): the first rule that matches; -1 if none does or the species has no colours.
+     */
+    int colourOf(boolean[] dom) {
+        for (int k = 0; k < colourOfRule.length; k++) {
+            boolean all = colourOfRule[k] >= 0;
+            for (int j = 0; all && j < colourTraits[k].length; j++) {
+                int t = colourTraits[k][j];
+                all = t >= 0 && dom[t] == colourWanted[k][j];
+            }
+            if (all) {
+                return colourOfRule[k];
+            }
+        }
+        return -1;
+    }
+
+    ColourProps colourProps(int colour) {
+        return colour >= 0 && colour < colourProps.length ? colourProps[colour] : ColourProps.ZERO;
     }
 
     public SpeciesDef def() {

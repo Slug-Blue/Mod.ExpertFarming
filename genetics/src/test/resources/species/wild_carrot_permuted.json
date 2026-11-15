@@ -64,6 +64,11 @@
    "wild_freq": 0.05,
    "note": "P_ = purple root, epistatic over yellow/orange",
    "dominant": "domestic"
+  },
+  "color_r": {
+   "legacy_default": "wild",
+   "wild_freq": 0.15,
+   "dominant": "wild"
   }
  },
  "propagation": "seed",

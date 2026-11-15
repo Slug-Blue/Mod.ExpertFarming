@@ -190,17 +190,23 @@ public final class TempoModel {
     }
 
     /**
-     * Visibility rule of GDD §3.6: bitterness is tasted; root colour is seen,
-     * but {@code y2} shows only on a yellow-based root ({@code y1y1}, no
-     * {@code P_}); {@code P} itself is always visible.
+     * Visibility rule of GDD §3.6 and docs/design/carrot-colours-climate.md §1.1: bitterness is tasted; root
+     * colour is seen, but {@code y2} shows only on a yellow-based root ({@code y1y1}, no {@code P_}) that is not
+     * red (red covers yellow and orange whatever {@code y2} is); {@code color_r} shows on a coloured root
+     * ({@code y1y1}, no {@code P_}) as red or not red; {@code P} itself is always visible.
      */
     boolean visible(Genome g, TraitId t) {
         String id = t.value();
+        boolean purple = domestic(g, "color_p");
+        boolean coloured = domestic(g, "color_y1") && !purple;
         if (id.equals("color_y2")) {
-            return domestic(g, "color_y1") && !domestic(g, "color_p");
+            return coloured && !domestic(g, "color_r");
+        }
+        if (id.equals("color_r")) {
+            return coloured;
         }
         if (id.equals("color_y1")) {
-            return !domestic(g, "color_p");
+            return !purple;
         }
         return true;
     }

@@ -3,6 +3,8 @@ package io.github.slugblue.wildroots.genetics.testutil;
 import io.github.slugblue.wildroots.genetics.api.AlleleFreq;
 import io.github.slugblue.wildroots.genetics.api.Bees;
 import io.github.slugblue.wildroots.genetics.api.Budget;
+import io.github.slugblue.wildroots.genetics.api.ColourProps;
+import io.github.slugblue.wildroots.genetics.api.ColourRules;
 import io.github.slugblue.wildroots.genetics.api.CultivarDef;
 import io.github.slugblue.wildroots.genetics.api.CultivarId;
 import io.github.slugblue.wildroots.genetics.api.Defaults;
@@ -134,7 +136,9 @@ public final class DefJson {
                     d.numOr(q.get("wild_freq"), 0.0, path + ".wild_freq", !s),
                     d.boolOr(q.get("toxic"), false, path + ".toxic", false), alleles, s,
                     d.intOr(q.get("patch_alleles"), s ? Defaults.S_ALLELES_PER_PATCH : 2,
-                            path + ".patch_alleles", false)));
+                            path + ".patch_alleles", false),
+                    q.get("legacy_default") == null ? QualTrait.NO_LEGACY
+                            : "domestic".equals(d.str(q.get("legacy_default"), path + ".legacy_default", "wild")) ? 1 : 0));
         }
         Map<TraitId, Double> starter = d.numMap(m.get("starter_freq"), "starter_freq");
 
@@ -173,7 +177,7 @@ public final class DefJson {
 
         return new SpeciesDef(id, tMin, tMax, quant, trade, budget,
                 new WildFrequencies(bg, el, eliteLoci, rich, richExtra), wildF, qual, starter, load, mut, pol,
-                timing, axes);
+                timing, axes, d.colours(m.get("colours")));
     }
 
     @SuppressWarnings("unchecked")
@@ -209,6 +213,45 @@ public final class DefJson {
                 anyOf.stream().map(TreeMap::new).map(t -> (java.util.SortedMap<TraitId, QualReq>) t).toList(),
                 d.numOr(m.get("hysteresis"), Defaults.HYSTERESIS, "hysteresis"),
                 new TreeMap<>(axes), parent);
+    }
+
+    /** Colour rules (carrot-colours-climate §1.3); missing property numbers are neutral. */
+    private ColourRules colours(Object v) {
+        if (v == null) {
+            return ColourRules.NONE;
+        }
+        Map<String, Object> c = obj(v, "colours");
+        List<String> ids = new ArrayList<>();
+        List<Object> idl = list(c.get("ids"), "colours.ids");
+        for (int i = 0; i < idl.size(); i++) {
+            ids.add(str(idl.get(i), "colours.ids[" + i + "]", ""));
+        }
+        List<ColourRules.Rule> rules = new ArrayList<>();
+        List<Object> rl = list(c.get("rules"), "colours.rules");
+        for (int i = 0; i < rl.size(); i++) {
+            String path = "colours.rules[" + i + "]";
+            Map<String, Object> r = obj(rl.get(i), path);
+            Map<TraitId, QualReq> when = new TreeMap<>();
+            if (r.get("when") != null) {
+                for (Map.Entry<String, Object> e : obj(r.get("when"), path + ".when").entrySet()) {
+                    when.put(TraitId.of(e.getKey()), "domestic".equals(str(e.getValue(), path + ".when." + e.getKey(),
+                            "wild")) ? QualReq.DOMESTIC : QualReq.WILD);
+                }
+            }
+            rules.add(new ColourRules.Rule(str(r.get("id"), path + ".id", ""), when));
+        }
+        Map<String, ColourProps> props = new TreeMap<>();
+        if (c.get("properties") != null) {
+            for (Map.Entry<String, Object> e : obj(c.get("properties"), "colours.properties").entrySet()) {
+                String path = "colours.properties." + e.getKey();
+                Map<String, Object> pm = obj(e.getValue(), path);
+                props.put(e.getKey(), new ColourProps(numOr(pm.get("heat"), 0, path + ".heat", false),
+                        numOr(pm.get("cold"), 0, path + ".cold", false),
+                        numOr(pm.get("drought"), 0, path + ".drought", false),
+                        numOr(pm.get("saturation_mult"), 1, path + ".saturation_mult", false)));
+            }
+        }
+        return new ColourRules(ids, rules, props);
     }
 
     // ---------------------------------------------------------------- helpers

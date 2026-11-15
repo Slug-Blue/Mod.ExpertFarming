@@ -151,6 +151,11 @@
    "dominant": "domestic",
    "wild_freq": 0.05,
    "note": "P_ = purple root, epistatic over yellow/orange"
+  },
+  "color_r": {
+   "dominant": "wild",
+   "wild_freq": 0.15,
+   "legacy_default": "wild"
   }
  },
  "rare_allele": "color_y2",

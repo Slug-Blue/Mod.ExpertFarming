@@ -100,8 +100,12 @@ class CarrotLineDataTest {
         GenomeLayout current = GenomeLayout.of(s.species("wildroots:wild_carrot").orElseThrow().def());
         List<LayoutDescriptor> history = s.layouts().entries().stream()
                 .filter(d -> d.species().equals("wildroots:wild_carrot")).toList();
-        assertEquals(1, history.size());
-        assertEquals(new LayoutDescriptor("wildroots:wild_carrot", current.hash(), current.canonical()), history.get(0));
+        // the M1a layout of the first release, then the layout with the colour locus color_r (WR-701)
+        assertEquals(2, history.size());
+        assertEquals(new LayoutDescriptor("wildroots:wild_carrot", current.hash(), current.canonical()), history.get(1));
+        assertEquals(8872158762667554251L, current.hash());
         assertTrue(s.layouts().lookup("wildroots:wild_carrot", -3539622408563365149L).isPresent());
+        assertEquals(142, s.layouts().lookup("wildroots:wild_carrot", -3539622408563365149L).orElseThrow().totalBits());
+        assertEquals(144, current.totalBits());
     }
 }

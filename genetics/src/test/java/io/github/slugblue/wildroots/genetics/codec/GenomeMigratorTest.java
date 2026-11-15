@@ -62,6 +62,9 @@ class GenomeMigratorTest {
             Genome m = a.genome().orElseThrow();
             for (Locus s : Carrot.LAYOUT.sections()) {
                 Locus n = cur.section(s.trait());
+                if (n == null) {
+                    continue; // the colour locus color_r (WR-701): YIELD8 is a species of the M1a layout, without it
+                }
                 for (int l = 0; l < s.loci(); l++) {
                     for (int w = 0; w < 2; w++) {
                         assertEquals(g.allele(s, l, w), m.allele(n, l, w));

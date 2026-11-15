@@ -170,7 +170,7 @@ final class PlantFixtures {
         SpeciesDef d = carrot().def();
         return new SpeciesDef(id, d.tempMin(), d.tempMax(), quant.apply(d.quantitative()), d.tradeoffs(), d.budget(),
                 d.wild(), d.wildF(), d.qualitative(), d.starterFreq(), d.load(), d.mutation(), d.pollination(),
-                d.timing(), d.qualityAxes());
+                d.timing(), d.qualityAxes(), d.colours());
     }
 
     /** The current snapshot plus {@code extra} (with the carrot's mod data) and extra layout history. */

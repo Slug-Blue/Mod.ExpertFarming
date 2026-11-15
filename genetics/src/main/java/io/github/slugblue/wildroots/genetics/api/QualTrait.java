@@ -14,9 +14,20 @@ import io.github.slugblue.wildroots.genetics.model.TraitId;
  * @param alleles      allele count: 2, or 2–16 for the S-locus
  * @param selfIncompat this locus is the S-locus (GDD §4.2)
  * @param patchAlleles S-alleles present in one wild patch (GDD §3.6: 6 of 10)
+ * @param legacyAllele allele both copies get when an old genome that has no such locus is migrated
+ *                     ({@link #NO_LEGACY}: the usual background value from the wild frequency;
+ *                     0 = wild, 1 = domestic; {@code legacy_default} in the JSON)
  */
 public record QualTrait(TraitId id, Dominance dominant, double wildFreq, boolean toxic, int alleles,
-                        boolean selfIncompat, int patchAlleles) {
+                        boolean selfIncompat, int patchAlleles, int legacyAllele) {
+
+    /** No legacy default: a migrated genome gets a background value. */
+    public static final int NO_LEGACY = -1;
+
+    public QualTrait(TraitId id, Dominance dominant, double wildFreq, boolean toxic, int alleles,
+                     boolean selfIncompat, int patchAlleles) {
+        this(id, dominant, wildFreq, toxic, alleles, selfIncompat, patchAlleles, NO_LEGACY);
+    }
 
     /** Plain biallelic trait. */
     public static QualTrait biallelic(String id, Dominance dominant, double wildFreq) {

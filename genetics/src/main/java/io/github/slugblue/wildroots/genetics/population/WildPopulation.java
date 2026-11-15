@@ -119,18 +119,25 @@ public final class WildPopulation {
                 Alleles.drawLocus(b, load, l, lf, f, rng);
             }
         }
-        for (Locus c : layout.qualitative()) {
-            QualTrait def = s.qual(c.trait());
-            if (def.alleles() > 2) {
-                int[] present = patchSAlleles(p, def);
-                double[] w = new double[def.alleles()];
-                for (int a : present) {
-                    w[a] = 1;
+        // loci added after a release (those with a legacy_default) are drawn last: every older allele of a
+        // lazy plant of an existing world stays what the earlier version would have drawn (WR-701)
+        for (boolean late : new boolean[] {false, true}) {
+            for (Locus c : layout.qualitative()) {
+                QualTrait def = s.qual(c.trait());
+                if ((def.legacyAllele() != QualTrait.NO_LEGACY) != late) {
+                    continue;
                 }
-                Alleles.drawLocus(b, c, 0, w, f, rng);
-            } else {
-                Double starter = p.starter() ? s.starterFreq().get(c.trait()) : null;
-                Alleles.drawLocus(b, c, 0, Alleles.biallelic(starter != null ? starter : def.wildFreq()), f, rng);
+                if (def.alleles() > 2) {
+                    int[] present = patchSAlleles(p, def);
+                    double[] w = new double[def.alleles()];
+                    for (int a : present) {
+                        w[a] = 1;
+                    }
+                    Alleles.drawLocus(b, c, 0, w, f, rng);
+                } else {
+                    Double starter = p.starter() ? s.starterFreq().get(c.trait()) : null;
+                    Alleles.drawLocus(b, c, 0, Alleles.biallelic(starter != null ? starter : def.wildFreq()), f, rng);
+                }
             }
         }
         return b.build();

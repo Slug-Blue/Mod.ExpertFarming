@@ -102,6 +102,6 @@ class DeterminismGoldenTest {
         assertEquals(Long.toHexString(BREEDING), Long.toHexString(acc), "breeding digest");
     }
 
-    static final long WILD_AND_VILLAGE = 0xf80c5a5e7920e2a1L;
-    static final long BREEDING = 0xb87f9988b3c94868L;
+    static final long WILD_AND_VILLAGE = 0x8f1664715d8a8141L;
+    static final long BREEDING = 0x882f0aa6e2bdce12L;
 }

@@ -15,11 +15,14 @@ import io.github.slugblue.wildroots.data.codec.PathCodecs;
 import io.github.slugblue.wildroots.genetics.api.AlleleFreq;
 import io.github.slugblue.wildroots.genetics.api.Bees;
 import io.github.slugblue.wildroots.genetics.api.Budget;
+import io.github.slugblue.wildroots.genetics.api.ColourProps;
+import io.github.slugblue.wildroots.genetics.api.ColourRules;
 import io.github.slugblue.wildroots.genetics.api.Defaults;
 import io.github.slugblue.wildroots.genetics.api.Dominance;
 import io.github.slugblue.wildroots.genetics.api.LoadDef;
 import io.github.slugblue.wildroots.genetics.api.MutationRates;
 import io.github.slugblue.wildroots.genetics.api.Pollination;
+import io.github.slugblue.wildroots.genetics.api.QualReq;
 import io.github.slugblue.wildroots.genetics.api.QualTrait;
 import io.github.slugblue.wildroots.genetics.api.QuantTrait;
 import io.github.slugblue.wildroots.genetics.api.SpeciesDef;
@@ -76,7 +79,19 @@ public final class SpeciesSchema {
     }
 
     public record Qual(String dominant, Optional<Double> wildFreq, Optional<Boolean> toxic,
-                       Optional<Integer> alleles, Optional<Boolean> selfIncompat, Optional<Integer> patchAlleles) {
+                       Optional<Integer> alleles, Optional<Boolean> selfIncompat, Optional<Integer> patchAlleles,
+                       Optional<String> legacyDefault) {
+    }
+
+    public record ColourRuleRaw(String id, Optional<Map<String, String>> when) {
+    }
+
+    public record ColourPropsRaw(Optional<Double> heat, Optional<Double> cold, Optional<Double> drought,
+                                 Optional<Double> saturationMult) {
+    }
+
+    public record ColoursRaw(List<String> ids, List<ColourRuleRaw> rules,
+                             Optional<Map<String, ColourPropsRaw>> properties) {
     }
 
     public record Load(Optional<Integer> loci, Optional<Double> freq, Optional<Double> step) {
@@ -102,7 +117,7 @@ public final class SpeciesSchema {
                       Pol pollination, TimingRaw timing, Optional<Map<String, Double>> qualityAxes,
                       Optional<Map<String, String>> displayTraits, Optional<String> lifeCycle,
                       Optional<ResourceLocation> block, Optional<String> archetype, Optional<Integer> color,
-                      Optional<String> rareAllele, Optional<String> propagation) {
+                      Optional<String> rareAllele, Optional<String> propagation, Optional<ColoursRaw> colours) {
     }
 
     // ------------------------------------------------------------------ codec
@@ -127,7 +142,16 @@ public final class SpeciesSchema {
 
     static final Codec<Qual> QUAL = object(f -> new Qual(f.req("dominant", oneOf("wild", "domestic")),
             f.opt("wild_freq", NUM), f.opt("toxic", BOOL), f.opt("alleles", INT), f.opt("self_incompat", BOOL),
-            f.opt("patch_alleles", INT)));
+            f.opt("patch_alleles", INT), f.opt("legacy_default", oneOf("wild", "domestic"))));
+
+    static final Codec<ColourRuleRaw> COLOUR_RULE = object(f -> new ColourRuleRaw(f.req("id", STR),
+            f.opt("when", map(oneOf("wild", "domestic")))));
+
+    static final Codec<ColourPropsRaw> COLOUR_PROPS = object(f -> new ColourPropsRaw(f.opt("heat", NUM),
+            f.opt("cold", NUM), f.opt("drought", NUM), f.opt("saturation_mult", NUM)));
+
+    static final Codec<ColoursRaw> COLOURS = object(f -> new ColoursRaw(f.req("ids", list(STR)),
+            f.req("rules", list(COLOUR_RULE)), f.opt("properties", map(COLOUR_PROPS))));
 
     static final Codec<Load> LOAD = object(f -> new Load(f.opt("loci", INT), f.opt("freq", NUM), f.opt("step", NUM)));
 
@@ -165,7 +189,8 @@ public final class SpeciesSchema {
             f.opt("archetype", oneOf(SpeciesInfo.ARCHETYPES.toArray(String[]::new))),
             f.opt("color", INT),
             f.opt("rare_allele", STR),
-            f.opt("propagation", STR)));
+            f.opt("propagation", STR),
+            f.opt("colours", COLOURS)));
 
     // ------------------------------------------------------------------ defaults and mod checks
 
@@ -234,7 +259,8 @@ public final class SpeciesSchema {
                     : s ? 0.0 : Defaults.or((Double) null, 0.0, path + ".wild_freq", p);
             qual.add(new QualTrait(TraitId.of(id), "domestic".equals(q.dominant()) ? Dominance.DOMESTIC : Dominance.WILD,
                     wildFreq, q.toxic().orElse(false), q.alleles().orElse(2), s,
-                    q.patchAlleles().orElse(s ? Defaults.S_ALLELES_PER_PATCH : 2)));
+                    q.patchAlleles().orElse(s ? Defaults.S_ALLELES_PER_PATCH : 2),
+                    q.legacyDefault().map(w -> "domestic".equals(w) ? 1 : 0).orElse(QualTrait.NO_LEGACY)));
         });
         Map<TraitId, Double> starter = traitMap(raw.starterFreq().orElse(Map.of()));
 
@@ -265,10 +291,27 @@ public final class SpeciesSchema {
         Timing timing = new Timing(raw.timing().toHarvestMin(), raw.timing().seedStageMin());
         Map<TraitId, Double> axes = traitMap(raw.qualityAxes().orElse(Map.of()));
 
+        ColourRules colours = raw.colours().map(SpeciesSchema::colours).orElse(ColourRules.NONE);
+
         SpeciesDef def = new SpeciesDef(raw.id(), tMin, tMax, quant, trade, budget,
                 new WildFrequencies(bg, el, eliteLoci, rich, richExtra), wildF, qual, starter, load, mut, pol,
-                timing, axes);
+                timing, axes, colours);
         return new Mapped(def, info(raw, p), p);
+    }
+
+    /** Colour rules of the JSON; missing property numbers are neutral (0, saturation 1), without a warning. */
+    private static ColourRules colours(ColoursRaw c) {
+        List<ColourRules.Rule> rules = new ArrayList<>();
+        for (ColourRuleRaw r : c.rules()) {
+            Map<TraitId, QualReq> when = new TreeMap<>();
+            r.when().orElse(Map.of()).forEach((k, v) ->
+                    when.put(TraitId.of(k), "domestic".equals(v) ? QualReq.DOMESTIC : QualReq.WILD));
+            rules.add(new ColourRules.Rule(r.id(), when));
+        }
+        Map<String, ColourProps> props = new TreeMap<>();
+        c.properties().orElse(Map.of()).forEach((id, v) -> props.put(id, new ColourProps(v.heat().orElse(0.0),
+                v.cold().orElse(0.0), v.drought().orElse(0.0), v.saturationMult().orElse(1.0))));
+        return new ColourRules(c.ids(), rules, props);
     }
 
     private static SpeciesInfo info(Raw raw, List<Problem> p) {

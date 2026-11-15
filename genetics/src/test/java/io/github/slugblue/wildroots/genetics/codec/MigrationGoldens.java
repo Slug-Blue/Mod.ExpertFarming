@@ -16,7 +16,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 /**
- * Writes the "old save" golden fixtures {@code src/test/resources/golden/v1/*.json}
+ * In the cases below {@code wild_carrot_m1a} is the species of the released M1a layout
+ * ({@code lh cee0bc2c52916ae3}, frozen, no {@code color_r}); the recorded files of the first ten cases
+ * name it {@code wild_carrot} in their description fields, which are not asserted. The current
+ * {@code wild_carrot} has the colour locus (WR-701).
+ *
+ * <p>Writes the "old save" golden fixtures {@code src/test/resources/golden/v1/*.json}
  * (docs/05-architecture.md §5.4). Run once per released format or layout
  * change with {@code WILDROOTS_REGEN_GOLDEN=1}; the files are then frozen and
  * never regenerated for an already released version — {@link GenomeMigratorGoldenTest}
@@ -30,25 +35,27 @@ class MigrationGoldens {
     }
 
     static final List<Case> CASES = List.of(
-            new Case("carrot_unchanged", "current layout: decoded as is", "wild_carrot", true, "wild_carrot", 1, 1),
+            new Case("carrot_unchanged", "current layout: decoded as is", "wild_carrot_m1a", true, "wild_carrot_m1a", 1, 1),
             new Case("carrot_yield_6_to_8", "yield 6 -> 8 loci: old alleles kept, new loci background",
-                    "wild_carrot", true, "wild_carrot_yield8", 1, 2),
+                    "wild_carrot_m1a", true, "wild_carrot_yield8", 1, 2),
             new Case("carrot_yield_8_to_6", "yield 8 -> 6 loci: loci 6..7 dropped with a warning",
-                    "wild_carrot_yield8", true, "wild_carrot", 1, 3),
-            new Case("carrot_flavor_removed", "flavor removed: dropped with a warning", "wild_carrot", true,
+                    "wild_carrot_yield8", true, "wild_carrot_m1a", 1, 3),
+            new Case("carrot_flavor_removed", "flavor removed: dropped with a warning", "wild_carrot_m1a", true,
                     "wild_carrot_noflavor", 1, 4),
-            new Case("carrot_sugar_added", "new trait sugar: background with a warning", "wild_carrot", true,
+            new Case("carrot_sugar_added", "new trait sugar: background with a warning", "wild_carrot_m1a", true,
                     "wild_carrot_sugar", 1, 5),
             new Case("carrot_dormancy_kind_change", "dormancy qualitative -> quantitative: background with a warning",
-                    "wild_carrot", true, "wild_carrot_dormancy_quant", 1, 6),
+                    "wild_carrot_m1a", true, "wild_carrot_dormancy_quant", 1, 6),
             new Case("s_locus_6_to_16", "S-locus widened 6 -> 16 alleles: values kept", "wild_carrot_s6", true,
                     "wild_carrot_s16", 1, 7),
             new Case("s_locus_10_to_6", "S-locus narrowed 10 -> 6 alleles: values >= 6 replaced with a warning",
                     "wild_carrot_s10", true, "wild_carrot_s6", 1, 8),
             new Case("unknown_layout", "layout missing from the dictionary: regenerated as wild",
-                    "wild_carrot_yield8", false, "wild_carrot", 1, 9),
-            new Case("future_version", "format version 2 from a newer mod: inert, raw kept", "wild_carrot", true,
-                    "wild_carrot", 2, 10));
+                    "wild_carrot_yield8", false, "wild_carrot_m1a", 1, 9),
+            new Case("future_version", "format version 2 from a newer mod: inert, raw kept", "wild_carrot_m1a",
+                    true, "wild_carrot_m1a", 2, 10),
+            new Case("carrot_color_r_added", "WR-701: locus color_r added with legacy_default wild: old alleles kept,"
+                    + " color_r = RR (no old plant changes colour)", "wild_carrot_m1a", true, "wild_carrot", 1, 11));
 
     static SpeciesDef species(String name) {
         return DefJson.species("/species/" + name + ".json");

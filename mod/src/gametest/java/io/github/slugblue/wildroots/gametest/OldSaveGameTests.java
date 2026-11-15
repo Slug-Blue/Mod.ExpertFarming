@@ -5,7 +5,6 @@ import io.github.slugblue.wildroots.core.Ids;
 import io.github.slugblue.wildroots.core.registry.ModItems;
 import io.github.slugblue.wildroots.data.Definitions;
 import io.github.slugblue.wildroots.genetics.codec.DecodeResult;
-import io.github.slugblue.wildroots.genetics.codec.GenomeCodec;
 import io.github.slugblue.wildroots.genetics.model.GenomeLayout;
 import io.github.slugblue.wildroots.item.LotNbt;
 import io.github.slugblue.wildroots.item.LotStacks;
@@ -13,6 +12,7 @@ import io.github.slugblue.wildroots.item.MotherItem;
 import io.github.slugblue.wildroots.item.MotherNbt;
 import io.github.slugblue.wildroots.item.SeedPouchItem;
 import io.github.slugblue.wildroots.plant.FieldPlantBlock;
+import io.github.slugblue.wildroots.plant.GrowthLogic;
 import io.github.slugblue.wildroots.plant.PlantBlockEntity;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -90,6 +90,23 @@ public final class OldSaveGameTests {
         return Definitions.current().genetics().layout(PlantFixtures.carrot().def()).orElseThrow();
     }
 
+    /** Block variant by the released M1a rule from the raw v1 alleles (domestic allele = 1). */
+    static int v1Variant(GenomeLayout old, long[] bits) {
+        java.util.function.BiPredicate<String, Boolean> dom = (trait, recessive) -> {
+            var s = old.section(io.github.slugblue.wildroots.genetics.model.TraitId.of(trait));
+            int sum = GenomeLayout.get(bits, s, 0, 0) + GenomeLayout.get(bits, s, 0, 1);
+            return recessive ? sum == 2 : sum >= 1;
+        };
+        // color_p is dominant domestic (P_), color_y1 and color_y2 are dominant wild (domestic phenotype = homozygous)
+        if (dom.test("color_p", false)) {
+            return 3;
+        }
+        if (dom.test("color_y1", true)) {
+            return dom.test("color_y2", true) ? 2 : 1;
+        }
+        return 0;
+    }
+
     /** Random ticks with a fixed RNG until the stage passes {@code from}; whether it did. */
     static boolean grows(GameTestHelper helper, BlockPos rel, int from, long seed) {
         int target = from + 1;
@@ -128,8 +145,30 @@ public final class OldSaveGameTests {
 
         // genomes decode (bits as frozen in fixtures/v1/plant_v1.snbt)
         PlantBlockEntity.Live y = young.live(level).orElseThrow(() -> new AssertionError("young plant: " + young.inertReason()));
-        helper.assertTrue(Arrays.equals(y.genome().bits(), new long[] {4992702343843299669L, -4236302851338009576L, 24L}),
-                "young genome " + Arrays.toString(y.genome().bits()));
+        // the v1 bits (frozen in fixtures/v1/plant_v1.snbt, 142 bits, layout cee0bc2c52916ae3) are migrated to the layout
+        // with the colour locus color_r (WR-701): every allele kept, color_r = RR (legacy_default), so the colour is the old one
+        long[] v1 = {4992702343843299669L, -4236302851338009576L, 24L};
+        GenomeLayout old = Definitions.current().layouts().lookup(PlantFixtures.SP, -3539622408563365149L)
+                .orElseThrow(() -> new AssertionError("the M1a layout is not in the history"));
+        GenomeLayout now = carrotLayout();
+        helper.assertTrue(y.genome().layout().hash() == now.hash() && now.totalBits() == 144 && old.totalBits() == 142,
+                "layouts " + old + " -> " + y.genome().layout());
+        for (io.github.slugblue.wildroots.genetics.model.Locus s : old.sections()) {
+            io.github.slugblue.wildroots.genetics.model.Locus t = now.section(s.trait());
+            for (int l = 0; l < s.loci(); l++) {
+                for (int w = 0; w < 2; w++) {
+                    helper.assertTrue(GenomeLayout.get(v1, s, l, w) == y.genome().allele(t, l, w),
+                            "allele " + s.trait() + " " + l + "/" + w + " changed in the migration");
+                }
+            }
+        }
+        io.github.slugblue.wildroots.genetics.model.Locus rr = now.section(
+                io.github.slugblue.wildroots.genetics.model.TraitId.of("color_r"));
+        helper.assertTrue(y.genome().allele(rr, 0, 0) == 0 && y.genome().allele(rr, 0, 1) == 0, "color_r is not RR");
+        // the colour (block variant) of every old plant is what the v1 alleles gave: P_ purple 3, y1y1 y2y2 orange 2, y1y1 yellow 1, else 0
+        helper.assertTrue(GrowthLogic.variant(young.live(level).orElseThrow().def(), GrowthLogic.phenotype(y,
+                GrowthLogic.environment(level, helper.absolutePos(YOUNG))).orElseThrow()) == v1Variant(old, v1),
+                "the variant of the old plant changed");
         PlantBlockEntity.Live f = flowering.live(level).orElseThrow(() -> new AssertionError("flowering: " + flowering.inertReason()));
         helper.assertTrue(f.data().pending() != null && f.data().pending().fathers().size() == 2, "pending lot lost");
         helper.assertTrue(wild.live(level).isPresent() && wild.genomeDecoded(), "the lazy wild plant did not realise");
@@ -152,8 +191,9 @@ public final class OldSaveGameTests {
         helper.assertTrue(l.lotId() == 0x1234_5678_9ABCL, "lot id " + l.lotId());
         helper.assertTrue(LotStacks.record(l, Definitions.current()).isPresent(), "lot genomes do not decode");
         MotherNbt.Mother m = MotherItem.read(mother).orElseThrow(() -> new AssertionError("mother root unreadable"));
-        DecodeResult md = GenomeCodec.decode(m.genome(), PlantFixtures.SP, carrotLayout());
-        helper.assertTrue(md instanceof DecodeResult.Valid, "mother root genome: " + md);
+        // read as the mod reads it: the v1 genome migrates to the layout with color_r (WR-701)
+        DecodeResult md = Definitions.current().genetics().decode(m.genome(), PlantFixtures.carrot().def());
+        helper.assertTrue(md instanceof DecodeResult.Valid v && v.migrated(), "mother root genome: " + md);
 
         // the pouch gives its entries last in first out, through a real menu click
         Player player = helper.makeMockSurvivalPlayer();

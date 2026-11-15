@@ -159,17 +159,19 @@ class PhenotypeTest {
 
     @Test
     void environmentFollowsGddTable() {
+        // the table of GDD §3.5 without colour properties (a white root would widen the window by 0.05, WR-703)
+        CompiledSpecies plain = new CompiledSpecies(ColourTest.withColours(io.github.slugblue.wildroots.genetics.api.ColourRules.NONE));
         Genome g = carrot(Map.of(YIELD, 12, COLD, 6, DROUGHT, 6), 0); // P_cold 0.5, P_drought 0.5
-        double base = PhenotypeCalculator.compute(CS, g, IDEAL, NoiseVector.zero(7)).p(YIELD);
+        double base = PhenotypeCalculator.compute(plain, g, IDEAL, NoiseVector.zero(7)).p(YIELD);
         // window [0.2, 1.0], cold widens the lower bound by 0.6·0.5 = 0.3 → −0.1; 0.05 below → −0.05
-        double cold = PhenotypeCalculator.compute(CS, g, Environment.neutral(-0.15), NoiseVector.zero(7)).p(YIELD);
+        double cold = PhenotypeCalculator.compute(plain, g, Environment.neutral(-0.15), NoiseVector.zero(7)).p(YIELD);
         assertEquals(base - 0.05, cold, 1e-9);
-        double frozen = PhenotypeCalculator.compute(CS, g, Environment.neutral(-2), NoiseVector.zero(7)).p(YIELD);
+        double frozen = PhenotypeCalculator.compute(plain, g, Environment.neutral(-2), NoiseVector.zero(7)).p(YIELD);
         assertEquals(Math.max(0, base - 0.30), frozen, 1e-9);
-        double dry = PhenotypeCalculator.compute(CS, g, new Environment(0.6, false, 15, 0), NoiseVector.zero(7))
+        double dry = PhenotypeCalculator.compute(plain, g, new Environment(0.6, false, 15, 0), NoiseVector.zero(7))
                 .p(YIELD);
         assertEquals(base - 0.05 * 0.5, dry, 1e-9);
-        double compost = PhenotypeCalculator.compute(CS, g, new Environment(0.6, true, 15, 0.2),
+        double compost = PhenotypeCalculator.compute(plain, g, new Environment(0.6, true, 15, 0.2),
                 NoiseVector.zero(7)).p(YIELD);
         assertEquals(base + 0.05, compost, 1e-9);
     }

@@ -5,7 +5,7 @@
   "priority": 0,
   "requires": {
     "quantitative": { "fruit_size": { "min": 0.75 }, "flavor": { "min": 0.60 } },
-    "qualitative":  { "bitterness": "domestic", "color_y1": "domestic", "color_y2": "domestic", "color_p": "wild" }
+    "qualitative":  { "bitterness": "domestic", "color_y1": "domestic", "color_y2": "domestic", "color_p": "wild", "color_r": "wild" }
   },
   "hysteresis": 0.05,
   "produce": {

@@ -71,15 +71,38 @@ class OldSaveV1Test {
         return CarrotLineDataTestAccess.snapshot().genetics().layout(def).orElseThrow();
     }
 
-    /** Decodes {@code r} with the shipped layout and checks it against the golden bits. */
+    /**
+     * Reads {@code r} as the mod does and checks it against the golden bits. The v1 layout is a released one
+     * ({@code lh} {@link #LH_V1}); since WR-701 the shipped layout has the colour locus {@code color_r}, so the
+     * genome is <b>migrated</b> through the shipped layout history: every allele of the golden bits is kept,
+     * {@code color_r} is {@code RR} ({@code legacy_default}), and the root itself is never rewritten.
+     */
     static void assertGenome(GenomeRecord r, long... golden) {
         assertEquals(1, r.v());
         assertEquals(SP, r.species());
         assertEquals(LH_V1, r.lh());
         assertArrayEquals(golden, r.a());
-        DecodeResult d = GenomeCodec.decode(r, SP, layout());
+        var snap = CarrotLineDataTestAccess.snapshot();
+        DecodeResult d = snap.genetics().decode(r, CarrotLineDataTestAccess.wildCarrot());
         DecodeResult.Valid v = assertInstanceOf(DecodeResult.Valid.class, d, d::toString);
-        assertArrayEquals(golden, v.genome().bits(), "decoded genome lost bits");
+        assertTrue(v.migrated(), "a v1 genome is migrated to the layout with color_r");
+        GenomeLayout old = snap.layouts().lookup(SP, LH_V1).orElseThrow();
+        GenomeLayout now = layout();
+        assertEquals(144, now.totalBits());
+        assertEquals(142, old.totalBits());
+        for (var s : old.sections()) {
+            var t = now.section(s.trait());
+            for (int l = 0; l < s.loci(); l++) {
+                for (int w = 0; w < 2; w++) {
+                    assertEquals(GenomeLayout.get(golden, s, l, w), v.genome().allele(t, l, w),
+                            "allele " + s.trait() + " " + l + "/" + w + " lost in the migration");
+                }
+            }
+        }
+        var rr = now.section(io.github.slugblue.wildroots.genetics.model.TraitId.of("color_r"));
+        assertEquals(0, v.genome().allele(rr, 0, 0), "color_r is RR");
+        assertEquals(0, v.genome().allele(rr, 0, 1), "color_r is RR");
+        assertEquals(LH_V1, r.lh(), "the stored record is untouched");
     }
 
     @Test
@@ -108,7 +131,8 @@ class OldSaveV1Test {
             assertEquals(i == 3, f.donor(), "donor flag of father " + i);
             assertEquals(LH_V1, f.genome().lh(), "father lh comes from the mother");
             assertArrayEquals(fathers[i], f.genome().a());
-            DecodeResult d = GenomeCodec.decodeFather(f.genome(), 1, SP, layout());
+            DecodeResult d = CarrotLineDataTestAccess.snapshot().genetics().decode(f.genome().withLot(1, SP),
+                    CarrotLineDataTestAccess.wildCarrot());
             assertInstanceOf(DecodeResult.Valid.class, d, d::toString);
         }
         assertEquals(5, LotNbt.disp(t).size());

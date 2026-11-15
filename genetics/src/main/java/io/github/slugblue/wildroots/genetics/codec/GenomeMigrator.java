@@ -22,7 +22,9 @@ import java.util.Optional;
  * layout, the old layout comes from the dictionary {@code (species, lh)} and
  * alleles are re-encoded by {@code (trait, locus, allele)}. New loci and
  * traits get background values from {@code Hash64(genomeKey, traitId, locus,
- * allele)} and the species' wild frequencies; removed traits and loci are
+ * allele)} and the species' wild frequencies, except a qualitative trait with
+ * a {@code legacy_default}: its alleles are that value (the colour locus
+ * {@code color_r} is added as wild, so no old line changes colour); removed traits and loci are
  * dropped with a warning; a narrower allele count or a changed trait kind
  * replaces out-of-range values with background values and a warning — the
  * only allowed loss. Unknown layouts regenerate the genome as wild with a
@@ -143,11 +145,12 @@ public final class GenomeMigrator {
         Genome.Builder out = Genome.builder(species.id(), current);
         for (Locus s : current.sections()) {
             Locus o = old.section(s.trait());
+            boolean absent = o == null;
             if (o != null && o.kind() != s.kind()) {
                 warn.add("trait " + s.trait() + " changed kind " + o.kind() + " -> " + s.kind() + ": background");
                 o = null;
-            } else if (o == null) {
-                warn.add("new trait " + s.trait() + ": background");
+            } else if (absent) {
+                warn.add("new trait " + s.trait() + (legacy(species, s) >= 0 ? ": legacy default" : ": background"));
             }
             for (int l = 0; l < s.loci(); l++) {
                 for (int w = 0; w < 2; w++) {
@@ -159,6 +162,8 @@ public final class GenomeMigrator {
                                     + s.alleleCount() + ": background");
                             v = background(species, s, genomeKey, l, w);
                         }
+                    } else if (absent && legacy(species, s) >= 0) {
+                        v = legacy(species, s);
                     } else {
                         v = background(species, s, genomeKey, l, w);
                     }
@@ -177,6 +182,19 @@ public final class GenomeMigrator {
             }
         }
         return out.build();
+    }
+
+    /**
+     * The {@code legacy_default} allele of a qualitative trait that an old layout did not have, or −1
+     * (only a trait the old layout did not have takes it; S-loci never do).
+     */
+    private static int legacy(SpeciesDef species, Locus s) {
+        if (s.kind() != TraitKind.QUALITATIVE) {
+            return -1;
+        }
+        QualTrait q = species.qual(s.trait());
+        return q != null && !q.selfIncompat() && q.alleles() == 2 && q.legacyAllele() >= 0
+                && q.legacyAllele() < s.alleleCount() ? q.legacyAllele() : -1;
     }
 
     /** Whole genome from background values (unknown layout). */

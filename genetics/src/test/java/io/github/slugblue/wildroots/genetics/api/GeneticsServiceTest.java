@@ -54,7 +54,7 @@ class GeneticsServiceTest {
         long seed = 99;
         PatchPassport patch = new PatchPassport(S.id(), "meadow", false, 1L, true, seed);
         GenomeLayout l = G.layout(S).orElseThrow();
-        assertEquals(142, l.totalBits());
+        assertEquals(144, l.totalBits());
         Genome mother = G.wildPlant(S, patch, Hash64.of(seed, 1L, 2L)).orElseThrow();
         assertEquals(io.github.slugblue.wildroots.genetics.population.WildPopulation.wildPlant(S, l, patch,
                 Hash64.of(seed, 1L, 2L)), mother);

@@ -119,8 +119,19 @@ public record VillageTemplate(CultivarId landrace, SortedMap<TraitId, Double> ta
                 Alleles.drawLocus(b, load, l, Alleles.biallelic(loadFreq), wildF, rng);
             }
         }
+        drawQualitative(s, layout, b, rng, false);
+        correctByGEff(cs, b, rng);
+        // loci added after a release (with a legacy_default) come last, so older alleles keep their stream (WR-701)
+        drawQualitative(s, layout, b, rng, true);
+        return b.build();
+    }
+
+    private void drawQualitative(SpeciesDef s, GenomeLayout layout, Genome.Builder b, SplitMix64 rng, boolean late) {
         for (Locus c : layout.qualitative()) {
             QualTrait def = s.qual(c.trait());
+            if ((def.legacyAllele() != QualTrait.NO_LEGACY) != late) {
+                continue;
+            }
             if (def.alleles() > 2) {
                 double[] w = new double[def.alleles()];
                 java.util.Arrays.fill(w, 1);
@@ -130,8 +141,6 @@ public record VillageTemplate(CultivarId landrace, SortedMap<TraitId, Double> ta
                 Alleles.drawLocus(b, c, 0, Alleles.biallelic(fq != null ? fq : def.wildFreq()), wildF, rng);
             }
         }
-        correctByGEff(cs, b, rng);
-        return b.build();
     }
 
     void correctByGEff(CompiledSpecies cs, Genome.Builder b, SplitMix64 rng) {

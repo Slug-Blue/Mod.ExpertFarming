@@ -23,6 +23,12 @@ public final class DataLimits {
     public static final int MAX_VILLAGE_TEMPLATES = 64;
     public static final int MAX_QUANT_TRAITS = 32;
     public static final int MAX_QUAL_TRAITS = 16;
+    /** Colours of a species: the {@code variant} block property holds 0-7 (colour rules, carrot-colours-climate §1.3). */
+    public static final int MAX_COLOURS = 8;
+    public static final int MAX_COLOUR_RULES = 32;
+    /** Bound of a colour's heat, cold and drought modifiers (a window is about 1 wide). */
+    public static final double MAX_COLOUR_MODIFIER = 1;
+    public static final double MAX_COLOUR_SATURATION = 4;
     public static final int MIN_LOCI = 1;
     public static final int MAX_LOCI = 16;
     public static final int MAX_LOAD_LOCI = 16;
