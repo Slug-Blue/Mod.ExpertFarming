@@ -21,7 +21,7 @@ All four files are 8-bit RGBA PNGs with no metadata chunks, as `AssetIntegrityTe
 - Paper: left page x 6–142, right page x 146–282, y 5–173. The spine gutter is x 142–146 and the stacked page edges are y 173–175.
 - Text areas, 116 × 148 each: left at (16, 20), right at (156, 20). The header row is y 7–17, with a faint rule at y 18.
 - Paper `#F4EEDE` is lighter than vanilla and low in contrast. Ink `0x3A2A1A`, link `0x2B5C8A` and new `0x2E7D32` all read on it.
-- Tabs: draw each tab at `book.x - 12`. The right 12 px of the tab go under the cover, so draw tabs before the spread. `tab_selected` is paper-coloured and full width, so it joins the page. Place the 16 × 16 icon at tab +4, +2. Draw `new_dot` at the tab's top-left corner. Bookmark ribbons go under the tabs, at `book.x - 9`.
+- Tabs (wider after owner playtest 2, 2026-11-15): draw each tab at `book.x - 22`. The tab is 34 wide; its right 12 px go under the cover, so draw tabs before the spread. `tab_selected` is paper-coloured and full width, so it joins the page. Place the 16 × 16 icon at tab +3, +2, wholly outside the book (`book.x - 19` … `book.x - 3`). The book with its tabs is 310 × 200 and still fits 320 × 240. Draw `new_dot` at the tab's top-left corner. Bookmark ribbons go under the tabs, at `book.x - 9`.
 - Nav strip: `nav_bar` at (0, 182) relative to the book. The nav buttons are 16 × 16 on top of it.
 - Scene page (§3.13): window 264 × 112 at book (12, 22). Draw `scene_frame` 9-slice (border 4) on the window grown by 4, so the frame covers y 18–138 and also the spine. The caption takes y 140–158 (two lines) and the controls row y 159–171.
 
@@ -33,9 +33,10 @@ Multi-state sprites are listed by their first cell. The other states are the cel
 |---|---|---|---|---|---|---|
 | journal | `spread` | 0 | 0 | 288 | 180 | cover, two pages, spine, page stack (geometry above) |
 | journal | `nav_bar` | 0 | 184 | 288 | 16 | strip under the book; leather at x 4–284 |
-| journal | `tab_normal` | 292 | 0 | 24 | 20 | category tab; icon at +4,+2; right 12 px under the cover |
-| journal | `tab_hover` | 316 | 0 | 24 | 20 | same |
-| journal | `tab_selected` | 340 | 0 | 24 | 20 | same, paper-coloured |
+| journal | `tab_normal` | 0 | 212 | 34 | 20 | category tab; icon at +3,+2; right 12 px under the cover |
+| journal | `tab_hover` | 34 | 212 | 34 | 20 | same |
+| journal | `tab_selected` | 68 | 212 | 34 | 20 | same, paper-coloured |
+| journal | (old tabs) | 292 | 0 | 24 | 20 ×3 | the first, narrower tabs; unused since playtest 2, kept as the source of the wide ones (made by stretching column 11 of each by 10 px) |
 | journal | `ribbon_normal` | 364 | 0 | 12 | 16 | user bookmark ribbon, notch on the left |
 | journal | `ribbon_hover` | 376 | 0 | 12 | 16 | same |
 | journal | `new_dot` | 388 | 0 | 7 | 7 | green "new" dot with outline |

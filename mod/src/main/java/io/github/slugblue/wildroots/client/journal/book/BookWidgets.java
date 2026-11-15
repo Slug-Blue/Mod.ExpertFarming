@@ -112,7 +112,8 @@ public final class BookWidgets {
             if (selected) {
                 JournalAtlas.tab(g, JournalAtlas.TabState.SELECTED, getX(), getY());
             }
-            icon.draw(g, getX() + 4, getY() + 2, 16);
+            // the icon wholly in the part that sticks out: x - 19 … x - 3 of the book
+            icon.draw(g, getX() + 3, getY() + 2, 16);
             if (isNew) {
                 JournalAtlas.blit(g, JournalAtlas.NEW_DOT, getX(), getY());
             }

@@ -20,7 +20,8 @@ public record BookGeometry(int x, int y) {
 
     public static final int SPREAD_W = 288;
     public static final int SPREAD_H = 180;
-    public static final int TABS_OUT = 12;
+    /** How far the tabs stick out left of the book: room for a 16 px icon and its margins (owner playtest 2). */
+    public static final int TABS_OUT = 22;
     public static final int NAV_H = 16;
     public static final int TOTAL_W = SPREAD_W + TABS_OUT;
     /** The navigation strip starts {@value} px below the spread's top (art doc: nav_bar at (0, 182)). */

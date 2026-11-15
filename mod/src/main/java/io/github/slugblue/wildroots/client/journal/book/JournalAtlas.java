@@ -40,8 +40,12 @@ public final class JournalAtlas {
 
     public static final Sprite SPREAD = new Sprite(0, 0, 288, 180);
     public static final Sprite NAV = new Sprite(0, 184, 288, 16);
-    /** Tab, normal; hovered and selected are the next cells to the right (+24 u). */
-    public static final Sprite TAB = new Sprite(292, 0, 24, 20);
+    /**
+     * Tab, normal; hovered and selected are the next cells to the right
+     * (+34 u). 34 wide: 22 px stick out of the book, so the 16 px icon sits
+     * wholly outside the page (owner playtest 2); 12 px go under the cover.
+     */
+    public static final Sprite TAB = new Sprite(0, 212, 34, 20);
     /** Bookmark ribbon, normal; hovered +12 u. */
     public static final Sprite RIBBON = new Sprite(364, 0, 12, 16);
     public static final Sprite NEW_DOT = new Sprite(388, 0, 7, 7);
