@@ -25,8 +25,12 @@ import net.minecraft.network.chat.Component;
  *   species changes the scale ({@link #SCALE_CODES}) and {@code *} if it
  *   renames the trait ({@code s4*y3g2f3Wc3h2d2} for the carrot);</li>
  *   <li>flags: bitterness {@code w} (bitter) / {@code d} / {@code -},
- *   pollination {@code B H N S -}, inbreeding {@code a} / {@code -}, and
- *   {@code +} when something was left out to fit the lot's 1 KiB;</li>
+ *   pollination {@code B H N S -}, inbreeding {@code a} / {@code -},
+ *   {@code +} when something was left out to fit the lot's 1 KiB, and
+ *   optionally {@code ~} with the offspring band (playtest 2, item 6): per
+ *   trait token the lowest and the highest step 1–5 that the mother's value
+ *   ± one expected child standard deviation reaches ({@link OffspringBand}),
+ *   {@code d2~2334...};</li>
  *   <li>the cultivar it looks like ({@code eastern_carrot}, or
  *   {@code ns:path} for data packs), absent if none.</li>
  * </ol>
@@ -35,7 +39,7 @@ import net.minecraft.network.chat.Component;
  * every tier-1 line fits a lot with 4 fathers and a 50-character name.
  */
 public record LensRow(String traits, char bitter, char pollination, boolean ailing, Optional<String> looksLike,
-                      boolean more) {
+                      boolean more, String bands) {
 
     public static final String KEY = "wildroots.tooltip.lens";
     public static final String MORE_KEY = "wildroots.tooltip.lens.more";
@@ -51,6 +55,38 @@ public record LensRow(String traits, char bitter, char pollination, boolean aili
     public static final Map<String, Character> SCALE_CODES = Map.of("size", 'Z', "yield", 'Y', "growth", 'G',
             "flavor", 'F', "sweetness", 'W', "tenderness", 'T', "tolerance", 'O', "expression", 'E');
 
+    public LensRow {
+        bands = bands == null ? "" : bands;
+    }
+
+    /** A row without the offspring band. */
+    public LensRow(String traits, char bitter, char pollination, boolean ailing, Optional<String> looksLike,
+                   boolean more) {
+        this(traits, bitter, pollination, ailing, looksLike, more, "");
+    }
+
+    /** The same row with the band of every trait token ({@code lo, hi} per token, steps 1–5); empty drops it. */
+    public LensRow withBands(int[][] perToken) {
+        if (perToken == null || perToken.length != tokens(traits).size() || perToken.length == 0) {
+            return new LensRow(traits, bitter, pollination, ailing, looksLike, more, "");
+        }
+        StringBuilder b = new StringBuilder();
+        for (int[] lh : perToken) {
+            int lo = Math.max(1, Math.min(5, lh[0]));
+            int hi = Math.max(lo, Math.min(5, lh[1]));
+            b.append((char) ('0' + lo)).append((char) ('0' + hi));
+        }
+        return new LensRow(traits, bitter, pollination, ailing, looksLike, more, b.toString());
+    }
+
+    /** Band of trait token {@code i}: {@code {lo, hi}}, or empty if the row has none. */
+    public Optional<int[]> band(int i) {
+        if (bands.isEmpty() || 2 * i + 1 >= bands.length() || i < 0) {
+            return Optional.empty();
+        }
+        return Optional.of(new int[] {bands.charAt(2 * i) - '0', bands.charAt(2 * i + 1) - '0'});
+    }
+
     /** One decoded trait token. */
     public record Token(String trait, int step, String scale, boolean speciesName) {
     }
@@ -60,6 +96,17 @@ public record LensRow(String traits, char bitter, char pollination, boolean aili
     /** The full row of a reading. */
     public static LensRow of(SpeciesDef def, SpeciesInfo info, Phenotype p, LensReading.Pollination how,
                              Optional<CultivarDef> looks) {
+        return of(def, info, p, how, looks, null);
+    }
+
+    /**
+     * The full row with the offspring band: {@code sd[i]} is the expected
+     * child standard deviation of quantitative trait {@code i} of the
+     * species ({@link OffspringBand}); {@code null} for no band.
+     */
+    public static LensRow of(SpeciesDef def, SpeciesInfo info, Phenotype p, LensReading.Pollination how,
+                             Optional<CultivarDef> looks, double[] sd) {
+        List<int[]> band = new ArrayList<>();
         StringBuilder t = new StringBuilder();
         boolean more = false;
         Map<String, String> dt = info.displayTraits();
@@ -71,7 +118,12 @@ public record LensRow(String traits, char bitter, char pollination, boolean aili
                 continue;
             }
             String scale = LensScale.scale(id, dt);
-            t.append(code).append((char) ('0' + LensScale.step(p.pOr(q.id(), Double.NaN))));
+            double v = p.pOr(q.id(), Double.NaN);
+            t.append(code).append((char) ('0' + LensScale.step(v)));
+            if (sd != null) {
+                band.add(OffspringBand.steps(v, def.quantitative().indexOf(q) < sd.length
+                        ? sd[def.quantitative().indexOf(q)] : 0));
+            }
             if (!scale.equals(LensScale.DEFAULT_SCALE.getOrDefault(id, "tolerance"))) {
                 t.append(SCALE_CODES.get(scale));
             }
@@ -89,8 +141,9 @@ public record LensRow(String traits, char bitter, char pollination, boolean aili
         };
         Optional<String> l = looks.map(c -> c.id().value()).map(LensRow::shortId)
                 .filter(s -> s.codePointCount(0, s.length()) <= DispCodec.MAX_ARG_LENGTH);
-        return new LensRow(t.toString(), bitter, poll, p.vigor() < GrowthLogic.AILING_BELOW, l,
+        LensRow row = new LensRow(t.toString(), bitter, poll, p.vigor() < GrowthLogic.AILING_BELOW, l,
                 more || (looks.isPresent() && l.isEmpty()));
+        return sd == null ? row : row.withBands(band.toArray(new int[0][]));
     }
 
     static String shortId(String id) {
@@ -106,6 +159,10 @@ public record LensRow(String traits, char bitter, char pollination, boolean aili
     public List<LensRow> degradations() {
         List<LensRow> out = new ArrayList<>();
         out.add(this);
+        if (!bands.isEmpty()) {
+            // the band goes first: it is the least needed part of a lot that is full
+            out.add(new LensRow(traits, bitter, pollination, ailing, looksLike, more, ""));
+        }
         LensRow r = new LensRow(traits, bitter, '-', false, looksLike, true);
         out.add(r);
         String t = traits;
@@ -127,7 +184,8 @@ public record LensRow(String traits, char bitter, char pollination, boolean aili
     }
 
     public DispCodec.Line line() {
-        String flags = "" + bitter + pollination + (ailing ? 'a' : '-') + (more ? "+" : "");
+        String flags = "" + bitter + pollination + (ailing ? 'a' : '-') + (more ? "+" : "")
+                + (bands.isEmpty() ? "" : "~" + bands);
         return looksLike.map(l -> DispCodec.Line.of(KEY, traits, flags, l)).orElse(DispCodec.Line.of(KEY, traits, flags));
     }
 
@@ -138,17 +196,39 @@ public record LensRow(String traits, char bitter, char pollination, boolean aili
         if (!KEY.equals(line.key()) || line.args().size() < 2 || line.args().size() > 3) {
             return Optional.empty();
         }
-        String f = line.args().get(1);
+        String all = line.args().get(1);
+        int tilde = all.indexOf('~');
+        String f = tilde < 0 ? all : all.substring(0, tilde);
+        String bands = tilde < 0 ? "" : all.substring(tilde + 1);
         if (f.length() < 3 || f.length() > 4 || "wd-".indexOf(f.charAt(0)) < 0 || "BHNS-".indexOf(f.charAt(1)) < 0
                 || "a-".indexOf(f.charAt(2)) < 0 || (f.length() == 4 && f.charAt(3) != '+')) {
             return Optional.empty();
         }
         String t = line.args().get(0);
-        if (tokens(t).isEmpty() && !t.isEmpty()) {
+        List<Token> tk = tokens(t);
+        if (tk.isEmpty() && !t.isEmpty()) {
+            return Optional.empty();
+        }
+        if (tilde >= 0 && !validBands(bands, tk.size())) {
             return Optional.empty();
         }
         return Optional.of(new LensRow(t, f.charAt(0), f.charAt(1), f.charAt(2) == 'a',
-                line.args().size() == 3 ? Optional.of(line.args().get(2)) : Optional.empty(), f.length() == 4));
+                line.args().size() == 3 ? Optional.of(line.args().get(2)) : Optional.empty(), f.length() == 4, bands));
+    }
+
+    /** Two digits 1–5 per token, low ≤ high. */
+    static boolean validBands(String b, int tokens) {
+        if (tokens == 0 || b.length() != 2 * tokens) {
+            return false;
+        }
+        for (int i = 0; i < b.length(); i += 2) {
+            char lo = b.charAt(i);
+            char hi = b.charAt(i + 1);
+            if (lo < '1' || lo > '5' || hi < '1' || hi > '5' || hi < lo) {
+                return false;
+            }
+        }
+        return true;
     }
 
     /** The trait tokens; empty if malformed. */

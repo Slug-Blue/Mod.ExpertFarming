@@ -63,6 +63,25 @@ public final class ClientPacketHandlers {
                 io.github.slugblue.wildroots.core.safety.DispCodec.toComponent(packet.body()));
     }
 
+    /**
+     * {@code LensWindow}: opens the lens window (playtest 2, item 3); with the
+     * client option {@code lensChat} also one short line in chat.
+     */
+    public static void lensWindow(io.github.slugblue.wildroots.lens.LensWindowPacket packet) {
+        if (packet == io.github.slugblue.wildroots.lens.LensWindowPacket.BROKEN) {
+            LOGGER.warn("Wild Roots: a lens window did not decode");
+            return;
+        }
+        io.github.slugblue.wildroots.core.safety.Guarded.run("lens window", "client", () -> {
+            io.github.slugblue.wildroots.client.lens.LensWindowScreen.open(packet);
+            if (io.github.slugblue.wildroots.core.config.ClientConfig.get(
+                    io.github.slugblue.wildroots.core.config.ClientConfig.LENS_CHAT)) {
+                Minecraft.getInstance().gui.getChat().addMessage(Component.translatable("wildroots.window.lens.chat",
+                        io.github.slugblue.wildroots.core.safety.DispCodec.toComponent(packet.header())));
+            }
+        });
+    }
+
     /** Drops a partial sync; called when the player leaves the server. */
     static void resetAssembler() {
         ASSEMBLER.reset();

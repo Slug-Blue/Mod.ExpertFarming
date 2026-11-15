@@ -13,6 +13,7 @@ public final class ClientConfig {
     public static final ForgeConfigSpec.BooleanValue SHOW_ALL_GUIDES;
     public static final ForgeConfigSpec.BooleanValue JOURNAL_SCENES;
     public static final ForgeConfigSpec.BooleanValue DEBUG_JOURNAL;
+    public static final ForgeConfigSpec.BooleanValue LENS_CHAT;
 
     static {
         ForgeConfigSpec.Builder b = new ForgeConfigSpec.Builder();
@@ -28,6 +29,12 @@ public final class ClientConfig {
         DEBUG_JOURNAL = b
                 .comment("Show the journal's debug counters (layout builds, scene meshes) in a corner of the screen.")
                 .define("debugJournal", false);
+        b.pop();
+        b.push("lens");
+        LENS_CHAT = b
+                .comment("Also put one short line in chat when the hand lens opens its window (for screen readers",
+                        "and chat logs). The reading itself is always in the window.")
+                .define("lensChat", false);
         b.pop();
         SPEC = b.build();
     }

@@ -45,8 +45,31 @@ public final class Lens {
     private Lens() {
     }
 
+    /**
+     * The tier-1 reading of a plant for the lens window (playtest 2, item 3).
+     *
+     * @param header  name · stage
+     * @param lines   the same reading as lines (header first; tests and the old chat form)
+     * @param row     the compact row the window draws
+     * @param env     active environment modifiers ({@link EnvModifiers})
+     * @param species species id
+     * @param model   the plant's block state id when it stands on farmland, else {@link LensWindowPacket#NO_MODEL}
+     */
+    public record PlantReading(DispCodec.Line header, List<DispCodec.Line> lines, LensRow row, int env,
+                               String species, int model) {
+
+        public LensWindowPacket packet() {
+            return new LensWindowPacket(LensWindowPacket.Kind.PLANT, species, header, row.line(), env, model);
+        }
+    }
+
     /** The lines of a plant inspection, or empty if there is nothing to look at. */
     public static Optional<List<DispCodec.Line>> inspectPlant(ServerLevel level, BlockPos pos, ServerPlayer player) {
+        return readPlant(level, pos, player).map(PlantReading::lines);
+    }
+
+    /** The reading of a plant, or empty if there is nothing to look at; discovers the species for {@code player}. */
+    public static Optional<PlantReading> readPlant(ServerLevel level, BlockPos pos, ServerPlayer player) {
         Optional<BlockState> state = LoadedLevelAccess.blockState(level, pos);
         if (state.isEmpty() || !(state.get().getBlock() instanceof FieldPlantBlock)) {
             return Optional.empty();
@@ -56,7 +79,8 @@ public final class Lens {
         if (live.isEmpty()) {
             return Optional.empty();
         }
-        Optional<Phenotype> p = GrowthLogic.phenotype(live.get(), GrowthLogic.environment(level, pos));
+        Environment env = GrowthLogic.environment(level, pos);
+        Optional<Phenotype> p = GrowthLogic.phenotype(live.get(), env);
         if (p.isEmpty()) {
             return Optional.empty();
         }
@@ -65,17 +89,45 @@ public final class Lens {
         String species = def.id();
         String name = d.cultivar() != null ? JournalTriggers.nameKey("cultivar", d.cultivar())
                 : JournalTriggers.nameKey("species", species);
+        DispCodec.Line header = DispCodec.Line.of(HEADER, DispCodec.keyArg(name), DispCodec.keyArg(LensReading.stageKey(
+                FieldPlantBlock.stage(state.get()), live.get().species().info(), LensReading.path(species))));
         List<DispCodec.Line> out = new ArrayList<>();
-        out.add(DispCodec.Line.of(HEADER, DispCodec.keyArg(name), DispCodec.keyArg(LensReading.stageKey(
-                FieldPlantBlock.stage(state.get()), live.get().species().info(), LensReading.path(species)))));
+        out.add(header);
+        LensReading.Pollination how = plantPollination(d.pending());
         Optional<CultivarDef> looks = tierOne(out, live.get().snapshot(), def, live.get().species().info(), p.get(),
-                plantPollination(d.pending()), Optional.ofNullable(d.cultivar()), d.tier());
+                how, Optional.ofNullable(d.cultivar()), d.tier());
+        LensRow row = LensRow.of(def, live.get().species().info(), p.get(), how, looks);
+        boolean farmland = LoadedLevelAccess.blockState(level, pos.below())
+                .map(b -> b.getBlock() instanceof net.minecraft.world.level.block.FarmBlock).orElse(false);
+        int model = farmland ? net.minecraft.world.level.block.Block.getId(state.get()) : LensWindowPacket.NO_MODEL;
         if (player != null) {
             JournalTriggers.discoverSpecies(player, species, Optional.empty());
             looks.ifPresent(c -> Journals.unlock(player, "hint.looks_like",
                     DispCodec.keyArg(JournalTriggers.nameKey("cultivar", c.id().value()))));
         }
-        return Optional.of(out);
+        return Optional.of(new PlantReading(header, List.copyOf(out), row, EnvModifiers.of(def, env, p.get()),
+                species, model));
+    }
+
+    /** Header key of the lot window: "%s · seeds". */
+    public static final String LOT_HEADER = "wildroots.window.lens.lot";
+
+    /**
+     * The lens window of an inspected lot (item 3): its name and the row the
+     * inspection wrote; empty if the stack is no inspected lot.
+     */
+    public static Optional<LensWindowPacket> lotWindow(ItemStack stack) {
+        if (!(LotStacks.read(stack) instanceof LotNbt.Lot lot)) {
+            return Optional.empty();
+        }
+        Optional<LensRow> row = LensPanel.row(LotNbt.disp(LotNbt.root(stack.getTag())));
+        if (row.isEmpty()) {
+            return Optional.empty();
+        }
+        String name = lot.cultivar().map(c -> JournalTriggers.nameKey("cultivar", c))
+                .orElse(JournalTriggers.nameKey("species", lot.species()));
+        return Optional.of(new LensWindowPacket(LensWindowPacket.Kind.LOT, lot.species(),
+                DispCodec.Line.of(LOT_HEADER, DispCodec.keyArg(name)), row.get().line(), 0, LensWindowPacket.NO_MODEL));
     }
 
     /** Appends the tier-1 lines; returns the cultivar the plant looks like, if any. */
@@ -151,7 +203,9 @@ public final class Lens {
             return false;
         }
         Optional<CultivarDef> looks = LensReading.looksLike(snap, def, p.get(), m.get().cultivar(), m.get().tier());
-        LensRow row = LensRow.of(def, e.get().info(), p.get(), LensReading.Pollination.NONE, looks);
+        // a planted root keeps its own genome: its band is the planting noise only (item 6)
+        LensRow row = LensRow.of(def, e.get().info(), p.get(), LensReading.Pollination.NONE, looks,
+                OffspringBand.noiseOnly(def));
         if (!io.github.slugblue.wildroots.item.MotherNbt.inspect(stack,
                 row.degradations().stream().map(LensRow::line).toList())) {
             return false;
@@ -193,7 +247,11 @@ public final class Lens {
         }
         int tier = lot.cultivar().flatMap(snap::cultivar).map(c -> c.def().tier()).orElse(0);
         Optional<CultivarDef> looks = LensReading.looksLike(snap, def, p.get(), lot.cultivar(), tier);
-        LensRow row = LensRow.of(def, e.get().info(), p.get(), lotPollination(lot), looks);
+        // the seeds spread around the mother's value: the band of item 6 (segregation and noise)
+        // a realised seedling keeps its own genome and noise: it does not spread
+        double[] sd = lot.seedling() ? new double[def.quantitative().size()]
+                : OffspringBand.ofLot(rec.get(), def, p.get().vigor());
+        LensRow row = LensRow.of(def, e.get().info(), p.get(), lotPollination(lot), looks, sd);
         if (!LotStacks.inspect(stack, lot, row.degradations().stream().map(LensRow::line).toList())) {
             return false;
         }

@@ -22,7 +22,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
  */
 public final class WrNetwork {
 
-    public static final String PROTOCOL = "1";
+    public static final String PROTOCOL = "2";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(Ids.mod("main"), () -> PROTOCOL,
             PROTOCOL::equals, PROTOCOL::equals);
@@ -37,6 +37,7 @@ public final class WrNetwork {
         // S→C packets first, then the C→S ones (C2sPackets, through ServerPacketGuard); the order fixes the indices.
         io.github.slugblue.wildroots.data.sync.DefinitionsSync.register();
         io.github.slugblue.wildroots.journal.Journals.registerPackets();
+        io.github.slugblue.wildroots.lens.LensNetwork.register();
         C2sPackets.register();
     }
 

@@ -6,6 +6,7 @@ import io.github.slugblue.wildroots.core.safety.EntryPoint;
 import io.github.slugblue.wildroots.core.safety.Guarded;
 import io.github.slugblue.wildroots.journal.HintTriggers;
 import io.github.slugblue.wildroots.lens.Lens;
+import io.github.slugblue.wildroots.lens.LensNetwork;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.network.chat.Component;
@@ -25,8 +26,10 @@ import net.minecraftforge.common.util.FakePlayer;
 
 /**
  * {@code wildroots:hand_lens} (GDD §10 tier 1; narrative §7.8, §9.6): use on
- * a plant shows its tier-1 reading in chat; use with seeds in the other hand
- * inspects the lot ({@code inspected}, tier 1 in the tooltip for good).
+ * a plant opens the lens window with its tier-1 reading (playtest 2, item 3;
+ * {@code lens.LensWindowPacket}, nothing in chat); use with seeds in the
+ * other hand inspects the lot ({@code inspected}, tier 1 in the tooltip for
+ * good) and opens the same window for it.
  * Everything is computed on the server; no durability, no cost.
  *
  * <p>On the mouse cursor in a container screen (D2, 2026-11-11): a click
@@ -58,9 +61,12 @@ public class HandLensItem extends Item {
             return InteractionResult.SUCCESS;
         }
         return Guarded.call("lens on block", ctx.getClickedPos(), () -> {
-            Optional<List<DispCodec.Line>> lines = Lens.inspectPlant(level, ctx.getClickedPos(), player);
-            if (lines.isPresent()) {
-                tell(player, lines.get());
+            Optional<Lens.PlantReading> reading = Lens.readPlant(level, ctx.getClickedPos(), player);
+            if (reading.isPresent()) {
+                // playtest 2, item 3: the reading opens the lens window; chat gets nothing
+                if (!LensNetwork.send(player, reading.get().packet())) {
+                    tell(player, reading.get().lines());
+                }
                 return InteractionResult.CONSUME;
             }
             return inspectOtherHand(level, player, ctx.getHand()) ? InteractionResult.CONSUME
@@ -90,7 +96,9 @@ public class HandLensItem extends Item {
         if (!other.is(ModItems.SEED_LOT.get()) || !Lens.inspectLot(other, level, player)) {
             return false;
         }
-        if (player.connection != null) {
+        // item 3: the same window for the lot (the mother's reading and the offspring band)
+        boolean shown = Lens.lotWindow(other).map(w -> LensNetwork.send(player, w)).orElse(false);
+        if (!shown && player.connection != null) {
             player.displayClientMessage(Component.translatable(INSPECTED), true);
         }
         return true;

@@ -52,6 +52,19 @@ class LensRowFuzzTest {
         return b.toString();
     }
 
+    /** A plausible-looking offspring band (item 6): digit pairs with random corruptions. */
+    static String bands(Random r) {
+        StringBuilder b = new StringBuilder();
+        int n = r.nextInt(18);
+        for (int i = 0; i < n; i++) {
+            b.append((char) ('0' + r.nextInt(7)));
+        }
+        if (r.nextInt(5) == 0) {
+            b.append(random(r, 2));
+        }
+        return b.toString();
+    }
+
     @Test
     void parseAndExpandNeverThrowOnForgedRows() {
         Random r = new Random(0xB5_1E45L);
@@ -64,7 +77,8 @@ class LensRowFuzzTest {
                     case 0 -> random(r, 70);
                     case 1 -> tokens(r);
                     case 2 -> "" + "wd-x".charAt(r.nextInt(4)) + "BHNS-?".charAt(r.nextInt(6))
-                            + "a-!".charAt(r.nextInt(3)) + (r.nextBoolean() ? "+" : r.nextBoolean() ? "" : "++");
+                            + "a-!".charAt(r.nextInt(3)) + (r.nextBoolean() ? "+" : r.nextBoolean() ? "" : "++")
+                            + (r.nextInt(10) == 0 ? "~" + bands(r) : "");
                     default -> random(r, 3);
                 });
             }
@@ -77,6 +91,16 @@ class LensRowFuzzTest {
                 assertTrue(out.size() <= DispCodec.MAX_ARG_LENGTH / 2 + 5, "expanded into " + out.size() + " lines");
                 out.forEach(c -> assertDoesNotThrow(() -> { c.getString(); }));
                 assertDoesNotThrow(() -> row.get().degradations());
+                // item 6: a parsed band always has one valid pair per token, and the row re-parses to itself
+                List<LensRow.Token> tk = LensRow.tokens(row.get().traits());
+                for (int t = 0; t < tk.size(); t++) {
+                    row.get().band(t).ifPresent(lh -> assertTrue(lh[0] >= 1 && lh[0] <= lh[1] && lh[1] <= 5,
+                            line::toString));
+                }
+                assertTrue(row.get().bands().isEmpty() || row.get().bands().length() == 2 * tk.size(), line::toString);
+                assertTrue(LensRow.parse(row.get().line()).equals(row), line::toString);
+                assertDoesNotThrow(() -> LensSheet.lot(Component.literal("t"), List.of(), row.get(), species)
+                        .bars().forEach(b -> b.label().getString()), line::toString);
             } else {
                 // the fallback the tooltip uses for anything that is not a lens row
                 assertDoesNotThrow(() -> { DispCodec.toComponent(line).getString(); }, line::toString);
@@ -97,5 +121,35 @@ class LensRowFuzzTest {
                 assertTrue(LensRow.SCALE_CODES.containsKey(k.scale()), t);
             }
         }
+    }
+
+    /** Item 6: rows with an offspring band of the right length, then one character changed. */
+    @Test
+    void bandedRowsParseOrAreRefusedNeverThrow() {
+        Random r = new Random(0xBA_4D5L);
+        int banded = 0;
+        for (int i = 0; i < 20_000; i++) {
+            String t = "s3y2g4f1c5h2d3".substring(0, 2 * (1 + r.nextInt(7)));
+            StringBuilder b = new StringBuilder();
+            for (int k = 0; k < t.length() / 2; k++) {
+                int lo = 1 + r.nextInt(5);
+                b.append(lo).append(lo + r.nextInt(6 - lo));
+            }
+            String flags = "dS-" + (r.nextBoolean() ? "+" : "") + "~" + b;
+            if (r.nextBoolean()) {
+                char[] c = flags.toCharArray();
+                c[r.nextInt(c.length)] = ALPHABET.charAt(r.nextInt(30));
+                flags = new String(c);
+            }
+            DispCodec.Line line = DispCodec.Line.of(LensRow.KEY, t, flags);
+            Optional<LensRow> row = assertDoesNotThrow(() -> LensRow.parse(line), line::toString);
+            if (row.isPresent() && !row.get().bands().isEmpty()) {
+                banded++;
+                assertTrue(LensRow.parse(row.get().line()).equals(row), line::toString);
+                List<LensSheet.Bar> bars = LensSheet.bars(row.get(), "wildroots:wild_carrot");
+                assertTrue(bars.stream().allMatch(LensSheet.Bar::hasBand), line::toString);
+            }
+        }
+        assertTrue(banded > 5000, "banded rows parsed " + banded);
     }
 }
