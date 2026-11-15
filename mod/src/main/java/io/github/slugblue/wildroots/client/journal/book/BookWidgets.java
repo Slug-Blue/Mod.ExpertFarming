@@ -112,8 +112,8 @@ public final class BookWidgets {
             if (selected) {
                 JournalAtlas.tab(g, JournalAtlas.TabState.SELECTED, getX(), getY());
             }
-            // the icon wholly in the part that sticks out: x - 19 … x - 3 of the book
-            icon.draw(g, getX() + 3, getY() + 2, 16);
+            // centred on the visible face of the tab (the art centres each icon in its cell)
+            icon.draw(g, getX() + BookGeometry.TAB_ICON_X, getY() + BookGeometry.TAB_ICON_Y, 16);
             if (isNew) {
                 JournalAtlas.blit(g, JournalAtlas.NEW_DOT, getX(), getY());
             }

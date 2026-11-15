@@ -41,6 +41,13 @@ public record BookGeometry(int x, int y) {
     public static final int CONTENT_Y = 20;
     public static final int TAB_H = 20;
     public static final int MAX_TABS = 8;
+    /**
+     * Where the 16 px icon of a tab starts in the tab sprite: the visible face
+     * is x 4..21 (outline 2, highlight 3, the cover from 22) by y 2..17, so
+     * {@code (5, 2)} leaves 1 px each side of a cell the art has centred.
+     */
+    public static final int TAB_ICON_X = 5;
+    public static final int TAB_ICON_Y = 2;
     public static final int BUTTON = 16;
 
     public static BookGeometry center(int screenWidth, int screenHeight) {
