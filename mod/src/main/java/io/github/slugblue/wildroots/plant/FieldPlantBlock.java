@@ -30,8 +30,8 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  *
  * <p>{@link BlockState} carries only what logic without the block entity and
  * the renderer need (§7.2): {@link #STAGE} 0–5, {@link #SIZE} 0–3,
- * {@link #VARIANT} 0–3, {@link #AILING}, {@link #VILLAGE}, {@link #ACTIVE};
- * 6 × 4 × 4 × 2 × 2 × 2 = 768 states. The vanilla {@code AGE} property is not
+ * {@link #VARIANT} 0–4, {@link #AILING}, {@link #VILLAGE}, {@link #ACTIVE};
+ * 6 × 4 × 5 × 2 × 2 × 2 = 960 states. The vanilla {@code AGE} property is not
  * part of the state: {@link #getAgeProperty()} is {@link #STAGE}.
  *
  * <p>{@code CropBlock.isMaxAge} is {@code final} in 1.20.1, so the farmer's
@@ -48,8 +48,13 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
     public static final IntegerProperty STAGE = IntegerProperty.create("stage", 0, 5);
     /** Model scale {@code 0.4 + 0.8·P_size} in four steps (GDD §3.3). */
     public static final IntegerProperty SIZE = IntegerProperty.create("size", 0, 3);
-    /** Root or cob colour of species with colour loci. */
-    public static final IntegerProperty VARIANT = IntegerProperty.create("variant", 0, 3);
+    /** Highest {@link #VARIANT}; a colour number above it is drawn as the last one. */
+    public static final int MAX_VARIANT = 4;
+    /**
+     * Root or cob colour of species with colour rules: the position of the colour in the species' {@code colours.ids}
+     * (carrot: 0 white, 1 yellow, 2 orange, 3 purple, 4 red; WR-702). Older states 0–3 read unchanged.
+     */
+    public static final IntegerProperty VARIANT = IntegerProperty.create("variant", 0, MAX_VARIANT);
     /** Vitality {@code V < 0.85} (GDD §3.7). */
     public static final BooleanProperty AILING = BooleanProperty.create("ailing");
     /** Village mark that the farmer sees (§11.6). */

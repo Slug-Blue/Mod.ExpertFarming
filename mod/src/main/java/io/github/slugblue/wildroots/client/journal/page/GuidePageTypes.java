@@ -89,7 +89,8 @@ final class GuidePageTypes {
             return ItemStack.EMPTY;
         }
         if (variant.isPresent()) {
-            int colour = variant.get().equals("colour=purple") ? ProduceStacks.PURPLE : ProduceStacks.YELLOW;
+            int colour = variant.get().equals("colour=purple") ? ProduceStacks.PURPLE
+                    : variant.get().equals("colour=red") ? ProduceStacks.RED : ProduceStacks.YELLOW;
             return ProduceStacks.create(item, 1, false, colour, 1);
         }
         return new ItemStack(item);

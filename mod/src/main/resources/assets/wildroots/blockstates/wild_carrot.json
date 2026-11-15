@@ -63,6 +63,9 @@
     "stage=3,size=0,variant=3,ailing=false": {
       "model": "wildroots:block/wild_carrot_stage3_size0_purple"
     },
+    "stage=3,size=0,variant=4,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage3_size0_red"
+    },
     "stage=3,size=0,variant=0,ailing=true": {
       "model": "wildroots:block/wild_carrot_stage3_size0_white_ailing"
     },
@@ -74,6 +77,9 @@
     },
     "stage=3,size=0,variant=3,ailing=true": {
       "model": "wildroots:block/wild_carrot_stage3_size0_purple_ailing"
+    },
+    "stage=3,size=0,variant=4,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage3_size0_red_ailing"
     },
     "stage=3,size=1,variant=0,ailing=false": {
       "model": "wildroots:block/wild_carrot_stage3_size1_white"
@@ -87,6 +93,9 @@
     "stage=3,size=1,variant=3,ailing=false": {
       "model": "wildroots:block/wild_carrot_stage3_size1_purple"
     },
+    "stage=3,size=1,variant=4,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage3_size1_red"
+    },
     "stage=3,size=1,variant=0,ailing=true": {
       "model": "wildroots:block/wild_carrot_stage3_size1_white_ailing"
     },
@@ -98,6 +107,9 @@
     },
     "stage=3,size=1,variant=3,ailing=true": {
       "model": "wildroots:block/wild_carrot_stage3_size1_purple_ailing"
+    },
+    "stage=3,size=1,variant=4,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage3_size1_red_ailing"
     },
     "stage=3,size=2,variant=0,ailing=false": {
       "model": "wildroots:block/wild_carrot_stage3_size2_white"
@@ -111,6 +123,9 @@
     "stage=3,size=2,variant=3,ailing=false": {
       "model": "wildroots:block/wild_carrot_stage3_size2_purple"
     },
+    "stage=3,size=2,variant=4,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage3_size2_red"
+    },
     "stage=3,size=2,variant=0,ailing=true": {
       "model": "wildroots:block/wild_carrot_stage3_size2_white_ailing"
     },
@@ -122,6 +137,9 @@
     },
     "stage=3,size=2,variant=3,ailing=true": {
       "model": "wildroots:block/wild_carrot_stage3_size2_purple_ailing"
+    },
+    "stage=3,size=2,variant=4,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage3_size2_red_ailing"
     },
     "stage=3,size=3,variant=0,ailing=false": {
       "model": "wildroots:block/wild_carrot_stage3_size3_white"
@@ -135,6 +153,9 @@
     "stage=3,size=3,variant=3,ailing=false": {
       "model": "wildroots:block/wild_carrot_stage3_size3_purple"
     },
+    "stage=3,size=3,variant=4,ailing=false": {
+      "model": "wildroots:block/wild_carrot_stage3_size3_red"
+    },
     "stage=3,size=3,variant=0,ailing=true": {
       "model": "wildroots:block/wild_carrot_stage3_size3_white_ailing"
     },
@@ -146,6 +167,9 @@
     },
     "stage=3,size=3,variant=3,ailing=true": {
       "model": "wildroots:block/wild_carrot_stage3_size3_purple_ailing"
+    },
+    "stage=3,size=3,variant=4,ailing=true": {
+      "model": "wildroots:block/wild_carrot_stage3_size3_red_ailing"
     },
     "stage=4,size=0,ailing=false": {
       "model": "wildroots:block/wild_carrot_stage4_size0"

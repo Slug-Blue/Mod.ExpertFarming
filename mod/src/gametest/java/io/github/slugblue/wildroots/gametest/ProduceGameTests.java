@@ -67,6 +67,16 @@ public final class ProduceGameTests {
                     seen.add(f);
                 }
                 for (int g = 1; g <= 2; g++) {
+                    if (item.rootColours()) {
+                        // ADR-0007 revision 5: a colour item is never bitter, the factory drops the key
+                        ItemStack plain = ProduceStacks.create(item, g, true);
+                        helper.assertTrue(!plain.getTag().contains(ProduceStacks.BITTER), item + " grade " + g + " bitter");
+                        FoodProperties fs = plain.getFoodProperties(player);
+                        helper.assertTrue(fs.getNutrition() == n[g] && Math.abs(fs.getSaturationModifier() - s[g]) < 1e-5
+                                && fs.getEffects().isEmpty(), item + " grade " + g + " after a bitter request");
+                        seen.add(fs);
+                        continue;
+                    }
                     FoodProperties f = ProduceStacks.create(item, g, true).getFoodProperties(player);
                     helper.assertTrue(f.getNutrition() == n[g] && Math.abs(f.getSaturationModifier() - s[g] / 2) < 1e-5,
                             item + " bitter grade " + g);

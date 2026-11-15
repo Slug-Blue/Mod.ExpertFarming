@@ -33,7 +33,7 @@ public class ProduceItem extends Item {
         this(properties, fallback, toxic, false);
     }
 
-    /** {@code rootColours}: the stacks carry a yellow / purple root colour (WR-136a, eastern carrot). */
+    /** {@code rootColours}: the stacks carry a yellow / purple / red root colour (WR-136a, eastern carrot). */
     public ProduceItem(Properties properties, CultivarInfo.FoodReference fallback, boolean toxic, boolean rootColours) {
         super(properties.food(new FoodProperties.Builder().nutrition(fallback.nutrition())
                 .saturationMod((float) fallback.saturation()).build()));
@@ -75,7 +75,7 @@ public class ProduceItem extends Item {
                 ResourceLocation id = ForgeRegistries.ITEMS.getKey(this);
                 if (id != null) {
                     tooltip.add(Component.translatable("wildroots.cultivar." + id.getPath() + ".variant."
-                            + (ProduceStacks.colour(stack.getTag()) == ProduceStacks.PURPLE ? "purple" : "yellow")));
+                            + ProduceStacks.colourName(ProduceStacks.colour(stack.getTag()))));
                 }
             }
             tooltip.add(Component.translatable("wildroots.grade." + ProduceStacks.grade(stack.getTag())));

@@ -62,8 +62,8 @@ class FieldPlantBlockstateJsonTest {
             assertNotNull(read(file), file);
         }
         assertEquals(Set.of(0, 1, 2, 3, 4, 5), stages, "every stage has a model");
-        // 768 states, but village and active never select a model: at most 6 × 4 × 4 × 2 = 192 models
-        assertTrue(models.size() <= 6 * 4 * 4 * 2, () -> models.size() + " models");
+        // 960 states, but village and active never select a model: at most 6 × 4 × 5 × 2 = 240 models
+        assertTrue(models.size() <= 6 * 4 * 5 * 2, () -> models.size() + " models");
     }
 
     @Test
@@ -71,7 +71,7 @@ class FieldPlantBlockstateJsonTest {
         JsonObject variants = read("/assets/wildroots/blockstates/wild_carrot.json").getAsJsonObject("variants");
         for (int stage = 0; stage <= 5; stage++) {
             for (int size = 0; size <= 3; size++) {
-                for (int variant = 0; variant <= 3; variant++) {
+                for (int variant = 0; variant <= FieldPlantBlock.MAX_VARIANT; variant++) {
                     for (boolean ailing : new boolean[] {false, true}) {
                         Map<String, String> state = Map.of("stage", "" + stage, "size", "" + size,
                                 "variant", "" + variant, "ailing", "" + ailing);
@@ -89,5 +89,26 @@ class FieldPlantBlockstateJsonTest {
                 }
             }
         }
+    }
+
+    /** WR-702: the red root has its own model (red crown, four sizes, healthy and ailing) and every model file exists. */
+    @Test
+    void redRootsUseTheRedCrown() throws Exception {
+        JsonObject variants = read("/assets/wildroots/blockstates/wild_carrot.json").getAsJsonObject("variants");
+        int red = 0;
+        for (Map.Entry<String, com.google.gson.JsonElement> e : variants.entrySet()) {
+            Map<String, String> key = parseKey(e.getKey());
+            if ("4".equals(key.get("variant"))) {
+                red++;
+                assertEquals("3", key.get("stage"), "only the root shoulder of stage 3 has a colour: " + e.getKey());
+                String model = e.getValue().getAsJsonObject().get("model").getAsString();
+                assertTrue(model.contains("_red"), model);
+                String file = read("/assets/wildroots/models/" + model.substring("wildroots:".length()) + ".json").toString();
+                assertTrue(file.contains("wildroots:block/wild_carrot_crown_red"), model);
+            }
+        }
+        assertEquals(8, red, "4 sizes × healthy and ailing");
+        assertNotNull(FieldPlantBlockstateJsonTest.class.getResource("/assets/wildroots/textures/block/wild_carrot_crown_red.png"));
+        assertNotNull(FieldPlantBlockstateJsonTest.class.getResource("/assets/wildroots/textures/item/eastern_carrot_red.png"));
     }
 }

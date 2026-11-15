@@ -21,7 +21,7 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 public final class ClientSetup {
 
     public static final ResourceLocation FILLED = Ids.mod("filled");
-    /** Eastern carrot root colour: 0 yellow, 1 purple (WR-136a). */
+    /** Eastern carrot root colour: 0 yellow, 1 purple, 2 red (WR-136a, WR-702). */
     public static final ResourceLocation ROOT_COLOUR = Ids.mod("root_colour");
 
     private ClientSetup() {

@@ -276,7 +276,7 @@ public record LensPanel(LensSheet sheet) implements TooltipComponent {
                         .getKey(p);
                 if (id != null) {
                     header.add(Component.translatable("wildroots.cultivar." + id.getPath() + ".variant."
-                            + (ProduceStacks.colour(tag) == ProduceStacks.PURPLE ? "purple" : "yellow")));
+                            + ProduceStacks.colourName(ProduceStacks.colour(tag))));
                 }
             }
             // on an item tooltip the name line stays above the panel (m6): no second title

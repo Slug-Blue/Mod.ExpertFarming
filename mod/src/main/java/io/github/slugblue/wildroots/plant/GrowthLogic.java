@@ -240,11 +240,16 @@ public final class GrowthLogic {
     static final TraitId PURPLE = TraitId.of("color_p");
 
     /**
-     * Root colour of the carrot (GDD §7.3): 3 purple ({@code P_}, epistatic),
-     * 2 orange ({@code y1y1 y2y2 pp}), 1 yellow ({@code y1y1}), 0 white.
-     * Species without these loci stay 0.
+     * The block's {@code variant} (the colour the model draws): a thin wrapper over {@link Phenotype#colour()},
+     * the colour rules of the species' JSON (WR-701; carrot: 0 white, 1 yellow, 2 orange, 3 purple, 4 red). No
+     * matching rule gives 0, a number above {@link FieldPlantBlock#MAX_VARIANT} the last one. A species without
+     * colour rules keeps the rule of M1a (GDD §7.3): 3 purple ({@code P_}, epistatic), 2 orange
+     * ({@code y1y1 y2y2}), 1 yellow ({@code y1y1}), 0 white; without those loci 0.
      */
     public static int variant(SpeciesDef s, Phenotype p) {
+        if (!s.colours().isNone()) {
+            return Math.max(0, Math.min(FieldPlantBlock.MAX_VARIANT, p.colour()));
+        }
         if (s.qual(Y1) == null || s.qual(Y2) == null || s.qual(PURPLE) == null) {
             return 0;
         }

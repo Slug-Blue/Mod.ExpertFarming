@@ -22,11 +22,11 @@ public final class WildCarrotBlockGameTests {
     }
 
     @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
-    public static void wildCarrotHas768StatesAndNoAge(GameTestHelper helper) {
+    public static void wildCarrotHas960StatesAndNoAge(GameTestHelper helper) {
         FieldPlantBlock block = ModBlocks.WILD_CARROT.get();
         helper.assertTrue(block instanceof CropBlock, "field archetype must extend CropBlock (ADR-0010)");
         int states = block.getStateDefinition().getPossibleStates().size();
-        helper.assertTrue(states == 768, "states: " + states);
+        helper.assertTrue(states == 960, "states (6 x 4 x 5 x 2 x 2 x 2, variant 0-4): " + states);
         helper.assertTrue(!block.getStateDefinition().getProperties().contains(CropBlock.AGE), "vanilla AGE is in the state");
         for (Property<?> p : new Property<?>[] {FieldPlantBlock.STAGE, FieldPlantBlock.SIZE, FieldPlantBlock.VARIANT,
                 FieldPlantBlock.AILING, FieldPlantBlock.VILLAGE, FieldPlantBlock.ACTIVE}) {

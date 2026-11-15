@@ -9,7 +9,9 @@ import net.minecraft.world.item.ItemStack;
  * The only writer of harvest NBT (docs/05-architecture.md §6.3; ADR-0007;
  * GDD §6.4): {@value #GRADE} (byte 1–4) and {@value #BITTER} (byte, only on
  * a bitter item, never above grade 2). Nothing else ever goes into a harvest
- * item, so there are at most {1, 2, 3, 4} ∪ {1b, 2b} = 6 stack variants.
+ * item, so there are at most {1, 2, 3, 4} ∪ {1b, 2b} = 6 stack variants. An item with
+ * root colours also carries {@value #COLOUR}, but never {@value #BITTER}: 4 grades × 3
+ * colours = 12 variants (ADR-0007 revision 5).
  */
 public final class ProduceStacks {
 
@@ -48,20 +50,25 @@ public final class ProduceStacks {
     }
 
     /**
-     * Root colour of colour-variant produce (WR-136a; today only
-     * {@code eastern_carrot}): {@code wildroots:colour: 1b} = purple; yellow
-     * ({@value #YELLOW}) is the default and is not written. Other produce
-     * never carries the key.
+     * Root colour of colour-variant produce (WR-136a, WR-702; today only {@code eastern_carrot}):
+     * {@code wildroots:colour}: {@code 1b} = purple, {@code 2b} = red; yellow ({@value #YELLOW}, an orange
+     * root counts as yellow) is the default and is not written. White is a colour of the wild plant only and
+     * the wild root has no colour at all. Other produce never carries the key.
      */
     public static final String COLOUR = "wildroots:colour";
     public static final int YELLOW = 0;
     public static final int PURPLE = 1;
+    public static final int RED = 2;
 
-    /** The tag of a colour-variant harvest item: ≤ 6 × 2 = 12 variants. */
+    /**
+     * The tag of a colour-variant harvest item: {@code bitter} is <b>never written</b> (a bitter harvest only
+     * keeps its grade cap), so 4 grades × 3 colours = 12 variants; a colour number that is not purple or red
+     * is yellow.
+     */
     public static CompoundTag tag(int grade, boolean bitter, int colour) {
-        CompoundTag t = tag(grade, bitter);
-        if (colour == PURPLE) {
-            t.putByte(COLOUR, (byte) PURPLE);
+        CompoundTag t = tag(normalise(grade, bitter), false);
+        if (colour == PURPLE || colour == RED) {
+            t.putByte(COLOUR, (byte) colour);
         }
         return t;
     }
@@ -73,18 +80,24 @@ public final class ProduceStacks {
         return s;
     }
 
-    /** Root colour of a stack: {@value #PURPLE} only with the key, else yellow. */
+    /** Root colour of a stack: purple for {@code 1b}, red for {@code 2b}, anything else (also a forged value) yellow. */
     public static int colour(CompoundTag tag) {
-        return tag != null && tag.getByte(COLOUR) == PURPLE ? PURPLE : YELLOW;
+        byte c = tag == null ? 0 : tag.getByte(COLOUR);
+        return c == PURPLE ? PURPLE : c == RED ? RED : YELLOW;
     }
 
     /**
-     * Root colour from the plant's {@code variant} (the block state the
-     * model draws, {@code GrowthLogic.variant}): 3 purple, anything else
-     * yellow (an orange-rooted eastern carrot counts as yellow).
+     * Root colour from the plant's {@code variant} (the block state the model draws,
+     * {@code GrowthLogic.variant}): 3 purple, 4 red, anything else yellow (an orange-rooted eastern carrot
+     * counts as yellow; a white one cannot be an eastern carrot's colour either).
      */
     public static int colourOfVariant(int variant) {
-        return variant == 3 ? PURPLE : YELLOW;
+        return variant == 3 ? PURPLE : variant == 4 ? RED : YELLOW;
+    }
+
+    /** Name of a colour for lang keys ({@code …variant.<name>}): yellow, purple or red. */
+    public static String colourName(int colour) {
+        return colour == PURPLE ? "purple" : colour == RED ? "red" : "yellow";
     }
 
     public static ItemStack create(Item item, int grade, boolean bitter) {
