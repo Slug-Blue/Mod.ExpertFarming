@@ -43,10 +43,12 @@ public final class ProduceStacks {
         return t;
     }
 
+    /**
+     * A harvest stack of {@code count} items. An item with root colours ({@link ProduceItem#rootColours}) gets no
+     * {@code bitter} key whatever {@code bitter} says (ADR-0007 revision 5): its colour is the default, yellow.
+     */
     public static ItemStack create(Item item, int grade, boolean bitter, int count) {
-        ItemStack s = new ItemStack(item, count);
-        s.setTag(tag(grade, bitter));
-        return s;
+        return create(item, grade, bitter, YELLOW, count);
     }
 
     /**
