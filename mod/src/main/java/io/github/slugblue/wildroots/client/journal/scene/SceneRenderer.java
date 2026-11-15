@@ -73,13 +73,26 @@ final class SceneRenderer implements AutoCloseable {
 
     /** Applies the scene pose to {@code pose} (GUI pixels → structure coordinates). */
     void applyPose(PoseStack pose, SceneCamera cam, int wx, int wy, int ww, int wh) {
-        float s = scale(cam.zoom(), ww, wh);
-        pose.translate(wx + ww / 2f, wy + wh / 2f, Z);
-        // y up on screen; the mirror on z keeps the determinant positive (face culling stays right)
-        pose.scale(s, -s, -s);
-        pose.mulPose(Axis.XP.rotationDegrees(-cam.pitch()));
-        pose.mulPose(Axis.YP.rotationDegrees(cam.yaw() + 180));
-        pose.translate(-def.sizeX() / 2f, -def.sizeY() / 2f, -def.sizeZ() / 2f);
+        pose(pose, scale(cam.zoom(), ww, wh), cam.pitch(), cam.yaw(), wx + ww / 2f, wy + wh / 2f,
+                def.sizeX(), def.sizeY(), def.sizeZ());
+    }
+
+    /**
+     * The scene pose (owner playtest 2, missing faces): to the window centre,
+     * then the same handedness as vanilla's GUI items ({@code scale(s, -s, s)}:
+     * only y flips, screen y runs down). The old pose also mirrored z, which
+     * made the determinant positive, so every quad wound the other way and
+     * back-face culling threw away the faces turned to the reader (the top
+     * of the farmland, the near walls) and kept the far ones. Pitch tilts the
+     * top towards the reader, yaw 180 looks at the z = 0 side (the front
+     * row of the scenes).
+     */
+    static void pose(PoseStack pose, float s, float pitch, float yaw, float cx, float cy, int sx, int sy, int sz) {
+        pose.translate(cx, cy, Z);
+        pose.scale(s, -s, s);
+        pose.mulPose(Axis.XP.rotationDegrees(pitch));
+        pose.mulPose(Axis.YP.rotationDegrees(yaw));
+        pose.translate(-sx / 2f, -sy / 2f, -sz / 2f);
     }
 
     /** Reused every frame (review m4): one pose and one matrix per renderer. */
