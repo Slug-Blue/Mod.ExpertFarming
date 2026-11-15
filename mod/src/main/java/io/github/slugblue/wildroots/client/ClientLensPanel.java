@@ -17,7 +17,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RegisterClientTooltipComponentFactoriesEvent;
 import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -34,7 +33,7 @@ public final class ClientLensPanel implements ClientTooltipComponent {
 
     private final LensPanel data;
 
-    ClientLensPanel(LensPanel data) {
+    public ClientLensPanel(LensPanel data) {
         this.data = data;
     }
 
@@ -107,21 +106,6 @@ public final class ClientLensPanel implements ClientTooltipComponent {
                         .renderTooltip(Minecraft.getInstance().font, p.lines(), Optional.of(p), event.getMouseX(),
                                 event.getMouseY())));
             }
-        }
-    }
-
-    /** Registers the component factory (mod bus, client only). */
-    @Mod.EventBusSubscriber(modid = WildRoots.MOD_ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
-    public static final class Registration {
-
-        private Registration() {
-        }
-
-        @SubscribeEvent
-        @EntryPoint
-        public static void onRegister(RegisterClientTooltipComponentFactoriesEvent event) {
-            Guarded.run("lens panel factory", "client", () ->
-                    event.register(LensPanel.class, ClientLensPanel::new));
         }
     }
 }

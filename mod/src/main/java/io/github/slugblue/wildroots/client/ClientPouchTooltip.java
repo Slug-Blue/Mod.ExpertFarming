@@ -1,6 +1,5 @@
 package io.github.slugblue.wildroots.client;
 
-import io.github.slugblue.wildroots.WildRoots;
 import io.github.slugblue.wildroots.core.safety.EntryPoint;
 import io.github.slugblue.wildroots.core.safety.Guarded;
 import io.github.slugblue.wildroots.item.PouchTooltip;
@@ -8,10 +7,6 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RegisterClientTooltipComponentFactoriesEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
 
 /**
  * Client tooltip of the seed pouch (docs/05-architecture.md §6.3): the lots
@@ -25,7 +20,7 @@ public final class ClientPouchTooltip implements ClientTooltipComponent {
 
     private final PouchTooltip data;
 
-    ClientPouchTooltip(PouchTooltip data) {
+    public ClientPouchTooltip(PouchTooltip data) {
         this.data = data;
     }
 
@@ -56,21 +51,6 @@ public final class ClientPouchTooltip implements ClientTooltipComponent {
             int cy = y + 1 + (i / COLUMNS) * CELL;
             g.renderItem(s, cx, cy, i);
             g.renderItemDecorations(font, s, cx, cy);
-        }
-    }
-
-    /** Registers the component factory (mod bus, client only). */
-    @Mod.EventBusSubscriber(modid = WildRoots.MOD_ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
-    public static final class Registration {
-
-        private Registration() {
-        }
-
-        @SubscribeEvent
-        @EntryPoint
-        public static void onRegister(RegisterClientTooltipComponentFactoriesEvent event) {
-            Guarded.run("pouch tooltip factory", "client", () ->
-                    event.register(PouchTooltip.class, ClientPouchTooltip::new));
         }
     }
 }

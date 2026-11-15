@@ -68,6 +68,36 @@ class ProductionArchitectureTest {
         ArchRules.geneticsDeterministicRandomOnly(ROOT).check(production);
     }
 
+    /**
+     * Playtest 2, item 5: Forge's event bus names the class it generates for
+     * a {@code @SubscribeEvent} method {@code <package>.__<SimpleClassName>_<method>_<EventSimpleName>}
+     * ({@code IEventListenerFactory#getUniqueName}). Two methods with the same
+     * name share one generated class, so one of them never runs (the lens
+     * panel factory was lost that way). Every such name must be unique.
+     */
+    @Test
+    void subscriberWrapperNamesAreUnique() {
+        java.util.Map<String, java.util.List<String>> names = new java.util.TreeMap<>();
+        int seen = 0;
+        for (com.tngtech.archunit.core.domain.JavaClass c : production) {
+            for (com.tngtech.archunit.core.domain.JavaMethod m : c.getMethods()) {
+                if (!m.isAnnotatedWith("net.minecraftforge.eventbus.api.SubscribeEvent")
+                        || m.getRawParameterTypes().isEmpty()) {
+                    continue;
+                }
+                seen++;
+                String name = c.getPackageName() + ".__" + c.getSimpleName() + "_" + m.getName() + "_"
+                        + m.getRawParameterTypes().get(0).getSimpleName();
+                names.computeIfAbsent(name, k -> new java.util.ArrayList<>()).add(m.getFullName());
+            }
+        }
+        org.junit.jupiter.api.Assertions.assertTrue(seen > 5, "no @SubscribeEvent methods found: " + seen);
+        java.util.List<String> clashes = names.entrySet().stream().filter(e -> e.getValue().size() > 1)
+                .map(e -> e.getKey() + " <- " + e.getValue()).toList();
+        org.junit.jupiter.api.Assertions.assertEquals(java.util.List.of(), clashes,
+                "listeners that Forge would merge into one generated class");
+    }
+
     /** NoNetworkNoExecTest (SEC-43): one dynamic test per forbidden API. */
     @TestFactory
     Stream<DynamicTest> noNetworkNoExec() {
