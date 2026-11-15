@@ -118,9 +118,8 @@ public final class JournalGameTests {
         ServerPlayer p = survival(helper, "wr180_first");
         // the config is shared by the server: set it here instead of relying on the default, which
         // configOffGivesNoItemButTheWelcomeEntry switches off for its own run (separate batch)
-        boolean old = ServerConfig.GIVE_JOURNAL_ON_FIRST_HARVEST.get();
         try {
-            ServerConfig.GIVE_JOURNAL_ON_FIRST_HARVEST.set(true);
+            ServerConfig.overrideForTests(ServerConfig.GIVE_JOURNAL_ON_FIRST_HARVEST, true);
             helper.assertTrue(ServerConfig.GIVE_JOURNAL_ON_FIRST_HARVEST.getDefault(), "config default is not true");
             wildMature(helper, PlantFixtures.PLANT, helper.absolutePos(PlantFixtures.PLANT).asLong());
             helper.assertTrue(p.gameMode.destroyBlock(helper.absolutePos(PlantFixtures.PLANT)), "not broken");
@@ -140,7 +139,7 @@ public final class JournalGameTests {
                     .filter(r -> r.key().equals("wildroots.journal.species.found_at")).count() == 2,
                     "found-at rows " + j.entry("species.wild_carrot").orElseThrow().rows());
         } finally {
-            ServerConfig.GIVE_JOURNAL_ON_FIRST_HARVEST.set(old);
+            ServerConfig.overrideForTests(ServerConfig.GIVE_JOURNAL_ON_FIRST_HARVEST, null);
             rec.close();
             p.discard();
         }
@@ -151,15 +150,14 @@ public final class JournalGameTests {
     public static void configOffGivesNoItemButTheWelcomeEntry(GameTestHelper helper) {
         Recorder rec = new Recorder();
         ServerPlayer p = survival(helper, "wr180_noitem");
-        boolean old = ServerConfig.GIVE_JOURNAL_ON_FIRST_HARVEST.get();
         try {
-            ServerConfig.GIVE_JOURNAL_ON_FIRST_HARVEST.set(false);
+            ServerConfig.overrideForTests(ServerConfig.GIVE_JOURNAL_ON_FIRST_HARVEST, false);
             wildMature(helper, PlantFixtures.PLANT, 7L);
             helper.assertTrue(p.gameMode.destroyBlock(helper.absolutePos(PlantFixtures.PLANT)), "not broken");
             helper.assertTrue(journals(p) == 0, "a journal was given with giveJournalOnFirstHarvest = false");
             helper.assertTrue(journal(p).has("hint.welcome"), "welcome entry not created");
         } finally {
-            ServerConfig.GIVE_JOURNAL_ON_FIRST_HARVEST.set(old);
+            ServerConfig.overrideForTests(ServerConfig.GIVE_JOURNAL_ON_FIRST_HARVEST, null);
             rec.close();
             p.discard();
         }

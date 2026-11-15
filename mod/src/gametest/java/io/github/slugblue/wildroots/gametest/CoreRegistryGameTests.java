@@ -34,4 +34,23 @@ public final class CoreRegistryGameTests {
         helper.assertTrue(ServerConfig.BREEDER_RARE_FIND_DAILY_CAP.get() == 6, "breederRareFindDailyCap is not 6");
         helper.succeed();
     }
+
+    /**
+     * Regression (2026-11-15): a test changes a SERVER value through an
+     * override that never writes the file, so Forge's file watcher cannot
+     * reload a stale value into the tests after it. Own batch: it changes
+     * the mode for a moment.
+     */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "cfg_override")
+    public static void aTestOverrideLeavesTheConfigAlone(GameTestHelper helper) {
+        try {
+            ServerConfig.overrideForTests(ServerConfig.MODE, ServerConfig.Mode.SOFT);
+            helper.assertTrue(ServerConfig.value(ServerConfig.MODE) == ServerConfig.Mode.SOFT, "override not seen");
+            helper.assertTrue(ServerConfig.MODE.get() == ServerConfig.Mode.STRICT, "the override changed the config");
+        } finally {
+            ServerConfig.overrideForTests(ServerConfig.MODE, null);
+        }
+        helper.assertTrue(ServerConfig.value(ServerConfig.MODE) == ServerConfig.Mode.STRICT, "override not cleared");
+        helper.succeed();
+    }
 }

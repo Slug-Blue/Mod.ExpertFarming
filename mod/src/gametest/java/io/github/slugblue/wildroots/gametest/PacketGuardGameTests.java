@@ -149,18 +149,17 @@ public final class PacketGuardGameTests {
     /** The NameSelection extra bucket follows {@code nameSelectionPerMinute} of the SERVER config (SEC-02). */
     @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
     public static void nameSelectionLimitFollowsTheConfig(GameTestHelper helper) {
-        int old = ServerConfig.NAME_SELECTION_PER_MINUTE.get();
         UUID id = UUID.randomUUID();
         int allowed = 0;
         try {
-            ServerConfig.NAME_SELECTION_PER_MINUTE.set(1);
+            ServerConfig.overrideForTests(ServerConfig.NAME_SELECTION_PER_MINUTE, 1);
             for (int i = 0; i < 3; i++) {
                 if (ServerPacketGuard.LIMITER.tryAcquire(id, ServerPacketGuard.NAME_SELECTION).allowed()) {
                     allowed++;
                 }
             }
         } finally {
-            ServerConfig.NAME_SELECTION_PER_MINUTE.set(old);
+            ServerConfig.overrideForTests(ServerConfig.NAME_SELECTION_PER_MINUTE, null);
             ServerPacketGuard.LIMITER.forget(id);
         }
         helper.assertTrue(allowed == 1, "nameSelectionPerMinute = 1 but " + allowed + " NameSelection packets passed");

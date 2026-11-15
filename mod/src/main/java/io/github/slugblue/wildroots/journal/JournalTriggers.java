@@ -142,7 +142,7 @@ public final class JournalTriggers {
 
     /** First wild harvest: the journal item (unless the config says no) and the "given" mark. */
     static void giveJournal(ServerPlayer player, JournalData j) {
-        if (!j.markGiven() || !ServerConfig.GIVE_JOURNAL_ON_FIRST_HARVEST.get()) {
+        if (!j.markGiven() || !ServerConfig.value(ServerConfig.GIVE_JOURNAL_ON_FIRST_HARVEST)) {
             return;
         }
         ItemStack book = new ItemStack(ModItems.FIELD_JOURNAL.get());

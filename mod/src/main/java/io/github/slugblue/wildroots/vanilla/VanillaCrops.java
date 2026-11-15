@@ -110,7 +110,7 @@ public final class VanillaCrops {
 
     /** {@code strict} (the default) also before the server config is loaded (the client side of an event). */
     static boolean strict() {
-        return !ServerConfig.SPEC.isLoaded() || ServerConfig.MODE.get() == ServerConfig.Mode.STRICT;
+        return !ServerConfig.SPEC.isLoaded() || ServerConfig.value(ServerConfig.MODE) == ServerConfig.Mode.STRICT;
     }
 
     private static PerLevel perLevel(ServerLevel level) {

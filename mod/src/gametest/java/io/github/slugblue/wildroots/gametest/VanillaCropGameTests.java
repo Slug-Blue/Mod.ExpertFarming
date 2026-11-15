@@ -99,7 +99,7 @@ public final class VanillaCropGameTests {
                 + level.getBrightness(net.minecraft.world.level.LightLayer.BLOCK, abs) + ", sky light "
                 + level.getBrightness(net.minecraft.world.level.LightLayer.SKY, abs) + ", raw "
                 + level.getRawBrightness(abs, 0) + ", sees sky " + level.canSeeSky(abs);
-        ServerConfig.Mode mode = ServerConfig.MODE.get();
+        ServerConfig.Mode mode = ServerConfig.value(ServerConfig.MODE);
         net.minecraft.world.InteractionResult result;
         try {
             p.setItemInHand(InteractionHand.MAIN_HAND, stack);
@@ -169,8 +169,9 @@ public final class VanillaCropGameTests {
         BlockPos a = new BlockPos(1, 2, 1);
         PlantFixtures.litFarmland(helper, a);
         PlantFixtures.whenLit(helper, List.of(a), () -> {
-            ServerConfig.Mode old = ServerConfig.MODE.get();
-            ServerConfig.MODE.set(ServerConfig.Mode.SOFT);
+            // an override, not MODE.set: a set saves the file and the file watcher's reload races the
+            // restore, leaving SOFT for the tests after (2026-11-15)
+            ServerConfig.overrideForTests(ServerConfig.MODE, ServerConfig.Mode.SOFT);
             ServerPlayer p = JournalGameTests.survival(helper, "wr162_soft");
             try {
                 ItemStack mine = new ItemStack(Items.CARROT, 2);
@@ -186,7 +187,7 @@ public final class VanillaCropGameTests {
                 helper.assertTrue(!drops.isEmpty() && drops.stream().allMatch(d -> d.is(Items.CARROT)),
                         "soft drops of a ripe vanilla carrot: " + drops);
             } finally {
-                ServerConfig.MODE.set(old);
+                ServerConfig.overrideForTests(ServerConfig.MODE, null);
                 p.discard();
             }
             helper.succeed();

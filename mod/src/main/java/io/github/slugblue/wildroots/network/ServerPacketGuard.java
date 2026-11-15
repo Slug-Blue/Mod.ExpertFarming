@@ -43,7 +43,7 @@ public final class ServerPacketGuard {
             ServerConfig.PACKET_BUCKET_CAPACITY::get, ServerConfig.PACKET_REFILL_PER_SECOND::get,
             ServerConfig.PACKET_FLOOD_DISCONNECT_THRESHOLD::get,
             Map.of(ServerPacketGuard.NAME_SELECTION, () -> PacketRateLimiter.ExtraLimit.perMinute(
-                    ServerConfig.NAME_SELECTION_PER_MINUTE.get())));
+                    ServerConfig.value(ServerConfig.NAME_SELECTION_PER_MINUTE))));
 
     /**
      * Limiter of menu button clicks ({@code clickMenuButton}, SEC-02): per

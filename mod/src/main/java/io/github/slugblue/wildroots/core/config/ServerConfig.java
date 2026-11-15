@@ -93,4 +93,31 @@ public final class ServerConfig {
 
     private ServerConfig() {
     }
+
+    /**
+     * Values that win over the file for a GameTest, without writing it. A
+     * {@code ConfigValue.set} saves the file (autosave), and Forge's file
+     * watcher then reloads it on its own thread a moment later; two sets in
+     * one test (change, restore) race that reload, which can leave the
+     * changed value in memory for the tests after (seen: mode SOFT for the
+     * rest of a run, 2026-11-15). Empty in a real game.
+     */
+    private static final java.util.Map<ForgeConfigSpec.ConfigValue<?>, Object> TEST_OVERRIDES =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** The value of {@code v}: a GameTest override if one is set, else the config. */
+    @SuppressWarnings("unchecked")
+    public static <T> T value(ForgeConfigSpec.ConfigValue<T> v) {
+        Object o = TEST_OVERRIDES.get(v);
+        return o != null ? (T) o : v.get();
+    }
+
+    /** GameTests only: {@code value} wins until cleared with {@code null}; the file is not touched. */
+    public static <T> void overrideForTests(ForgeConfigSpec.ConfigValue<T> v, T value) {
+        if (value == null) {
+            TEST_OVERRIDES.remove(v);
+        } else {
+            TEST_OVERRIDES.put(v, value);
+        }
+    }
 }
