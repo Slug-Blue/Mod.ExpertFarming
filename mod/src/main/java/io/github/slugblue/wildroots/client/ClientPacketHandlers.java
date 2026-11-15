@@ -73,8 +73,8 @@ public final class ClientPacketHandlers {
             return;
         }
         io.github.slugblue.wildroots.core.safety.Guarded.run("lens window", "client", () -> {
-            io.github.slugblue.wildroots.client.lens.LensWindowScreen.open(packet);
-            if (io.github.slugblue.wildroots.core.config.ClientConfig.get(
+            boolean window = io.github.slugblue.wildroots.client.lens.LensWindowScreen.openOrChat(packet);
+            if (window && io.github.slugblue.wildroots.core.config.ClientConfig.get(
                     io.github.slugblue.wildroots.core.config.ClientConfig.LENS_CHAT)) {
                 Minecraft.getInstance().gui.getChat().addMessage(Component.translatable("wildroots.window.lens.chat",
                         io.github.slugblue.wildroots.core.safety.DispCodec.toComponent(packet.header())));

@@ -86,6 +86,25 @@ public final class LensWindowScreen extends Screen {
         sheet(p).ifPresent(s -> Minecraft.getInstance().setScreen(new LensWindowScreen(s, model(p))));
     }
 
+    /**
+     * Opens the window only when no other screen is open (review 1, m1: a
+     * container, the chat or another screen is never replaced, so no menu
+     * is left open on the server and no chat draft is lost). Otherwise the
+     * reading goes to the local chat as lines, the old form; returns whether
+     * the window opened.
+     */
+    public static boolean openOrChat(LensWindowPacket p) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.screen == null) {
+            open(p);
+            return true;
+        }
+        mc.gui.getChat().addMessage(DispCodec.toComponent(p.header()));
+        LensRow.parse(p.row()).ifPresent(r -> r.expand(p.species()).forEach(mc.gui.getChat()::addMessage));
+        LensSheet.environment(p.env()).forEach(mc.gui.getChat()::addMessage);
+        return false;
+    }
+
     @Override
     protected void init() {
         sheetHeight = LensSheetView.height(font, sheet, SHEET_WIDTH);
