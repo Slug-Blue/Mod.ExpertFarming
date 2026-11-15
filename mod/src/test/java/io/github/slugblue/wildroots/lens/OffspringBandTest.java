@@ -55,16 +55,81 @@ class OffspringBandTest {
                 EPS);
     }
 
+    static double sum1(int a, int b, int[][] fathers, double[] w, double pOut) {
+        List<int[][]> f = new java.util.ArrayList<>();
+        for (int[] c : fathers) {
+            f.add(new int[][] {c});
+        }
+        return OffspringBand.sumVariance(new int[][] {{a, b}}, f, w, pOut);
+    }
+
     @Test
     void fathersMixIntoThePollen() {
         // mother 1/1, a father 2/2 always: the pollen allele is always 2, no spread
-        assertEquals(0, OffspringBand.locusVariance(1, 1, new int[][] {{2, 2}}, new double[] {1}, 1), EPS);
+        assertEquals(0, sum1(1, 1, new int[][] {{2, 2}}, new double[] {1}, 1), EPS);
         // half selfing (1), half the father (2): pollen variance 1/4
-        assertEquals(0.25, OffspringBand.locusVariance(1, 1, new int[][] {{2, 2}}, new double[] {1}, 0.5), EPS);
+        assertEquals(0.25, sum1(1, 1, new int[][] {{2, 2}}, new double[] {1}, 0.5), EPS);
         // zero total weight: selfing only
-        assertEquals(0, OffspringBand.locusVariance(1, 1, new int[][] {{2, 2}}, new double[] {0}, 1), EPS);
+        assertEquals(0, sum1(1, 1, new int[][] {{2, 2}}, new double[] {0}, 1), EPS);
         // heterozygous 0/2 selfed: 1 from the mother's gamete + 1 from the pollen
-        assertEquals(2, OffspringBand.locusVariance(0, 2, new int[0][], new double[0], 0.7), EPS);
+        assertEquals(2, sum1(0, 2, new int[0][], new double[0], 0.7), EPS);
+    }
+
+    /**
+     * Review 1, M1: one father per seed for every locus. Mother 1/1 at 4
+     * loci, father 2/2, pOut 0.5: the pollen sum is 4 or 8 at even odds,
+     * variance 4 (not 4 × 0.25 = 1 locus by locus).
+     */
+    @Test
+    void theFatherChoiceIsSharedByEveryLocus() {
+        assertEquals(4, OffspringBand.sumVariance(homozygous(4, 1), List.<int[][]>of(homozygous(4, 2)),
+                new double[] {1}, 0.5), EPS);
+        assertEquals(Math.sqrt(4.0 / (16 * 16)), OffspringBand.childSd(homozygous(4, 1),
+                List.<int[][]>of(homozygous(4, 2)), new double[] {1}, 0.5, 0, 1), EPS);
+    }
+
+    /** The formula against the real seed code ({@code Offspring.of}), fixed seed, Monte Carlo. */
+    @Test
+    void agreesWithTheRealOffspringCode() {
+        SpeciesDef def = CarrotLineDataTestAccess.wildCarrot();
+        GenomeLayout layout = GenomeLayout.of(def);
+        java.util.Random r = new java.util.Random(0x0FF5_B12DL);
+        Genome mother = random(def, layout, r);
+        Genome f1 = random(def, layout, r);
+        Genome f2 = random(def, layout, r);
+        LotRecord lot = new LotRecord(mother, List.of(new FatherPick(f1, 3, false), new FatherPick(f2, 1, true)), 0.6);
+        io.github.slugblue.wildroots.genetics.api.MutationRates none =
+                new io.github.slugblue.wildroots.genetics.api.MutationRates(0, 0);
+        int n = 40_000;
+        List<Locus> quant = layout.quantitative();
+        double[] sum = new double[quant.size()];
+        double[] sq = new double[quant.size()];
+        for (int k = 0; k < n; k++) {
+            Genome child = io.github.slugblue.wildroots.genetics.breeding.Offspring.of(lot, none, 0x5EED_0000L + k);
+            for (int t = 0; t < quant.size(); t++) {
+                double g = child.alleleSum(quant.get(t));
+                sum[t] += g;
+                sq[t] += g * g;
+            }
+        }
+        for (int t = 0; t < quant.size(); t++) {
+            Locus s = quant.get(t);
+            double mc = sq[t] / n - (sum[t] / n) * (sum[t] / n);
+            double exact = OffspringBand.sumVariance(OffspringBand.alleles(mother, s),
+                    List.of(OffspringBand.alleles(f1, s), OffspringBand.alleles(f2, s)), new double[] {3, 1}, 0.6);
+            assertEquals(exact, mc, 0.05 * exact + 0.02, s.trait().value() + ": formula " + exact + ", seeds " + mc);
+        }
+    }
+
+    static Genome random(SpeciesDef def, GenomeLayout layout, java.util.Random r) {
+        Genome.Builder b = Genome.builder(def.id(), layout);
+        for (Locus s : layout.quantitative()) {
+            for (int l = 0; l < s.loci(); l++) {
+                b.set(s, l, 0, r.nextInt(3));
+                b.set(s, l, 1, r.nextInt(3));
+            }
+        }
+        return b.build();
     }
 
     @Test

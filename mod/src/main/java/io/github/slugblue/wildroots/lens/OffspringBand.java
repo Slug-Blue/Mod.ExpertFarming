@@ -17,13 +17,10 @@ import java.util.List;
  *
  * <p>A child's {@code G} of a trait with {@code L} loci is
  * {@code Σ (m + f) / (4L)}: one allele {@code m} from the mother's gamete
- * and one {@code f} from the pollen at every locus. Loci are taken as
- * independent (linkage is left out). At a locus with mother alleles
- * {@code a, b} the mother's allele has variance {@code (a − b)² / 4}; the
- * pollen allele comes from the mother (selfing, probability {@code 1 − pOut})
- * or from a lot father by weight, and its variance is that of the mixture.
- * So a heterozygous locus under selfing gives {@code (a − b)²/2 / (4L)²},
- * that is (allele effect)² · ½. The phenotype adds the planting noise
+ * and one {@code f} from the pollen at every locus. A gamete draws its loci
+ * independently ({@code Meiosis}); the pollen of one seed comes from one
+ * source for all loci ({@link #sumVariance}). A heterozygous locus under
+ * selfing gives {@code (a − b)²/2 / (4L)²}, that is (allele effect)² · ½. The phenotype adds the planting noise
  * {@code σ_env} of the species (read from its definition) and, for traits
  * with {@code vigor_affected}, scales {@code G} by the mother's vigor:
  * {@code Var P = V²·Var G + σ_env²}. Pleiotropy and the resource budget are
@@ -35,33 +32,60 @@ public final class OffspringBand {
     }
 
     /**
-     * Child variance of {@code G} at one locus.
+     * Variance of the allele sum {@code Σ (m + f)} of one trait in a child
+     * (before the division by {@code (4L)²}).
      *
-     * @param a        mother allele 1 (0–2)
-     * @param b        mother allele 2
-     * @param fathers  alleles {@code {c, d}} of the lot fathers at this locus
-     * @param weights  father weights (same order; negative counts as 0)
-     * @param pOut     probability of an outside father
+     * <p>The mother's gamete draws each locus on its own
+     * ({@code Meiosis.gameteInto}): {@code Σ (a − b)² / 4}. The pollen comes
+     * from one source for the whole seed ({@code Offspring.chooseFather}):
+     * the mother herself (selfing, weight {@code 1 − pOut}) or one lot father
+     * by weight. So its sum is a mixture over sources {@code j} with weight
+     * {@code π_j}, mean {@code μ_j = Σ (c + d) / 2} and inner variance
+     * {@code v_j = Σ (c − d)² / 4}:
+     * {@code Var = Σ π_j (v_j + μ_j²) − (Σ π_j μ_j)²}. The choice of the
+     * father is shared by every locus, which this keeps (review 1, M1).
+     *
+     * @param mother  mother alleles per locus, {@code [L][2]}
+     * @param fathers per father, alleles per locus {@code [L][2]}
+     * @param weights father weights (same order; negative counts as 0)
+     * @param pOut    probability of an outside father
      */
-    static double locusVariance(int a, int b, int[][] fathers, double[] weights, double pOut) {
-        double motherVar = (a - b) * (a - b) / 4.0;
+    static double sumVariance(int[][] mother, List<int[][]> fathers, double[] weights, double pOut) {
         double total = 0;
-        for (int i = 0; i < fathers.length; i++) {
+        for (int i = 0; i < fathers.size(); i++) {
             total += Math.max(0, weights[i]);
         }
-        double out = fathers.length == 0 || !(total > 0) ? 0 : Math.max(0, Math.min(1, pOut));
-        // pollen: a mixture of the mother (selfing) and the fathers by weight
-        double mean = (1 - out) * (a + b) / 2.0;
-        double square = (1 - out) * (a * a + b * b) / 2.0;
-        for (int i = 0; i < fathers.length && out > 0; i++) {
+        double out = fathers.isEmpty() || !(total > 0) ? 0 : Math.max(0, Math.min(1, pOut));
+        double motherVar = innerVariance(mother);
+        double selfMean = mean(mother);
+        double first = (1 - out) * selfMean;
+        double second = (1 - out) * (motherVar + selfMean * selfMean);
+        for (int i = 0; i < fathers.size() && out > 0; i++) {
             double w = out * Math.max(0, weights[i]) / total;
-            int c = fathers[i][0];
-            int d = fathers[i][1];
-            mean += w * (c + d) / 2.0;
-            square += w * (c * c + d * d) / 2.0;
+            double mu = mean(fathers.get(i));
+            first += w * mu;
+            second += w * (innerVariance(fathers.get(i)) + mu * mu);
         }
-        double pollenVar = Math.max(0, square - mean * mean);
+        double pollenVar = Math.max(0, second - first * first);
         return motherVar + pollenVar;
+    }
+
+    /** {@code Σ (a + b) / 2}: the mean allele sum of one gamete. */
+    static double mean(int[][] alleles) {
+        double m = 0;
+        for (int[] l : alleles) {
+            m += (l[0] + l[1]) / 2.0;
+        }
+        return m;
+    }
+
+    /** {@code Σ (a − b)² / 4}: the variance of one gamete's allele sum. */
+    static double innerVariance(int[][] alleles) {
+        double v = 0;
+        for (int[] l : alleles) {
+            v += (l[0] - l[1]) * (l[0] - l[1]) / 4.0;
+        }
+        return v;
     }
 
     /**
@@ -77,15 +101,7 @@ public final class OffspringBand {
     public static double childSd(int[][] mother, List<int[][]> fathers, double[] weights, double pOut,
                                  double sigmaEnv, double scale) {
         int loci = mother.length;
-        double varG = 0;
-        for (int l = 0; l < loci; l++) {
-            int[][] f = new int[fathers.size()][];
-            for (int i = 0; i < f.length; i++) {
-                f[i] = fathers.get(i)[l];
-            }
-            varG += locusVariance(mother[l][0], mother[l][1], f, weights, pOut);
-        }
-        varG = loci == 0 ? 0 : varG / (16.0 * loci * loci);
+        double varG = loci == 0 ? 0 : sumVariance(mother, fathers, weights, pOut) / (16.0 * loci * loci);
         double s = Double.isFinite(scale) ? scale : 1;
         double env = Double.isFinite(sigmaEnv) ? sigmaEnv : 0;
         return Math.sqrt(s * s * varG + env * env);
@@ -121,8 +137,7 @@ public final class OffspringBand {
      */
     public static double[] ofLot(LotRecord lot, SpeciesDef def, double vigor) {
         Genome m = lot.mother();
-        List<FatherPick> picks = lot.fathers().stream()
-                .filter(f -> f.genome().layout().equals(m.layout())).toList(); // others are never mixed in
+        List<FatherPick> picks = lot.fathers();
         double[] weights = new double[picks.size()];
         for (int i = 0; i < weights.length; i++) {
             weights[i] = picks.get(i).weight();
@@ -136,7 +151,10 @@ public final class OffspringBand {
                 out[i] = noiseOnly(q.sigmaEnv());
                 continue;
             }
-            List<int[][]> fathers = picks.stream().map(f -> alleles(f.genome(), s)).toList();
+            // a father of another layout is never mixed in: a seed drawn to it is selfed (Offspring.of)
+            int[][] own = alleles(m, s);
+            List<int[][]> fathers = picks.stream()
+                    .map(f -> f.genome().layout().equals(m.layout()) ? alleles(f.genome(), s) : own).toList();
             out[i] = childSd(alleles(m, s), fathers, weights, lot.pOut(), q.sigmaEnv(),
                     q.vigorAffected() ? vigor : 1);
         }
