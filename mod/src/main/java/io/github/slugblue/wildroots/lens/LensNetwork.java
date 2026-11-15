@@ -40,7 +40,23 @@ public final class LensNetwork {
         if (player == null || player.connection == null || packet.size() > LensWindowPacket.MAX_BYTES) {
             return false;
         }
-        WrNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+        sender.accept(player, packet);
         return true;
+    }
+
+    private static final java.util.function.BiConsumer<ServerPlayer, LensWindowPacket> CHANNEL =
+            (p, w) -> WrNetwork.CHANNEL.send(PacketDistributor.PLAYER.with(() -> p), w);
+    private static volatile java.util.function.BiConsumer<ServerPlayer, LensWindowPacket> sender = CHANNEL;
+
+    /**
+     * Replaces the sender (GameTests record the windows; the channel writes
+     * to the connection itself, past a test player's listener); returns the
+     * previous one. {@code null} restores the channel.
+     */
+    public static java.util.function.BiConsumer<ServerPlayer, LensWindowPacket> setSender(
+            java.util.function.BiConsumer<ServerPlayer, LensWindowPacket> s) {
+        java.util.function.BiConsumer<ServerPlayer, LensWindowPacket> old = sender;
+        sender = s == null ? CHANNEL : s;
+        return old;
     }
 }

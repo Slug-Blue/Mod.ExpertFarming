@@ -3,6 +3,7 @@ package io.github.slugblue.wildroots.gametest;
 import io.github.slugblue.wildroots.WildRoots;
 import io.github.slugblue.wildroots.core.registry.ModItems;
 import io.github.slugblue.wildroots.lens.Lens;
+import io.github.slugblue.wildroots.lens.LensNetwork;
 import io.github.slugblue.wildroots.lens.LensRow;
 import io.github.slugblue.wildroots.lens.LensWindowPacket;
 import io.github.slugblue.wildroots.plant.PlantBlockEntity;
@@ -13,7 +14,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientboundCustomPayloadPacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerChatPacket;
 import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
 import net.minecraft.server.level.ServerLevel;
@@ -29,7 +29,8 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
  * Playtest 2, item 3: the hand lens on a plant sends the lens window packet
  * and nothing to chat; the lens cooldown still holds a second use back; the
  * lens on the seeds in the other hand sends the lot's window with the
- * offspring band.
+ * offspring band. One test per batch: the recorder replaces the shared
+ * sender while it runs.
  */
 @GameTestHolder(WildRoots.MOD_ID)
 @PrefixGameTestTemplate(false)
@@ -38,13 +39,25 @@ public final class LensWindowGameTests {
     private LensWindowGameTests() {
     }
 
-    /** The packets a player's connection was asked to send. */
-    static final class Sent {
+    /** The packets a player's listener was asked to send, and the lens windows sent to it. */
+    static final class Sent implements AutoCloseable {
         final List<Packet<?>> packets = new ArrayList<>();
+        final List<LensWindowPacket> windowPackets = new ArrayList<>();
+        private final java.util.function.BiConsumer<ServerPlayer, LensWindowPacket> old =
+                LensNetwork.setSender((p, w) -> windowPackets.add(w));
 
         long windows() {
-            return packets.stream().filter(p -> p instanceof ClientboundCustomPayloadPacket c
-                    && c.getIdentifier().equals(io.github.slugblue.wildroots.core.Ids.mod("main"))).count();
+            return windowPackets.size();
+        }
+
+        void clear() {
+            packets.clear();
+            windowPackets.clear();
+        }
+
+        @Override
+        public void close() {
+            LensNetwork.setSender(old);
         }
 
         long chat() {
@@ -71,7 +84,7 @@ public final class LensWindowGameTests {
         return p;
     }
 
-    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "b9_lens_window")
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "b9_lens_window_plant")
     public static void lensOnAPlantSendsTheWindowNotChatAndKeepsTheCooldown(GameTestHelper helper) {
         Sent sent = new Sent();
         ServerPlayer p = recording(helper, "b9_window", sent);
@@ -85,36 +98,38 @@ public final class LensWindowGameTests {
             p.setShiftKeyDown(true); // the item's use, not the block's
             BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(abs), Direction.UP, abs, false);
 
-            sent.packets.clear();
+            sent.clear();
             p.gameMode.useItemOn(p, level, lens, InteractionHand.MAIN_HAND, hit);
             helper.assertTrue(sent.windows() == 1, "lens window packets: " + sent.windows());
             helper.assertTrue(sent.chat() == 0, "chat lines: " + sent.chat());
             helper.assertTrue(p.getCooldowns().isOnCooldown(ModItems.HAND_LENS.get()), "no cooldown");
 
             // the reading in the packet is the plant's: its row parses and the plant stands on farmland
-            LensWindowPacket w = Lens.readPlant(level, abs, null).orElseThrow().packet();
+            LensWindowPacket w = sent.windowPackets.get(0);
+            helper.assertTrue(w.equals(Lens.readPlant(level, abs, null).orElseThrow().packet()), "window " + w);
             helper.assertTrue(w.kind() == LensWindowPacket.Kind.PLANT && LensRow.parse(w.row()).isPresent()
                     && w.state() != LensWindowPacket.NO_MODEL && w.size() <= LensWindowPacket.MAX_BYTES,
                     "window " + w);
 
             // a second use during the cooldown sends nothing
-            sent.packets.clear();
+            sent.clear();
             p.gameMode.useItemOn(p, level, lens, InteractionHand.MAIN_HAND, hit);
             helper.assertTrue(sent.windows() == 0, "window during the cooldown: " + sent.windows());
             helper.assertTrue(sent.chat() == 0, "chat during the cooldown");
 
             // after the cooldown it works again
             p.getCooldowns().removeCooldown(ModItems.HAND_LENS.get());
-            sent.packets.clear();
+            sent.clear();
             p.gameMode.useItemOn(p, level, lens, InteractionHand.MAIN_HAND, hit);
             helper.assertTrue(sent.windows() == 1 && sent.chat() == 0, "second window " + sent.windows());
         } finally {
+            sent.close();
             p.discard();
         }
         helper.succeed();
     }
 
-    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "b9_lens_window")
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "b9_lens_window_lot")
     public static void lensOnSeedsInTheOtherHandSendsTheLotWindowWithBands(GameTestHelper helper) {
         Sent sent = new Sent();
         ServerPlayer p = recording(helper, "b9_lot", sent);
@@ -123,17 +138,20 @@ public final class LensWindowGameTests {
             ItemStack lot = PlantingGameTests.lot(level, 4);
             p.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(ModItems.HAND_LENS.get()));
             p.setItemInHand(InteractionHand.OFF_HAND, lot);
-            sent.packets.clear();
+            sent.clear();
             p.getItemInHand(InteractionHand.MAIN_HAND).use(level, p, InteractionHand.MAIN_HAND);
             helper.assertTrue(sent.windows() == 1 && sent.chat() == 0,
                     "lot window " + sent.windows() + ", chat " + sent.chat());
-            LensWindowPacket w = Lens.lotWindow(p.getItemInHand(InteractionHand.OFF_HAND)).orElseThrow();
+            LensWindowPacket w = sent.windowPackets.get(0);
+            helper.assertTrue(w.equals(Lens.lotWindow(p.getItemInHand(InteractionHand.OFF_HAND)).orElseThrow()),
+                    "lot window " + w);
             LensRow row = LensRow.parse(w.row()).orElseThrow();
             int tokens = LensRow.tokens(row.traits()).size();
             helper.assertTrue(w.kind() == LensWindowPacket.Kind.LOT && tokens > 0
                     && row.bands().length() == 2 * tokens, "no band on the lot row: " + row);
             helper.assertTrue(w.state() == LensWindowPacket.NO_MODEL && w.env() == 0, "lot window with a model or env");
         } finally {
+            sent.close();
             p.discard();
         }
         helper.succeed();
