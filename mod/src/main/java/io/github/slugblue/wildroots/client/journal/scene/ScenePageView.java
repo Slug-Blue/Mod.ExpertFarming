@@ -388,12 +388,36 @@ public final class ScenePageView implements PageView {
         SceneRenderer.clearDepth();
     }
 
-    /** Highlights, labels, icons, popped items: flat, over the scene, at projected points. */
+    /**
+     * Highlights, labels, icons, popped items: flat, over the scene, at
+     * projected points (owner playtest 2):
+     * <ul>
+     *   <li>a highlight frames only the real blocks of its cells at this
+     *       moment, tightly around their shapes; once they are gone (picked)
+     *       it is not drawn;</li>
+     *   <li>callouts never overlap ({@link CalloutLayout}): a moved one gets
+     *       a leader line to its anchor; one that belongs to a highlight is
+     *       outlined and led in the highlight's green;</li>
+     *   <li>a hand never covers a callout, and a dotted green line leads from
+     *       the moving hand to the cell it goes to.</li>
+     * </ul>
+     */
     private void overlays(GuiGraphics g, SceneStep step, float time, Matrix4f m, float scale) {
         Font font = Minecraft.getInstance().font;
+        int wx = windowX();
+        int wy = windowY();
+        // highlights: tight boxes around the blocks that are there now
+        boxes.clear();
+        boxCells.clear();
+        int[] cells = timeline.blocks();
         for (SceneAction a : step.actions()) {
             if (a instanceof SceneAction.Highlight h && time >= h.at()) {
-                highlight(g, m, h);
+                int[] box = highlightBox(m, h, cells);
+                if (box != null) {
+                    boxes.add(box);
+                    boxCells.add(h);
+                    g.renderOutline(box[0], box[1], box[2], box[3], JournalColors.NEW);
+                }
             }
         }
         popsPerCell.clear();
@@ -402,16 +426,38 @@ public final class ScenePageView implements PageView {
                 popsPerCell.merge(p.pos(), 1, Integer::sum);
             }
         }
+        // callouts: laid out together, then drawn
+        wants.clear();
+        wantLabels.clear();
         for (SceneAction a : step.actions()) {
             if (a instanceof SceneAction.Label l && time >= l.at()) {
                 float[] s = SceneRenderer.project(m, l.pos().x() + 0.5, l.pos().y() + 0.3, l.pos().z() + 0.5, projected);
-                label(g, font, Math.round(s[0]), Math.round(s[1]), l);
-            } else if (a instanceof SceneAction.Icon i && time >= i.at() && time < i.at() + i.ticks()) {
+                Component text = labelText.computeIfAbsent(l.key(), Component::translatable);
+                int w = labelWidth.computeIfAbsent(l.key(), k -> font.width(text)) + 6;
+                wants.add(new CalloutLayout.Want(Math.round(s[0]), Math.round(s[1]), w, LABEL_H));
+                wantLabels.add(l);
+            }
+        }
+        List<CalloutLayout.Placed> placed = CalloutLayout.place(wants, wx + 1, wx + WINDOW_W - 1, wy + 1);
+        for (CalloutLayout.Placed c : placed) {
+            SceneAction.Label l = wantLabels.get(c.index());
+            CalloutLayout.Want w = wants.get(c.index());
+            label(g, font, c, w, l, linked(l));
+        }
+        // billboards: beside the callouts, with a line to where the hand goes
+        for (SceneAction a : step.actions()) {
+            if (a instanceof SceneAction.Icon i && time >= i.at() && time < i.at() + i.ticks()) {
                 double[] p = SceneMotion.along(i.path(), (time - i.at()) / i.ticks());
                 float[] s = SceneRenderer.project(m, p[0], p[1], p[2], projected);
-                int x = Math.round(s[0]) - 8;
-                int y = Math.round(s[1]) - (i.icon().bottom ? 15 : 8);
-                g.blit(JournalAtlas.SCENE, x, y, i.icon().u, i.icon().v, 16, 16, JournalAtlas.SCENE_W,
+                int ax = Math.round(s[0]);
+                int ay = Math.round(s[1]);
+                int[] at = CalloutLayout.beside(placed, ax - 8, ay - (i.icon().bottom ? 15 : 8), 16, wx + WINDOW_W);
+                if (i.icon().bottom && i.path().size() > 1) {
+                    SceneAction.Point end = i.path().get(i.path().size() - 1);
+                    float[] e = SceneRenderer.project(m, end.x() + 0.5, end.y(), end.z() + 0.5, projected);
+                    dotted(g, at[0] + 8, at[1] + 15, Math.round(e[0]), Math.round(e[1]), JournalColors.NEW);
+                }
+                g.blit(JournalAtlas.SCENE, at[0], at[1], i.icon().u, i.icon().v, 16, 16, JournalAtlas.SCENE_W,
                         JournalAtlas.SCENE_H);
             }
         }
@@ -439,41 +485,110 @@ public final class ScenePageView implements PageView {
         }
     }
 
-    /** Render thread only: scratch of {@link #highlight}. */
-    private static final float[] CORNER = new float[2];
-    private static final int[][] CORNERS = {{0, 0, 0}, {1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {1, 1, 0}, {1, 0, 1},
-            {0, 1, 1}, {1, 1, 1}};
+    private static final int LABEL_H = 13;
+    /** Reused per frame: highlight boxes and the cells they frame, wanted callouts and their labels. */
+    private final List<int[]> boxes = new ArrayList<>();
+    private final List<SceneAction.Highlight> boxCells = new ArrayList<>();
+    private final List<CalloutLayout.Want> wants = new ArrayList<>();
+    private final List<SceneAction.Label> wantLabels = new ArrayList<>();
 
-    /** The screen box of the cells' corners, 1 px. */
-    private static void highlight(GuiGraphics g, Matrix4f m, SceneAction.Highlight h) {
+    /** Whether a callout names a framed cell: its anchor cell, or the cell under it, is in a drawn highlight. */
+    private boolean linked(SceneAction.Label l) {
+        int x = (int) Math.floor(l.pos().x());
+        int y = (int) Math.floor(l.pos().y());
+        int z = (int) Math.floor(l.pos().z());
+        for (SceneAction.Highlight h : boxCells) {
+            boolean inXz = x >= h.from().x() && x <= h.to().x() && z >= h.from().z() && z <= h.to().z();
+            if (inXz && (y >= h.from().y() && y <= h.to().y() || y - 1 >= h.from().y() && y - 1 <= h.to().y())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Render thread only: scratch of {@link #highlightBox}. */
+    private static final float[] CORNER = new float[2];
+
+    /**
+     * The screen box (x, y, w, h) around the shapes of the blocks in the
+     * highlight's cells as they are now, or {@code null} when every cell is
+     * empty (5.png: a frame over a plant already picked).
+     */
+    private int[] highlightBox(Matrix4f m, SceneAction.Highlight h, int[] cells) {
         float x0 = Float.MAX_VALUE;
         float y0 = Float.MAX_VALUE;
         float x1 = -Float.MAX_VALUE;
         float y1 = -Float.MAX_VALUE;
-        for (int[] c : CORNERS) {
-            float[] s = SceneRenderer.project(m, c[0] == 0 ? h.from().x() : h.to().x() + 1,
-                    c[1] == 0 ? h.from().y() : h.to().y() + 1, c[2] == 0 ? h.from().z() : h.to().z() + 1, CORNER);
-            x0 = Math.min(x0, s[0]);
-            y0 = Math.min(y0, s[1]);
-            x1 = Math.max(x1, s[0]);
-            y1 = Math.max(y1, s[1]);
+        boolean any = false;
+        List<BlockState> states = def.states();
+        for (int cx = h.from().x(); cx <= h.to().x(); cx++) {
+            for (int cy = h.from().y(); cy <= h.to().y(); cy++) {
+                for (int cz = h.from().z(); cz <= h.to().z(); cz++) {
+                    if (cx < 0 || cy < 0 || cz < 0 || cx >= def.sizeX() || cy >= def.sizeY() || cz >= def.sizeZ()) {
+                        continue;
+                    }
+                    BlockState st = states.get(cells[def.index(cx, cy, cz)]);
+                    if (st.isAir()) {
+                        continue;
+                    }
+                    net.minecraft.world.phys.shapes.VoxelShape shape = st.getShape(
+                            net.minecraft.world.level.EmptyBlockGetter.INSTANCE, net.minecraft.core.BlockPos.ZERO);
+                    net.minecraft.world.phys.AABB b = shape.isEmpty() ? new net.minecraft.world.phys.AABB(0, 0, 0, 1, 1, 1)
+                            : shape.bounds();
+                    for (int c = 0; c < 8; c++) {
+                        float[] s = SceneRenderer.project(m, cx + ((c & 1) == 0 ? b.minX : b.maxX),
+                                cy + ((c & 2) == 0 ? b.minY : b.maxY), cz + ((c & 4) == 0 ? b.minZ : b.maxZ), CORNER);
+                        x0 = Math.min(x0, s[0]);
+                        y0 = Math.min(y0, s[1]);
+                        x1 = Math.max(x1, s[0]);
+                        y1 = Math.max(y1, s[1]);
+                    }
+                    any = true;
+                }
+            }
         }
-        g.renderOutline(Math.round(x0) - 1, Math.round(y0) - 1, Math.round(x1 - x0) + 2, Math.round(y1 - y0) + 2,
-                JournalColors.NEW);
+        if (!any) {
+            return null;
+        }
+        return new int[] {Math.round(x0) - 2, Math.round(y0) - 2, Math.round(x1 - x0) + 4, Math.round(y1 - y0) + 4};
     }
 
-    /** A callout (9-slice, border 3, text at +3, +2, 13 tall) with its tail pointing down at (x, y). */
-    private void label(GuiGraphics g, Font font, int x, int y, SceneAction.Label l) {
+    /** A dotted 1 px line (every other 2 px), for the hand's way to its cell. */
+    private static void dotted(GuiGraphics g, int xa, int ya, int xb, int yb, int color) {
+        int n = Math.max(Math.abs(xb - xa), Math.abs(yb - ya));
+        for (int i = 0; i <= n; i += 4) {
+            int x = xa + (xb - xa) * i / Math.max(1, n);
+            int y = ya + (yb - ya) * i / Math.max(1, n);
+            g.fill(x, y, x + 2, y + 1, color);
+        }
+    }
+
+    /**
+     * A callout (9-slice, border 3, text at +3, +2, 13 tall) where the layout
+     * put it. Straight above its anchor it has its tail; moved, a leader line
+     * runs down to the anchor. One that names a framed cell is outlined and
+     * led in the frame's green.
+     */
+    private void label(GuiGraphics g, Font font, CalloutLayout.Placed c, CalloutLayout.Want w, SceneAction.Label l,
+                       boolean linked) {
         Component text = labelText.computeIfAbsent(l.key(), Component::translatable);
-        int w = labelWidth.computeIfAbsent(l.key(), k -> font.width(text)) + 6;
-        int h = 13;
-        int bx = x - w / 2;
-        int by = y - 4 - h + 1;
-        sceneNineSlice(g, 16, 16, 12, 12, 3, bx, by, w, h);
-        g.blit(JournalAtlas.SCENE, x - 3, by + h - 1, 30, 16, 7, 4, JournalAtlas.SCENE_W, JournalAtlas.SCENE_H);
-        g.drawString(font, text, bx + 3, by + 2, JournalColors.INK, false);
+        int lead = linked ? JournalColors.NEW : JournalColors.INK;
+        if (c.moved()) {
+            int lx = Math.max(c.x() + 3, Math.min(c.x() + c.w() - 4, w.anchorX()));
+            g.fill(lx, c.y() + c.h(), lx + 1, w.anchorY(), lead);
+            g.fill(w.anchorX() - 1, w.anchorY() - 1, w.anchorX() + 2, w.anchorY() + 2, lead);
+        }
+        sceneNineSlice(g, 16, 16, 12, 12, 3, c.x(), c.y(), c.w(), c.h());
+        if (!c.moved()) {
+            g.blit(JournalAtlas.SCENE, w.anchorX() - 3, c.y() + c.h() - 1, 30, 16, 7, 4, JournalAtlas.SCENE_W,
+                    JournalAtlas.SCENE_H);
+        }
+        if (linked) {
+            g.renderOutline(c.x() - 1, c.y() - 1, c.w() + 2, c.h() + 2, JournalColors.NEW);
+        }
+        g.drawString(font, text, c.x() + 3, c.y() + 2, JournalColors.INK, false);
         if (l.tooltip().isPresent()) {
-            hits.add(new Hit(bx, by, w, h + 3, ItemStack.EMPTY, null, l.tooltip().get()));
+            hits.add(new Hit(c.x(), c.y(), c.w(), c.h() + 3, ItemStack.EMPTY, null, l.tooltip().get()));
         }
     }
 
