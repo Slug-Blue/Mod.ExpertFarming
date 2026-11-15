@@ -119,6 +119,9 @@ public final class MotherNbt {
             return Optional.empty();
         }
         for (DispCodec.Line row : rows) {
+            if (!DispCodec.valid(row)) {
+                continue; // review 1, m3: encode would drop it silently
+            }
             CompoundTag root = base.copy();
             root.put("disp", DispCodec.encode(List.of(row)));
             if (NbtLimits.mother(root).ok() && read(root).isPresent()) {

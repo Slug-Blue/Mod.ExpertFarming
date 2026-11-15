@@ -121,6 +121,9 @@ public final class LotStacks {
                 lot.seedlingNoise());
         List<DispCodec.Line> base = disp(marked);
         for (DispCodec.Line row : rows) {
+            if (!DispCodec.valid(row)) {
+                continue; // review 1, m3: encode would drop it and leave an "inspected" lot without its row
+            }
             List<DispCodec.Line> d = new ArrayList<>(base);
             d.add(row);
             CompoundTag root = LotNbt.write(marked, d);

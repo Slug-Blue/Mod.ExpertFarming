@@ -88,6 +88,27 @@ class LensRowTest {
         assertEquals(Optional.of(wide), LensRow.parse(wide.line()));
     }
 
+    /** Review 1, m3: up to 32 trait tokens (DataLimits.MAX_QUANT_TRAITS); the band is dropped, never the row. */
+    @Test
+    void aBandThatWouldNotFitIsDroppedNotTheRow() {
+        for (int n = 1; n <= 32; n++) {
+            String t = "s3".repeat(n);
+            int[][] b = new int[n][];
+            java.util.Arrays.fill(b, new int[] {2, 4});
+            LensRow r = new LensRow(t, 'w', 'N', true, Optional.empty(), true).withBands(b);
+            assertTrue(DispCodec.valid(r.line()), n + " tokens: " + r.line());
+            assertEquals(Optional.of(r), LensRow.parse(r.line()), n + " tokens");
+            assertEquals(n <= 29 ? 2 * n : 0, r.bands().length(), n + " tokens");
+            assertTrue(r.degradations().stream().allMatch(d -> DispCodec.valid(d.line())), n + " tokens");
+        }
+        // a row whose line is not valid is skipped by the writers (MotherNbt.withRow)
+        LensRow tooLong = new LensRow("s3".repeat(40), 'w', '-', false, Optional.empty(), false);
+        assertFalse(DispCodec.valid(tooLong.line()));
+        assertTrue(io.github.slugblue.wildroots.item.MotherNbt.withRow(
+                io.github.slugblue.wildroots.item.MotherNbtTestRoots.full(), List.of(tooLong.line())).isEmpty(),
+                "an invalid row was stored as no row");
+    }
+
     @Test
     void malformedBandsAreNotLensRows() {
         assertTrue(LensRow.parse(DispCodec.Line.of(LensRow.KEY, "s3y2", "d--~33")).isEmpty(), "too short");

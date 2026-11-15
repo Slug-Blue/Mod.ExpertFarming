@@ -70,6 +70,11 @@ public record LensRow(String traits, char bitter, char pollination, boolean aili
         if (perToken == null || perToken.length != tokens(traits).size() || perToken.length == 0) {
             return new LensRow(traits, bitter, pollination, ailing, looksLike, more, "");
         }
+        // review 1, m3: the band never makes the row invalid; if the flags would pass one disp argument,
+        // the row goes without it
+        if (4 + 1 + 2 * perToken.length > DispCodec.MAX_ARG_LENGTH) {
+            return new LensRow(traits, bitter, pollination, ailing, looksLike, more, "");
+        }
         StringBuilder b = new StringBuilder();
         for (int[] lh : perToken) {
             int lo = Math.max(1, Math.min(5, lh[0]));
