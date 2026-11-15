@@ -58,11 +58,12 @@ class CarrotScenesTest {
         assertEquals("scene.carrot_cycle", scene("carrot_cycle.json").id());
         SceneDef<String> st = scene("carrot_stages.json");
         assertEquals(List.of(6, 2, 3), List.of(st.sizeX(), st.sizeY(), st.sizeZ()));
-        assertEquals(200f, st.camera().yaw(), 1e-4);
+        // the data are mirrored in x so that S0 to S3 read left to right with the front row nearest (playtest 2)
+        assertEquals(160f, st.camera().yaw(), 1e-4);
         assertEquals(30f, st.camera().pitch(), 1e-4);
         SceneDef<String> cy = scene("carrot_cycle.json");
         assertEquals(List.of(5, 3, 5), List.of(cy.sizeX(), cy.sizeY(), cy.sizeZ()));
-        assertEquals(225f, cy.camera().yaw(), 1e-4);
+        assertEquals(135f, cy.camera().yaw(), 1e-4);
         assertEquals(35f, cy.camera().pitch(), 1e-4);
         assertEquals(SceneDef.FrameLayout.RING, cy.frameLayout());
     }
@@ -171,17 +172,36 @@ class CarrotScenesTest {
         assertEquals(Set.of(1, 3, 4, 5), stagesSeen, "stages harvested in the scenes");
     }
 
-    /** §3.3: the plants of the "stages" scene, stage by stage; front row from seed, back row a planted mother. */
+    /**
+     * §3.3: the plants of the "stages" scene, stage by stage; front row from
+     * seed, back row a planted mother. Stage s stands at x = 5 - s: seen from
+     * the front (yaw near 180, the z = 0 row nearest), higher x is further
+     * left on the screen, so S0 to S3 and M3 to M5 read left to right
+     * (owner playtest 2).
+     */
     @Test
     void stagesSceneHasBothRows() {
         SceneDef<String> d = scene("carrot_stages.json");
         int[] c = d.cells();
-        for (int x = 0; x < 4; x++) {
-            assertEquals(x, stageOf(d.states().get(c[d.index(x, 1, 0)])), "S" + x);
+        for (int s = 0; s < 4; s++) {
+            assertEquals(s, stageOf(d.states().get(c[d.index(5 - s, 1, 0)])), "S" + s);
         }
-        for (int x = 3; x < 6; x++) {
-            assertEquals(x, stageOf(d.states().get(c[d.index(x, 1, 2)])), "M" + x);
+        for (int s = 3; s < 6; s++) {
+            assertEquals(s, stageOf(d.states().get(c[d.index(5 - s, 1, 2)])), "M" + s);
         }
+        // and on the screen: S0 left of S3 under the scene's own camera
+        com.mojang.blaze3d.vertex.PoseStack p = new com.mojang.blaze3d.vertex.PoseStack();
+        SceneRenderer.pose(p, 20, d.camera().pitch(), d.camera().yaw(), 132, 56, d.sizeX(), d.sizeY(), d.sizeZ());
+        org.joml.Matrix4f m = p.last().pose();
+        float s0 = m.transform(new org.joml.Vector4f(5 + 0.5f, 1, 0.5f, 1)).x();
+        float s3 = m.transform(new org.joml.Vector4f(2 + 0.5f, 1, 0.5f, 1)).x();
+        float m3 = m.transform(new org.joml.Vector4f(2 + 0.5f, 1, 2.5f, 1)).x();
+        float m5 = m.transform(new org.joml.Vector4f(0 + 0.5f, 1, 2.5f, 1)).x();
+        assertTrue(s0 < s3 && m3 < m5, "rows do not read left to right: S0 " + s0 + ", S3 " + s3 + ", M3 " + m3
+                + ", M5 " + m5);
+        float front = m.transform(new org.joml.Vector4f(3, 1, 0.5f, 1)).z();
+        float back = m.transform(new org.joml.Vector4f(3, 1, 2.5f, 1)).z();
+        assertTrue(front > back, "the front row is not nearest");
         assertEquals(6, d.steps().size());
     }
 
