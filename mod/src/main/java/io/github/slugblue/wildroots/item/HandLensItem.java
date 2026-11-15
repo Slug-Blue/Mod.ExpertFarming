@@ -64,7 +64,7 @@ public class HandLensItem extends Item {
             Optional<Lens.PlantReading> reading = Lens.readPlant(level, ctx.getClickedPos(), player);
             if (reading.isPresent()) {
                 // playtest 2, item 3: the reading opens the lens window; chat gets nothing
-                if (!LensNetwork.send(player, reading.get().packet())) {
+                if (!reading.get().packet().map(w -> LensNetwork.send(player, w)).orElse(false)) {
                     tell(player, reading.get().lines());
                 }
                 return InteractionResult.CONSUME;

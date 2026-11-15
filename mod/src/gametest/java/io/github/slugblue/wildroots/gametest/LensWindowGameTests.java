@@ -106,7 +106,7 @@ public final class LensWindowGameTests {
 
             // the reading in the packet is the plant's: its row parses and the plant stands on farmland
             LensWindowPacket w = sent.windowPackets.get(0);
-            helper.assertTrue(w.equals(Lens.readPlant(level, abs, null).orElseThrow().packet()), "window " + w);
+            helper.assertTrue(w.equals(Lens.readPlant(level, abs, null).orElseThrow().packet().orElseThrow()), "window " + w);
             helper.assertTrue(w.kind() == LensWindowPacket.Kind.PLANT && LensRow.parse(w.row()).isPresent()
                     && w.state() != LensWindowPacket.NO_MODEL && w.size() <= LensWindowPacket.MAX_BYTES,
                     "window " + w);

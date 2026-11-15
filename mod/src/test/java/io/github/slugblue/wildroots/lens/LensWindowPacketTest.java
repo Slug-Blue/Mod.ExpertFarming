@@ -113,6 +113,21 @@ class LensWindowPacketTest {
                 ROW.line(), ROW.line(), 0, -2));
     }
 
+    /** Review 1, m2: a line that is not valid gives no packet, never an exception. */
+    @Test
+    void ofIsEmptyForInvalidLinesOrOversize() {
+        assertTrue(LensWindowPacket.of(LensWindowPacket.Kind.PLANT, "x", DispCodec.Line.of(Lens.HEADER,
+                DispCodec.keyArg("wildroots.cultivar." + "a".repeat(200))), ROW.line(), 0, 0).isEmpty());
+        assertTrue(LensWindowPacket.of(LensWindowPacket.Kind.PLANT, "x", DispCodec.Line.of("bad key"), ROW.line(), 0,
+                0).isEmpty());
+        String big = "Ж".repeat(DispCodec.MAX_ARG_LENGTH);
+        assertTrue(LensWindowPacket.of(LensWindowPacket.Kind.PLANT, "w:" + "x".repeat(120),
+                DispCodec.Line.of("wildroots." + "k".repeat(96), big, big, big, big),
+                DispCodec.Line.of("wildroots." + "r".repeat(96), big, big, big, big), 0, 0).isEmpty());
+        assertEquals(Optional.of(plant()), LensWindowPacket.of(plant().kind(), plant().species(), plant().header(),
+                plant().row(), plant().env(), plant().state()));
+    }
+
     @Test
     void environmentKeys() {
         assertEquals(List.of("wildroots.window.lens.env.dry", "wildroots.window.lens.env.dark"),

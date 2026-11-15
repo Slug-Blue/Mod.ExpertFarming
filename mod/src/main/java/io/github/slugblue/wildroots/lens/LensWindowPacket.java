@@ -49,6 +49,21 @@ public record LensWindowPacket(Kind kind, String species, DispCodec.Line header,
         }
     }
 
+    /**
+     * The packet, or empty when a line is not valid (a data-pack key or
+     * argument too long, review 1, m2) or it would pass {@link #MAX_BYTES}:
+     * the caller then falls back to chat.
+     */
+    public static java.util.Optional<LensWindowPacket> of(Kind kind, String species, DispCodec.Line header,
+                                                          DispCodec.Line row, int env, int state) {
+        try {
+            LensWindowPacket p = new LensWindowPacket(kind, species, header, row, env, state);
+            return p.size() <= MAX_BYTES ? java.util.Optional.of(p) : java.util.Optional.empty();
+        } catch (RuntimeException e) {
+            return java.util.Optional.empty();
+        }
+    }
+
     public void encode(FriendlyByteBuf buf) {
         int start = buf.writerIndex();
         buf.writeByte(kind.ordinal());

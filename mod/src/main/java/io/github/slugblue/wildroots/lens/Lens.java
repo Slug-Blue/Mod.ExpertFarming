@@ -58,8 +58,9 @@ public final class Lens {
     public record PlantReading(DispCodec.Line header, List<DispCodec.Line> lines, LensRow row, int env,
                                String species, int model) {
 
-        public LensWindowPacket packet() {
-            return new LensWindowPacket(LensWindowPacket.Kind.PLANT, species, header, row.line(), env, model);
+        /** The window, or empty if it cannot be sent (the caller falls back to chat). */
+        public Optional<LensWindowPacket> packet() {
+            return LensWindowPacket.of(LensWindowPacket.Kind.PLANT, species, header, row.line(), env, model);
         }
     }
 
@@ -126,8 +127,8 @@ public final class Lens {
         }
         String name = lot.cultivar().map(c -> JournalTriggers.nameKey("cultivar", c))
                 .orElse(JournalTriggers.nameKey("species", lot.species()));
-        return Optional.of(new LensWindowPacket(LensWindowPacket.Kind.LOT, lot.species(),
-                DispCodec.Line.of(LOT_HEADER, DispCodec.keyArg(name)), row.get().line(), 0, LensWindowPacket.NO_MODEL));
+        return LensWindowPacket.of(LensWindowPacket.Kind.LOT, lot.species(),
+                DispCodec.Line.of(LOT_HEADER, DispCodec.keyArg(name)), row.get().line(), 0, LensWindowPacket.NO_MODEL);
     }
 
     /** Appends the tier-1 lines; returns the cultivar the plant looks like, if any. */
