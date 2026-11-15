@@ -12,43 +12,50 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * The lens panel (owner decision D2, 2026-11-11; {@code 00-vision.md} item
- * 33): while the hand lens is carried on the mouse cursor in a container
- * screen and hovers over a seed lot, a mother root or a produce item, the
- * client draws this panel with filled bars, one per tier-1 axis.
+ * The lens panel: a {@link LensSheet} in the journal's paper style, used
+ * in two places.
+ * <ul>
+ *   <li>D2 (owner, 2026-11-11; {@code 00-vision.md} item 33): while the
+ *   hand lens is carried on the mouse cursor in a container screen and
+ *   hovers over a seed lot, a mother root or produce;</li>
+ *   <li>playtest 2, item 4: as the tooltip of an inspected seed lot, an
+ *   inspected mother root and produce, instead of the long list of lines
+ *   (Shift shows the old lines).</li>
+ * </ul>
  *
  * <p>Display only, from data already on the stack: the compact tier-1
  * {@link LensRow} the server wrote into the {@code disp} of an inspected
- * lot or mother root, or the grade and bitterness of produce (it stores
- * nothing else). Nothing here reads a genome or computes genetics; a lot or
- * mother root without the row shows only the hint to click the lens on it
- * (the server inspects it then, {@code HandLensItem#overrideStackedOnOther}).
+ * lot or mother root (with its offspring band), the lot's own {@code disp}
+ * lines (name, generation, origin), or the grade and bitterness of produce.
+ * Nothing here reads a genome or computes genetics; a lot or mother root
+ * without the row shows only the hint to click the lens on it.
  *
- * @param lines the text lines: a header first, then the notes (bitterness,
- *              pollination, signs of inbreeding, "looks like", "and more")
- * @param bars  the bars, drawn right after the header
+ * @param sheet what is drawn
  */
-public record LensPanel(List<Component> lines, List<Bar> bars) implements TooltipComponent {
+public record LensPanel(LensSheet sheet) implements TooltipComponent {
 
-    public static final String MOTHER = "wildroots.panel.lens.mother";
     public static final String ROOT = "wildroots.panel.lens.root";
-    public static final String PRODUCE = "wildroots.panel.lens.produce";
     public static final String GRADE = "wildroots.panel.lens.grade";
     public static final String GRADE_WORD = "wildroots.panel.grade.";
     public static final String CLICK = "wildroots.panel.lens.click";
+    /** Under a planted root's bars: only the planting noise moves it (item 6). */
+    public static final String ROOT_VARY = "wildroots.panel.lens.root_vary";
+    /** The tooltip's hint that Shift shows the text lines. */
+    public static final String SHIFT = "wildroots.panel.lens.shift";
     /** Steps of a tier-1 axis ({@link LensScale}). */
     public static final int STEPS = 5;
     /** Grades of produce (GDD §6.4). */
     public static final int GRADES = 4;
 
     /**
-     * One bar: a label, {@code step} of {@code max} segments filled and the
-     * word of the step (the same word the tooltip shows).
+     * One bar of a row as keys (JUnit): a label, {@code step} of
+     * {@code max} segments filled and the word of the step.
      */
     public record Bar(String labelKey, int step, int max, String wordKey) {
 
@@ -56,24 +63,22 @@ public record LensPanel(List<Component> lines, List<Bar> bars) implements Toolti
             max = Math.max(1, max);
             step = Math.max(0, Math.min(max, step));
         }
-
-        public Component label() {
-            return Component.translatable(labelKey);
-        }
-
-        public Component word() {
-            return Component.translatable(wordKey);
-        }
     }
 
     public LensPanel {
-        lines = List.copyOf(lines);
-        bars = List.copyOf(bars);
+        if (sheet == null) {
+            throw new IllegalArgumentException("no sheet");
+        }
+    }
+
+    /** The bars that are drawn. */
+    public List<LensSheet.Bar> bars() {
+        return sheet.bars();
     }
 
     // ------------------------------------------------------------------ pure parts (JUnit)
 
-    /** The bars of a tier-1 row of {@code species}: one per trait token, in layout order. */
+    /** The bars of a tier-1 row of {@code species} as keys: one per trait token, in layout order. */
     public static List<Bar> bars(LensRow row, String species) {
         List<Bar> out = new ArrayList<>();
         for (LensRow.Token t : LensRow.tokens(row.traits())) {
@@ -99,26 +104,117 @@ public record LensPanel(List<Component> lines, List<Bar> bars) implements Toolti
         return Optional.empty();
     }
 
-    /** A panel of a lot or mother root: its tier-1 row as bars and notes, or the hint to click. */
-    static LensPanel ofRow(String header, Optional<LensRow> row, String species) {
-        List<Component> lines = new ArrayList<>();
-        lines.add(Component.translatable(header));
-        if (row.isEmpty()) {
-            lines.add(Component.translatable(CLICK));
-            return new LensPanel(lines, List.of());
-        }
-        lines.addAll(row.get().notes());
-        return new LensPanel(lines, bars(row.get(), species));
+    /** Whether a {@code disp} line of a lot goes into the panel's header (not the name, not pollination, not the row). */
+    static boolean headerLine(DispCodec.Line l) {
+        return !l.key().startsWith("wildroots.tooltip.lot.pollination.") && !l.key().equals(LensRow.KEY);
     }
 
-    /** A panel of produce: grade bar and bitterness. */
-    static LensPanel ofProduce(int grade, boolean bitter) {
-        List<Component> lines = new ArrayList<>();
-        lines.add(Component.translatable(PRODUCE));
-        if (bitter) {
-            lines.add(Component.translatable("wildroots.grade.bitter"));
+    /**
+     * The panel of a lot root (pure): its name as the title, generation,
+     * line name and origin under it, then the mother's bars with the
+     * offspring band, the flags and "seeds vary"; an uninspected lot gets
+     * the hint to click the lens instead. Empty for no lot.
+     */
+    public static Optional<LensPanel> ofLot(Tag root, boolean shiftHint) {
+        LotNbt.Result r = LotNbt.read(root);
+        String species = r instanceof LotNbt.Lot l ? l.species() : r instanceof LotNbt.Lazy z ? z.species() : null;
+        if (species == null) {
+            return Optional.empty();
         }
-        return new LensPanel(lines, List.of(gradeBar(grade)));
+        List<DispCodec.Line> disp = LotNbt.disp(root);
+        Component title = disp.isEmpty() ? Component.translatable("item.wildroots.seed_lot")
+                : DispCodec.toComponent(disp.get(0));
+        List<Component> header = new ArrayList<>();
+        for (int i = 1; i < disp.size(); i++) {
+            if (headerLine(disp.get(i))) {
+                header.add(DispCodec.toComponent(disp.get(i)));
+            }
+        }
+        boolean inspected = r instanceof LotNbt.Lot l && (l.flags() & LotFlags.INSPECTED) != 0;
+        Optional<LensRow> row = inspected ? row(disp) : Optional.empty();
+        if (row.isEmpty()) {
+            return Optional.of(new LensPanel(new LensSheet(title, header, LensSheet.Icon.NONE, Optional.empty(),
+                    List.of(), List.of(), List.of(Component.translatable(CLICK)))));
+        }
+        LensSheet s = LensSheet.lot(title, header, row.get(), species);
+        return Optional.of(new LensPanel(shiftHint ? withNote(s, Component.translatable(SHIFT)) : s));
+    }
+
+    /**
+     * The panel of a mother root (pure): name, grade and line name, its own
+     * bars with the planting-noise band; the click hint if not inspected.
+     */
+    public static Optional<LensPanel> ofMother(Tag root, boolean shiftHint) {
+        Optional<MotherNbt.Mother> m = MotherNbt.read(root);
+        if (m.isEmpty()) {
+            return Optional.empty();
+        }
+        String species = m.get().species();
+        Component title = Component.translatable(m.get().cultivar().map(c -> nameKey("cultivar", c))
+                .orElse(nameKey("species", species)));
+        List<Component> header = new ArrayList<>();
+        header.add(Component.translatable("wildroots.grade." + m.get().grade()));
+        m.get().lineName().ifPresent(n -> header.add(Component.translatable("wildroots.tooltip.lot.line_name",
+                Component.literal(n))));
+        Optional<LensRow> row = row(MotherNbt.disp(root));
+        if (row.isEmpty()) {
+            return Optional.of(new LensPanel(new LensSheet(title, header, LensSheet.Icon.NONE, Optional.empty(),
+                    List.of(), List.of(), List.of(Component.translatable(CLICK)))));
+        }
+        List<Component> notes = new ArrayList<>();
+        if (!row.get().bands().isEmpty()) {
+            notes.add(Component.translatable(ROOT_VARY));
+        }
+        if (row.get().more()) {
+            notes.add(Component.translatable(LensRow.MORE_KEY));
+        }
+        if (shiftHint) {
+            notes.add(Component.translatable(SHIFT));
+        }
+        return Optional.of(new LensPanel(new LensSheet(title, header, LensSheet.Icon.NONE, Optional.empty(),
+                LensSheet.bars(row.get(), species), LensSheet.flags(row.get()), notes)));
+    }
+
+    /** The panel of produce (pure): its name, colour, the grade bar and bitterness; no band, it has no genome. */
+    public static LensPanel ofProduce(Component title, List<Component> header, int grade, boolean bitter,
+                                      boolean shiftHint) {
+        Bar g = gradeBar(grade);
+        List<LensSheet.Flag> flags = bitter ? List.of(new LensSheet.Flag(LensSheet.Icon.BITTER,
+                Component.translatable("wildroots.grade.bitter"))) : List.of();
+        List<Component> notes = shiftHint ? List.of(Component.translatable(SHIFT)) : List.of();
+        return new LensPanel(new LensSheet(title, header, LensSheet.Icon.NONE, Optional.empty(),
+                List.of(new LensSheet.Bar(Component.translatable(LensReading.TRAIT, Component.translatable(g.labelKey()),
+                        Component.translatable(g.wordKey())), g.step(), g.max(), 0, 0)), flags, notes));
+    }
+
+    static LensSheet withNote(LensSheet s, Component note) {
+        List<Component> notes = new ArrayList<>(s.notes());
+        notes.add(note);
+        return new LensSheet(s.title(), s.header(), s.headIcon(), s.barsTitle(), s.bars(), s.flags(), notes);
+    }
+
+    static String nameKey(String kind, String id) {
+        return io.github.slugblue.wildroots.journal.JournalTriggers.nameKey(kind, id);
+    }
+
+    /**
+     * The tooltip elements once the panel takes them over (item 4; pure,
+     * JUnit): with a panel and no Shift, the panel alone (it draws the name
+     * itself); with Shift on an item tooltip, the text lines without the
+     * panel; the cursor panel ignores Shift; a tooltip without a panel is
+     * left as it is.
+     */
+    public static void arrange(List<com.mojang.datafixers.util.Either<net.minecraft.network.chat.FormattedText,
+            TooltipComponent>> elements, boolean itemTooltip, boolean shift) {
+        boolean panel = elements.stream().anyMatch(e -> e.right().filter(LensPanel.class::isInstance).isPresent());
+        if (!panel) {
+            return;
+        }
+        if (itemTooltip && shift) {
+            elements.removeIf(e -> e.right().filter(LensPanel.class::isInstance).isPresent());
+        } else {
+            elements.removeIf(e -> e.left().isPresent());
+        }
     }
 
     // ------------------------------------------------------------------ from a stack (display only)
@@ -141,25 +237,47 @@ public record LensPanel(List<Component> lines, List<Bar> bars) implements Toolti
         return false;
     }
 
-    /** The panel of {@code stack}: a seed lot, a mother root or produce; empty for anything else. */
+    /** The cursor panel (D2) of {@code stack}: a seed lot, a mother root or produce; empty for anything else. */
     public static Optional<LensPanel> of(ItemStack stack) {
+        return of(stack, false);
+    }
+
+    /**
+     * The panel of {@code stack}; {@code shiftHint} adds "Shift: text" (the
+     * item tooltip, item 4).
+     */
+    public static Optional<LensPanel> of(ItemStack stack, boolean shiftHint) {
         CompoundTag tag = stack.getTag();
         if (stack.getItem() instanceof SeedLotItem) {
-            LotNbt.Result r = LotNbt.read(LotNbt.root(tag));
-            String species = r instanceof LotNbt.Lot l ? l.species() : r instanceof LotNbt.Lazy z ? z.species() : null;
-            if (species == null) {
-                return Optional.empty();
-            }
-            boolean inspected = r instanceof LotNbt.Lot l && (l.flags() & LotFlags.INSPECTED) != 0;
-            return Optional.of(ofRow(MOTHER, inspected ? row(LotNbt.disp(LotNbt.root(tag))) : Optional.empty(),
-                    species));
+            return ofLot(LotNbt.root(tag), shiftHint);
         }
         if (stack.getItem() instanceof MotherItem) {
-            return MotherItem.read(stack).map(m -> ofRow(ROOT, row(MotherNbt.disp(tag.get(MotherNbt.KEY))),
-                    m.species()));
+            return ofMother(tag == null ? null : tag.get(MotherNbt.KEY), shiftHint);
         }
-        if (stack.getItem() instanceof ProduceItem) {
-            return Optional.of(ofProduce(ProduceStacks.grade(tag), ProduceStacks.bitter(tag)));
+        if (stack.getItem() instanceof ProduceItem p) {
+            List<Component> header = new ArrayList<>();
+            if (p.rootColours()) {
+                net.minecraft.resources.ResourceLocation id = net.minecraftforge.registries.ForgeRegistries.ITEMS
+                        .getKey(p);
+                if (id != null) {
+                    header.add(Component.translatable("wildroots.cultivar." + id.getPath() + ".variant."
+                            + (ProduceStacks.colour(tag) == ProduceStacks.PURPLE ? "purple" : "yellow")));
+                }
+            }
+            return Optional.of(ofProduce(stack.getHoverName(), header, ProduceStacks.grade(tag),
+                    ProduceStacks.bitter(tag), shiftHint));
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * The tooltip image of an item (item 4): the styled panel for an
+     * inspected lot or mother root and for produce; none for anything else,
+     * which keeps its short text tooltip.
+     */
+    public static Optional<TooltipComponent> tooltipImage(ItemStack stack) {
+        if (stack.getItem() instanceof ProduceItem || inspected(stack)) {
+            return of(stack, true).map(p -> p);
         }
         return Optional.empty();
     }

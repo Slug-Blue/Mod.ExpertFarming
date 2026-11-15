@@ -1,37 +1,52 @@
 package io.github.slugblue.wildroots.client;
 
 import io.github.slugblue.wildroots.WildRoots;
-import io.github.slugblue.wildroots.client.ui.TraitBar;
+import io.github.slugblue.wildroots.client.journal.JournalColors;
+import io.github.slugblue.wildroots.client.lens.LensSheetView;
 import io.github.slugblue.wildroots.core.registry.ModItems;
 import io.github.slugblue.wildroots.core.safety.EntryPoint;
 import io.github.slugblue.wildroots.core.safety.Guarded;
 import io.github.slugblue.wildroots.lens.LensPanel;
-import io.github.slugblue.wildroots.lens.LensReading;
+import java.util.List;
 import java.util.Optional;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RenderTooltipEvent;
 import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 /**
- * The lens panel on the client (D2, 2026-11-11): bars of the tier-1 axes,
- * drawn only while the hand lens is carried on the mouse cursor in a
- * container screen and the slot under it holds a seed lot, a mother root or
- * produce. Vanilla draws no tooltip while something is carried, so the
- * panel is drawn after the screen ({@link ScreenEvent.Render.Post}). It only
- * draws what {@link LensPanel#of} read from the stack.
+ * The lens panel on the client: a {@link LensPanel} drawn on the journal's
+ * paper by {@link LensSheetView}.
+ * <ul>
+ *   <li>D2 (2026-11-11): while the hand lens is carried on the mouse cursor
+ *   in a container screen and the slot under it holds a seed lot, a mother
+ *   root or produce. Vanilla draws no tooltip while something is carried,
+ *   so the panel is drawn after the screen ({@link ScreenEvent.Render.Post}).
+ *   It works in every container screen, the creative inventory included
+ *   (its menu hands the carried stack over to the player's inventory menu).</li>
+ *   <li>Playtest 2, item 4: the tooltip of an inspected lot, an inspected
+ *   mother root or produce. The panel owns the tooltip then: the text lines
+ *   are left out (the panel draws the name itself) and the tooltip takes the
+ *   paper colours. Holding Shift shows the old text lines instead.</li>
+ * </ul>
  */
 public final class ClientLensPanel implements ClientTooltipComponent {
 
+    /** Widest panel. */
+    static final int MAX_WIDTH = 190;
+
     private final LensPanel data;
+    private int width = -1;
 
     public ClientLensPanel(LensPanel data) {
         this.data = data;
@@ -39,32 +54,23 @@ public final class ClientLensPanel implements ClientTooltipComponent {
 
     @Override
     public int getHeight() {
-        return data.bars().size() * TraitBar.ROW_HEIGHT + (data.bars().isEmpty() ? 0 : 2);
+        Font font = Minecraft.getInstance().font;
+        return LensSheetView.height(font, data.sheet(), getWidth(font)) + 2;
     }
 
     @Override
     public int getWidth(Font font) {
-        int w = 0;
-        for (LensPanel.Bar b : data.bars()) {
-            // + 4: the bar's outline reaches 2 px left of the bar (one style with the journal)
-            w = Math.max(w, TraitBar.width(font, b.max(), label(b)) + 4);
+        if (width < 0) {
+            width = LensSheetView.width(font, data.sheet(), MAX_WIDTH) + 2;
         }
-        return w;
-    }
-
-    static Component label(LensPanel.Bar b) {
-        return Component.translatable(LensReading.TRAIT, b.label(), b.word());
+        return width;
     }
 
     @Override
     @EntryPoint
     public void renderImage(Font font, int x, int y, GuiGraphics g) {
-        Guarded.run("lens panel render", "client", () -> {
-            for (int i = 0; i < data.bars().size(); i++) {
-                LensPanel.Bar b = data.bars().get(i);
-                TraitBar.draw(g, x + 2, y + 1 + i * TraitBar.ROW_HEIGHT, b.step(), b.max(), label(b));
-            }
-        });
+        Guarded.run("lens panel render", "client", () ->
+                LensSheetView.draw(g, font, data.sheet(), x + 1, y, getWidth(font) - 2));
     }
 
     /** The panel for the screen, or empty: the lens on the cursor over a lot, a mother root or produce. */
@@ -91,21 +97,41 @@ public final class ClientLensPanel implements ClientTooltipComponent {
         return lastPanel;
     }
 
-    /** Draws the panel after the screen (Forge bus, client only). */
+    /** Forge bus, client only. */
     @Mod.EventBusSubscriber(modid = WildRoots.MOD_ID, value = Dist.CLIENT)
-    public static final class Events {
+    public static final class LensPanelEvents {
 
-        private Events() {
+        private LensPanelEvents() {
         }
 
         @SubscribeEvent
         @EntryPoint
         public static void onScreenRender(ScreenEvent.Render.Post event) {
             if (event.getScreen() instanceof AbstractContainerScreen<?> screen) {
+                // the line only satisfies the tooltip code; the panel replaces it (onGatherComponents)
                 Guarded.run("lens panel", "client", () -> panel(screen).ifPresent(p -> event.getGuiGraphics()
-                        .renderTooltip(Minecraft.getInstance().font, p.lines(), Optional.of(p), event.getMouseX(),
-                                event.getMouseY())));
+                        .renderTooltip(Minecraft.getInstance().font, List.of(Component.empty()), Optional.of(p),
+                                event.getMouseX(), event.getMouseY())));
             }
+        }
+
+        @SubscribeEvent
+        @EntryPoint
+        public static void onGatherComponents(RenderTooltipEvent.GatherComponents event) {
+            Guarded.run("lens panel gather", "client", () -> LensPanel.arrange(event.getTooltipElements(),
+                    !event.getItemStack().isEmpty(), Screen.hasShiftDown()));
+        }
+
+        @SubscribeEvent
+        @EntryPoint
+        public static void onTooltipColour(RenderTooltipEvent.Color event) {
+            Guarded.run("lens panel colour", "client", () -> {
+                if (event.getComponents().stream().anyMatch(ClientLensPanel.class::isInstance)) {
+                    event.setBackground(LensSheetView.PAPER);
+                    event.setBorderStart(JournalColors.INK);
+                    event.setBorderEnd(JournalColors.INK_FADED);
+                }
+            });
         }
     }
 }

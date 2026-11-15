@@ -196,6 +196,8 @@
   "wildroots.panel.grade.2": "plain",
   "wildroots.panel.grade.3": "fine",
   "wildroots.panel.grade.4": "choice",
+  "wildroots.panel.lens.root_vary": "Shaded: how the planted root may turn out.",
+  "wildroots.panel.lens.shift": "Shift: as text",
   "wildroots.window.lens.lot": "%1$s · seeds",
   "wildroots.window.lens.mother": "Mother plant",
   "wildroots.window.lens.vary": "Seeds vary: offspring differ by about ±1 mark. Shaded: where most of them land.",

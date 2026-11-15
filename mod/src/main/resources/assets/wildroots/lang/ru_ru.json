@@ -196,6 +196,8 @@
   "wildroots.panel.grade.2": "простой",
   "wildroots.panel.grade.3": "добротный",
   "wildroots.panel.grade.4": "отборный",
+  "wildroots.panel.lens.root_vary": "Тенью — каким может вырасти посаженный корень.",
+  "wildroots.panel.lens.shift": "Shift — текстом",
   "wildroots.window.lens.lot": "%1$s · семена",
   "wildroots.window.lens.mother": "Материнское растение",
   "wildroots.window.lens.vary": "Семена разные: потомки отличаются примерно на ±1 деление. Тенью — где окажется большинство.",

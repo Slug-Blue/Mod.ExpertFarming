@@ -106,7 +106,7 @@ public final class LensPanelGameTests {
             LensPanel panel = LensPanel.of(food).orElseThrow();
             helper.assertTrue(panel.bars().size() == 1 && panel.bars().get(0).max() == 4
                     && panel.bars().get(0).step() == ProduceStacks.grade(food.getTag()), "grade bar " + panel.bars());
-            helper.assertTrue(panel.lines().size() == 2, "header and bitter: " + panel.lines());
+            helper.assertTrue(panel.sheet().flags().size() == 1, "bitter flag: " + panel.sheet().flags());
             helper.assertTrue(LensPanel.of(new ItemStack(ModItems.HAND_LENS.get())).isEmpty(), "panel of the lens");
             p.getInventory().setItem(9, food);
             p.inventoryMenu.setCarried(new ItemStack(ModItems.HAND_LENS.get()));

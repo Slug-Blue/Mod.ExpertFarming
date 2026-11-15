@@ -130,4 +130,15 @@ public class MotherItem extends Item {
                     .ifPresent(r -> tooltip.addAll(r.expand(m.get().species())));
         });
     }
+
+    /**
+     * Playtest 2, item 4: the styled lens panel replaces the long text tooltip
+     * (the client keeps the text lines for Shift, {@code client.ClientLensPanel}).
+     */
+    @Override
+    @EntryPoint
+    public java.util.Optional<net.minecraft.world.inventory.tooltip.TooltipComponent> getTooltipImage(ItemStack stack) {
+        return Guarded.call("lens panel image", "motheritem", () -> io.github.slugblue.wildroots.lens.LensPanel.tooltipImage(stack),
+                java.util.Optional.empty());
+    }
 }
