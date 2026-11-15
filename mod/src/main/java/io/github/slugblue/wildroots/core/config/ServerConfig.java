@@ -114,6 +114,10 @@ public final class ServerConfig {
 
     /** GameTests only: {@code value} wins until cleared with {@code null}; the file is not touched. */
     public static <T> void overrideForTests(ForgeConfigSpec.ConfigValue<T> v, T value) {
+        // only values read through value(); any other override would silently do nothing (review 2, n2)
+        if (v != MODE && v != GIVE_JOURNAL_ON_FIRST_HARVEST && v != NAME_SELECTION_PER_MINUTE) {
+            throw new IllegalArgumentException("no test override for " + v.getPath());
+        }
         if (value == null) {
             TEST_OVERRIDES.remove(v);
         } else {

@@ -54,7 +54,7 @@ public final class SceneStateRulesGameTests {
                 == net.minecraft.core.Direction.SOUTH && log.isEmpty(), "the hive is allowed: " + hive);
         helper.assertTrue(resolve("minecraft:bee_nest", log).is(Blocks.BEE_NEST), "the nest is allowed");
 
-        BlockState plant = resolve("wildroots:wild_carrot[stage=3,size=2,variant=1,ailing=true,village=true,active=true]",
+        BlockState plant = resolve("wildroots:wild_carrot[stage=3,size=2,variant=1,ailing=true,village=true,active=false]",
                 log);
         BlockState clean = ModBlocks.WILD_CARROT.get().defaultBlockState();
         helper.assertTrue(plant.is(ModBlocks.WILD_CARROT.get()) && log.isEmpty(), "the plant stays: " + plant + log);

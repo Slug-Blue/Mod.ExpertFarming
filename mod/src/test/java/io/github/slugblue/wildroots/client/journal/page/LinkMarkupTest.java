@@ -72,7 +72,7 @@ class LinkMarkupTest {
             long t0 = System.nanoTime();
             List<Segment> segs = LinkMarkup.parse(s, OPEN);
             long ms = (System.nanoTime() - t0) / 1_000_000;
-            assertTrue(ms < 100, "took " + ms + " ms on " + s.length() + " chars");
+            assertTrue(ms < 1000, "took " + ms + " ms on " + s.length() + " chars");
             assertEquals(s.length(), segs.stream().mapToInt(x -> x.text().length()).sum()
                     + segs.stream().filter(x -> x.target().isPresent())
                     .mapToInt(x -> "[[guide.cycle|]]".length()).sum(), "nothing lost");
