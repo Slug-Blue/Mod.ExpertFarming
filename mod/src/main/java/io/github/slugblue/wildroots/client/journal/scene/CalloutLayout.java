@@ -52,6 +52,7 @@ public final class CalloutLayout {
         List<Placed> out = new ArrayList<>();
         for (int i : order) {
             Want w = wants.get(i);
+            // a callout wider than the window starts at its left edge (review 1, m8)
             int x = Math.max(minX, Math.min(maxX - w.w(), w.anchorX() - w.w() / 2));
             int y = w.anchorY() - 3 - w.h();
             int rows = 0;
@@ -77,16 +78,66 @@ public final class CalloutLayout {
     }
 
     /**
-     * Where a {@code size}-px billboard at {@code (x, y)} goes so it covers
-     * no callout: unchanged if it covers none, else just right of the
-     * callout it covers (or left, if right leaves the window).
+     * The leader of a moved callout (review 1, m8), as an L that ends on the
+     * anchor even when the callout was pushed to the window's edge: down
+     * from the callout's lower edge at {@code lx}, then across to the anchor.
+     * {@code lx} is the column inside the callout nearest the anchor whose
+     * vertical run passes no other callout, if there is one. Returns
+     * {@code {lx, top, anchorY, anchorX}}: the vertical runs from
+     * {@code (lx, top)} to {@code (lx, anchorY)}, the horizontal from there
+     * to {@code (anchorX, anchorY)}. Leaders are drawn before the callouts,
+     * so one that cannot avoid a callout runs under it, never over its text.
      */
-    public static int[] beside(List<Placed> placed, int x, int y, int size, int maxX) {
+    public static int[] leader(List<Placed> placed, Placed c, Want w) {
+        int lo = c.x() + 3;
+        int hi = Math.max(lo, c.x() + c.w() - 4);
+        int best = Math.max(lo, Math.min(hi, w.anchorX()));
+        int top = c.y() + c.h();
+        int bottom = w.anchorY();
+        for (int d = 0; d <= hi - lo; d++) {
+            for (int lx : new int[] {best - d, best + d}) {
+                if (lx >= lo && lx <= hi && !crossesAny(placed, c, lx, top, bottom)) {
+                    return new int[] {lx, top, bottom, w.anchorX()};
+                }
+            }
+        }
+        return new int[] {best, top, bottom, w.anchorX()};
+    }
+
+    /** Whether the vertical {@code x, y0..y1} passes through a callout other than {@code self}. */
+    static boolean crossesAny(List<Placed> placed, Placed self, int x, int y0, int y1) {
+        int a = Math.min(y0, y1);
+        int b = Math.max(y0, y1);
+        for (Placed p : placed) {
+            if (p != self && x >= p.x() && x < p.x() + p.w() && a < p.y() + p.h() && p.y() < b) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Where a {@code size}-px billboard at {@code (x, y)} goes so it covers
+     * no callout and stays in {@code [minX, maxX)}: unchanged if it covers
+     * none, else the first free spot of right of, left of, above and below
+     * the callout it covers; every candidate is checked against all
+     * callouts and both edges (review 1, m8). If none is free it stays.
+     */
+    public static int[] beside(List<Placed> placed, int x, int y, int size, int minX, int maxX) {
         for (Placed p : placed) {
             if (p.overlaps(x, y, size, size)) {
-                int right = p.x() + p.w() + GAP;
-                int nx = right + size <= maxX ? right : p.x() - GAP - size;
-                return new int[] {nx, y};
+                int[][] candidates = {
+                    {p.x() + p.w() + GAP, y},
+                    {p.x() - GAP - size, y},
+                    {x, p.y() - GAP - size},
+                    {x, p.y() + p.h() + GAP},
+                };
+                for (int[] c : candidates) {
+                    if (c[0] >= minX && c[0] + size <= maxX && !overlapsAny(placed, c[0], c[1], size, size)) {
+                        return c;
+                    }
+                }
+                return new int[] {x, y};
             }
         }
         return new int[] {x, y};

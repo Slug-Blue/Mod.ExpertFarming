@@ -439,6 +439,12 @@ public final class ScenePageView implements PageView {
             }
         }
         List<CalloutLayout.Placed> placed = CalloutLayout.place(wants, wx + 1, wx + WINDOW_W - 1, wy + 1);
+        // leaders first, then the callouts over them: a leader never crosses a callout's text (review 1, m8)
+        for (CalloutLayout.Placed c : placed) {
+            if (c.moved()) {
+                leader(g, placed, c, wants.get(c.index()), linked(wantLabels.get(c.index())));
+            }
+        }
         for (CalloutLayout.Placed c : placed) {
             SceneAction.Label l = wantLabels.get(c.index());
             CalloutLayout.Want w = wants.get(c.index());
@@ -451,7 +457,8 @@ public final class ScenePageView implements PageView {
                 float[] s = SceneRenderer.project(m, p[0], p[1], p[2], projected);
                 int ax = Math.round(s[0]);
                 int ay = Math.round(s[1]);
-                int[] at = CalloutLayout.beside(placed, ax - 8, ay - (i.icon().bottom ? 15 : 8), 16, wx + WINDOW_W);
+                int[] at = CalloutLayout.beside(placed, ax - 8, ay - (i.icon().bottom ? 15 : 8), 16, wx + 1,
+                        wx + WINDOW_W - 1);
                 if (i.icon().bottom && i.path().size() > 1) {
                     SceneAction.Point end = i.path().get(i.path().size() - 1);
                     float[] e = SceneRenderer.project(m, end.x() + 0.5, end.y(), end.z() + 0.5, projected);
@@ -572,12 +579,6 @@ public final class ScenePageView implements PageView {
     private void label(GuiGraphics g, Font font, CalloutLayout.Placed c, CalloutLayout.Want w, SceneAction.Label l,
                        boolean linked) {
         Component text = labelText.computeIfAbsent(l.key(), Component::translatable);
-        int lead = linked ? JournalColors.NEW : JournalColors.INK;
-        if (c.moved()) {
-            int lx = Math.max(c.x() + 3, Math.min(c.x() + c.w() - 4, w.anchorX()));
-            g.fill(lx, c.y() + c.h(), lx + 1, w.anchorY(), lead);
-            g.fill(w.anchorX() - 1, w.anchorY() - 1, w.anchorX() + 2, w.anchorY() + 2, lead);
-        }
         sceneNineSlice(g, 16, 16, 12, 12, 3, c.x(), c.y(), c.w(), c.h());
         if (!c.moved()) {
             g.blit(JournalAtlas.SCENE, w.anchorX() - 3, c.y() + c.h() - 1, 30, 16, 7, 4, JournalAtlas.SCENE_W,
@@ -590,6 +591,16 @@ public final class ScenePageView implements PageView {
         if (l.tooltip().isPresent()) {
             hits.add(new Hit(c.x(), c.y(), c.w(), c.h() + 3, ItemStack.EMPTY, null, l.tooltip().get()));
         }
+    }
+
+    /** The L-shaped leader of a moved callout down to its anchor, and the anchor dot ({@link CalloutLayout#leader}). */
+    private static void leader(GuiGraphics g, List<CalloutLayout.Placed> placed, CalloutLayout.Placed c,
+                               CalloutLayout.Want w, boolean linked) {
+        int lead = linked ? JournalColors.NEW : JournalColors.INK;
+        int[] l = CalloutLayout.leader(placed, c, w);
+        g.fill(l[0], Math.min(l[1], l[2]), l[0] + 1, Math.max(l[1], l[2]) + 1, lead);
+        g.fill(Math.min(l[0], l[3]), l[2], Math.max(l[0], l[3]) + 1, l[2] + 1, lead);
+        g.fill(w.anchorX() - 1, w.anchorY() - 1, w.anchorX() + 2, w.anchorY() + 2, lead);
     }
 
     /** 9-slice of {@code journal_scene.png} (64 × 32). */
