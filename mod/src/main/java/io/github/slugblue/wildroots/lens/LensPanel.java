@@ -200,9 +200,11 @@ public record LensPanel(LensSheet sheet) implements TooltipComponent {
 
     /**
      * The tooltip elements once the panel takes them over (item 4; pure,
-     * JUnit): with a panel and no Shift, the panel alone (it draws the name
-     * itself); with Shift on an item tooltip, the text lines without the
-     * panel; the cursor panel ignores Shift; a tooltip without a panel is
+     * JUnit). On an item without Shift the panel replaces only our own long
+     * lines (translation keys {@code wildroots.*}): the item name (first
+     * line), other mods' lines and the F3+H advanced lines stay (review 1,
+     * m6). With Shift on an item, the text lines without the panel. The
+     * cursor panel (no item) is the panel alone. A tooltip without a panel is
      * left as it is.
      */
     public static void arrange(List<com.mojang.datafixers.util.Either<net.minecraft.network.chat.FormattedText,
@@ -213,9 +215,22 @@ public record LensPanel(LensSheet sheet) implements TooltipComponent {
         }
         if (itemTooltip && shift) {
             elements.removeIf(e -> e.right().filter(LensPanel.class::isInstance).isPresent());
+        } else if (itemTooltip) {
+            for (int i = elements.size() - 1; i > 0; i--) {
+                if (elements.get(i).left().filter(LensPanel::ours).isPresent()) {
+                    elements.remove(i);
+                }
+            }
         } else {
             elements.removeIf(e -> e.left().isPresent());
         }
+    }
+
+    /** A line our {@code appendHoverText} wrote: a translatable {@code wildroots.*} key. */
+    static boolean ours(net.minecraft.network.chat.FormattedText t) {
+        return t instanceof Component c
+                && c.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents k
+                && k.getKey().startsWith("wildroots.");
     }
 
     // ------------------------------------------------------------------ from a stack (display only)
@@ -265,7 +280,9 @@ public record LensPanel(LensSheet sheet) implements TooltipComponent {
                             + (ProduceStacks.colour(tag) == ProduceStacks.PURPLE ? "purple" : "yellow")));
                 }
             }
-            return Optional.of(ofProduce(stack.getHoverName(), header, ProduceStacks.grade(tag),
+            // on an item tooltip the name line stays above the panel (m6): no second title
+            return Optional.of(ofProduce(shiftHint ? Component.empty() : stack.getHoverName(), header,
+                    ProduceStacks.grade(tag),
                     ProduceStacks.bitter(tag), shiftHint));
         }
         return Optional.empty();

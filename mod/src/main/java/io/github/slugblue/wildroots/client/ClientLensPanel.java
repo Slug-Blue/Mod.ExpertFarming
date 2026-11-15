@@ -69,8 +69,12 @@ public final class ClientLensPanel implements ClientTooltipComponent {
     @Override
     @EntryPoint
     public void renderImage(Font font, int x, int y, GuiGraphics g) {
-        Guarded.run("lens panel render", "client", () ->
-                LensSheetView.draw(g, font, data.sheet(), x + 1, y, getWidth(font) - 2));
+        Guarded.run("lens panel render", "client", () -> {
+            // a card of paper under the panel: the tooltip around it keeps vanilla colours when other
+            // lines stay (review 1, m6), and the ink reads only on paper
+            g.fill(x - 1, y - 1, x + getWidth(font), y + getHeight() - 1, LensSheetView.PAPER);
+            LensSheetView.draw(g, font, data.sheet(), x + 1, y, getWidth(font) - 2);
+        });
     }
 
     /** The panel for the screen, or empty: the lens on the cursor over a lot, a mother root or produce. */
@@ -126,7 +130,8 @@ public final class ClientLensPanel implements ClientTooltipComponent {
         @EntryPoint
         public static void onTooltipColour(RenderTooltipEvent.Color event) {
             Guarded.run("lens panel colour", "client", () -> {
-                if (event.getComponents().stream().anyMatch(ClientLensPanel.class::isInstance)) {
+                // the whole tooltip is paper only when the panel is all of it (the cursor panel)
+                if (event.getComponents().size() == 1 && event.getComponents().get(0) instanceof ClientLensPanel) {
                     event.setBackground(LensSheetView.PAPER);
                     event.setBorderStart(JournalColors.INK);
                     event.setBorderEnd(JournalColors.INK_FADED);

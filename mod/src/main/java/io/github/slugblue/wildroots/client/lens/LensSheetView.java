@@ -45,6 +45,11 @@ public final class LensSheetView {
     }
 
     /** Natural width: the widest element, at most {@code max}. */
+    /** No title line: an empty title without an icon (the item tooltip keeps the item's own name line). */
+    static boolean noTitle(LensSheet s) {
+        return s.headIcon() == LensSheet.Icon.NONE && s.title().getString().isEmpty();
+    }
+
     public static int width(Font font, LensSheet s, int max) {
         int w = font.width(s.title()) + (s.headIcon() == LensSheet.Icon.NONE ? 0 : ICON + ICON_GAP);
         for (Component c : s.header()) {
@@ -67,7 +72,8 @@ public final class LensSheetView {
 
     /** Height at {@code width}. */
     public static int height(Font font, LensSheet s, int width) {
-        int h = lines(font, s.title(), width - (s.headIcon() == LensSheet.Icon.NONE ? 0 : ICON + ICON_GAP)) * LINE;
+        int h = noTitle(s) ? 0
+                : lines(font, s.title(), width - (s.headIcon() == LensSheet.Icon.NONE ? 0 : ICON + ICON_GAP)) * LINE;
         for (Component c : s.header()) {
             h += lines(font, c, width) * LINE;
         }
@@ -102,7 +108,9 @@ public final class LensSheetView {
             TraitBar.drawFlag(g, flag(s.headIcon()), x, cy);
             tx += ICON + ICON_GAP;
         }
-        cy = text(g, font, s.title(), tx, cy, width - (tx - x), JournalColors.INK);
+        if (!noTitle(s)) {
+            cy = text(g, font, s.title(), tx, cy, width - (tx - x), JournalColors.INK);
+        }
         for (Component c : s.header()) {
             cy = text(g, font, c, x, cy, width, JournalColors.INK_FADED);
         }
