@@ -40,7 +40,6 @@ import net.minecraft.world.item.ItemStack;
  */
 public record LensPanel(LensSheet sheet) implements TooltipComponent {
 
-    public static final String ROOT = "wildroots.panel.lens.root";
     public static final String GRADE = "wildroots.panel.lens.grade";
     public static final String GRADE_WORD = "wildroots.panel.grade.";
     public static final String CLICK = "wildroots.panel.lens.click";
