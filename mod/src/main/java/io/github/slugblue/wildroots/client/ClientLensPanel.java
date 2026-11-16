@@ -43,8 +43,10 @@ import net.minecraftforge.fml.common.Mod;
  */
 public final class ClientLensPanel implements ClientTooltipComponent {
 
-    /** Widest panel. */
-    static final int MAX_WIDTH = 190;
+    /** Widest panel when the screen allows (a Russian bar label is about 175 px beside its bar). */
+    static final int MAX_WIDTH = 240;
+    /** Kept free of the screen's width for the tooltip's own offset, padding and the screen edge. */
+    static final int SCREEN_MARGIN = 40;
 
     private final LensPanel data;
     private int width = -1;
@@ -56,13 +58,16 @@ public final class ClientLensPanel implements ClientTooltipComponent {
     @Override
     public int getHeight() {
         Font font = Minecraft.getInstance().font;
-        return LensSheetView.height(font, data.sheet(), getWidth(font)) + 2;
+        return LensSheetView.height(font, data.sheet(), getWidth(font) - 2) + 2;
     }
 
     @Override
     public int getWidth(Font font) {
         if (width < 0) {
-            width = LensSheetView.width(font, data.sheet(), MAX_WIDTH) + 2;
+            // real measured text, capped by the screen: wider content wraps inside the card (never past it)
+            int screen = Minecraft.getInstance().getWindow().getGuiScaledWidth();
+            int cap = Math.max(80, Math.min(MAX_WIDTH, screen - SCREEN_MARGIN));
+            width = LensSheetView.width(font, data.sheet(), cap) + 2;
         }
         return width;
     }

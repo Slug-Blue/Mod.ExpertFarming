@@ -38,7 +38,10 @@ import net.minecraftforge.client.model.data.ModelData;
 @OnlyIn(Dist.CLIENT)
 public final class LensWindowScreen extends Screen {
 
-    static final int SHEET_WIDTH = 170;
+    /** Widest sheet when the screen allows. */
+    static final int MAX_SHEET = 240;
+    /** Kept free of the screen's width on both sides. */
+    static final int SCREEN_MARGIN = 16;
     static final int MODEL = 84;
     static final int PAD = 8;
     static final float MODEL_SCALE = 30;
@@ -50,6 +53,7 @@ public final class LensWindowScreen extends Screen {
     private int left;
     private int top;
     private int sheetHeight;
+    private int sheetWidth;
 
     LensWindowScreen(LensSheet sheet, Optional<BlockState> plant) {
         super(sheet.title());
@@ -115,8 +119,12 @@ public final class LensWindowScreen extends Screen {
 
     @Override
     protected void init() {
-        sheetHeight = LensSheetView.height(font, sheet, SHEET_WIDTH);
-        int w = SHEET_WIDTH + 2 * PAD + (plant.isPresent() ? MODEL + PAD : 0);
+        // the sheet is as wide as its widest element, at most what the screen leaves beside the model
+        int beside = plant.isPresent() ? MODEL + PAD : 0;
+        int cap = Math.max(80, Math.min(MAX_SHEET, width - 2 * SCREEN_MARGIN - 2 * PAD - beside));
+        sheetWidth = LensSheetView.width(font, sheet, cap);
+        sheetHeight = LensSheetView.height(font, sheet, sheetWidth);
+        int w = sheetWidth + 2 * PAD + beside;
         int h = Math.max(sheetHeight, plant.isPresent() ? MODEL : 0) + 2 * PAD;
         left = (width - w) / 2;
         top = Math.max(4, (height - h) / 2);
@@ -138,7 +146,7 @@ public final class LensWindowScreen extends Screen {
 
     @Override
     public boolean mouseDragged(double x, double y, int button, double dx, double dy) {
-        int mx = left + PAD + SHEET_WIDTH + PAD;
+        int mx = left + PAD + sheetWidth + PAD;
         int my = top + PAD;
         if (plant.isPresent() && x >= mx && x < mx + MODEL && y >= my && y < my + MODEL) {
             yaw += (float) dx * 2;
@@ -152,12 +160,12 @@ public final class LensWindowScreen extends Screen {
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
         renderBackground(g);
         Guarded.run("lens window render", "client", () -> {
-            int w = SHEET_WIDTH + 2 * PAD + (plant.isPresent() ? MODEL + PAD : 0);
+            int w = sheetWidth + 2 * PAD + (plant.isPresent() ? MODEL + PAD : 0);
             int h = Math.max(sheetHeight, plant.isPresent() ? MODEL : 0) + 2 * PAD;
             LensSheetView.paper(g, left, top, left + w, top + h);
-            LensSheetView.draw(g, font, sheet, left + PAD, top + PAD, SHEET_WIDTH);
+            LensSheetView.draw(g, font, sheet, left + PAD, top + PAD, sheetWidth);
             plant.ifPresent(p -> {
-                int mx = left + PAD + SHEET_WIDTH + PAD;
+                int mx = left + PAD + sheetWidth + PAD;
                 int my = top + PAD;
                 g.fill(mx, my, mx + MODEL, my + MODEL, 0x183A2A1A);
                 g.renderOutline(mx, my, MODEL, MODEL, JournalColors.INK_FADED);

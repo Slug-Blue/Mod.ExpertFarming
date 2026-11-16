@@ -6,6 +6,7 @@ import io.github.slugblue.wildroots.lens.LensSheet;
 import java.util.List;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import io.github.slugblue.wildroots.lens.LensSheetLayout;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraftforge.api.distmarker.Dist;
@@ -26,133 +27,91 @@ public final class LensSheetView {
     public static final int PAPER = 0xFFF4EEDE;
     /** The band: faded ink, half transparent. */
     static final int BAND = 0x808A7A62;
-    static final int LINE = 10;
-    static final int ICON = 9;
-    static final int ICON_GAP = 3;
-    static final int SECTION_GAP = 3;
-    /** Extra height of a bar row that has a band strip. */
-    static final int BAND_ROOM = 2;
 
     private LensSheetView() {
     }
 
-    static boolean anyBand(LensSheet s) {
-        return s.bars().stream().anyMatch(LensSheet.Bar::hasBand);
-    }
-
-    static int barRow(LensSheet s) {
-        return TraitBar.ROW_HEIGHT + (anyBand(s) ? BAND_ROOM : 0);
-    }
-
-    /** Natural width: the widest element, at most {@code max}. */
-    /** No title line: an empty title without an icon (the item tooltip keeps the item's own name line). */
-    static boolean noTitle(LensSheet s) {
-        return s.headIcon() == LensSheet.Icon.NONE && s.title().getString().isEmpty();
-    }
-
-    public static int width(Font font, LensSheet s, int max) {
-        int w = font.width(s.title()) + (s.headIcon() == LensSheet.Icon.NONE ? 0 : ICON + ICON_GAP);
-        for (Component c : s.header()) {
-            w = Math.max(w, font.width(c));
-        }
-        if (s.barsTitle().isPresent()) {
-            w = Math.max(w, font.width(s.barsTitle().get()));
-        }
-        for (LensSheet.Bar b : s.bars()) {
-            w = Math.max(w, 1 + TraitBar.width(font, b.max(), b.label()));
-        }
-        for (LensSheet.Flag f : s.flags()) {
-            w = Math.max(w, ICON + ICON_GAP + font.width(f.text()));
-        }
-        for (Component c : s.notes()) {
-            w = Math.max(w, Math.min(max, font.width(c)));
-        }
-        return Math.min(max, w);
-    }
-
-    /** Height at {@code width}. */
-    public static int height(Font font, LensSheet s, int width) {
-        int h = noTitle(s) ? 0
-                : lines(font, s.title(), width - (s.headIcon() == LensSheet.Icon.NONE ? 0 : ICON + ICON_GAP)) * LINE;
-        for (Component c : s.header()) {
-            h += lines(font, c, width) * LINE;
-        }
-        if (s.barsTitle().isPresent() || !s.bars().isEmpty()) {
-            h += SECTION_GAP;
-        }
-        if (s.barsTitle().isPresent()) {
-            h += LINE;
-        }
-        h += s.bars().size() * barRow(s);
-        if (!s.flags().isEmpty()) {
-            h += SECTION_GAP + s.flags().size() * LINE;
-        }
-        if (!s.notes().isEmpty()) {
-            h += SECTION_GAP;
-            for (Component c : s.notes()) {
-                h += lines(font, c, width) * LINE;
+    /** The real font as the layout's measure. */
+    static LensSheetLayout.Measure measure(Font font) {
+        return new LensSheetLayout.Measure() {
+            @Override
+            public int width(Component c) {
+                return font.width(c);
             }
-        }
-        return h;
-    }
 
-    static int lines(Font font, Component c, int width) {
-        return Math.max(1, font.split(c, Math.max(20, width)).size());
-    }
-
-    /** Draws the sheet with its top left at {@code x, y}; returns the height used. */
-    public static int draw(GuiGraphics g, Font font, LensSheet s, int x, int y, int width) {
-        int cy = y;
-        int tx = x;
-        if (s.headIcon() != LensSheet.Icon.NONE) {
-            TraitBar.drawFlag(g, flag(s.headIcon()), x, cy);
-            tx += ICON + ICON_GAP;
-        }
-        if (!noTitle(s)) {
-            cy = text(g, font, s.title(), tx, cy, width - (tx - x), JournalColors.INK);
-        }
-        for (Component c : s.header()) {
-            cy = text(g, font, c, x, cy, width, JournalColors.INK_FADED);
-        }
-        if (s.barsTitle().isPresent() || !s.bars().isEmpty()) {
-            cy += SECTION_GAP;
-        }
-        if (s.barsTitle().isPresent()) {
-            g.drawString(font, s.barsTitle().get(), x, cy, JournalColors.INK, false);
-            g.fill(x, cy + 9, x + Math.min(width, font.width(s.barsTitle().get())), cy + 10, JournalColors.INK_FADED);
-            cy += LINE;
-        }
-        int row = barRow(s);
-        for (LensSheet.Bar b : s.bars()) {
-            int bx = x + 1;
-            TraitBar.drawOnPaper(g, bx, cy, b.step(), b.max(), b.label());
-            if (b.hasBand()) {
-                int step = TraitBar.SEGMENT_WIDTH + TraitBar.GAP;
-                int x0 = bx + (b.bandLo() - 1) * step - 1;
-                int x1 = bx + (b.bandHi() - 1) * step + TraitBar.SEGMENT_WIDTH + 1;
-                int top = cy + (TraitBar.ROW_HEIGHT - TraitBar.BAR_HEIGHT) / 2 - 1 + TraitBar.BAR_HEIGHT + 2;
-                g.fill(x0, top, x1, top + BAND_ROOM, BAND);
-            }
-            cy += row;
-        }
-        if (!s.flags().isEmpty()) {
-            cy += SECTION_GAP;
-            for (LensSheet.Flag f : s.flags()) {
-                if (f.icon() != LensSheet.Icon.NONE) {
-                    TraitBar.drawFlag(g, flag(f.icon()), x, cy);
+            @Override
+            public List<Integer> wrap(Component c, int maxWidth) {
+                List<Integer> out = new java.util.ArrayList<>();
+                for (FormattedCharSequence l : font.split(c, Math.max(1, maxWidth))) {
+                    out.add(font.width(l));
                 }
-                String cut = font.plainSubstrByWidth(f.text().getString(), Math.max(10, width - ICON - ICON_GAP));
-                g.drawString(font, cut, x + ICON + ICON_GAP, cy + 1, JournalColors.INK, false);
-                cy += LINE;
+                if (out.isEmpty()) {
+                    out.add(0);
+                }
+                return out;
+            }
+        };
+    }
+
+    /** The card's width for {@code s}: its widest element, at most {@code cap} (review: playtest 2 overflow). */
+    public static int width(Font font, LensSheet s, int cap) {
+        return LensSheetLayout.width(measure(font), s, cap);
+    }
+
+    /** Height at {@code width}: the real number of wrapped lines. */
+    public static int height(Font font, LensSheet s, int width) {
+        return LensSheetLayout.layout(measure(font), s, width).height();
+    }
+
+    /** Draws the sheet with its top left at {@code x, y} on a card {@code width} wide; returns the height used. */
+    public static int draw(GuiGraphics g, Font font, LensSheet s, int x, int y, int width) {
+        LensSheetLayout.Layout lay = LensSheetLayout.layout(measure(font), s, width);
+        if (s.headIcon() != LensSheet.Icon.NONE) {
+            TraitBar.drawFlag(g, flag(s.headIcon()), x, y);
+        }
+        for (LensSheetLayout.Block b : lay.blocks()) {
+            int by = y + b.y();
+            switch (b.kind()) {
+                case TITLE -> lines(g, font, b, x, by, JournalColors.INK);
+                case HEADER, NOTE -> lines(g, font, b, x, by, JournalColors.INK_FADED);
+                case BARS_TITLE -> {
+                    lines(g, font, b, x, by, JournalColors.INK);
+                    int w = b.lines().stream().mapToInt(Integer::intValue).max().orElse(0);
+                    g.fill(x, by + b.h() - 1, x + Math.min(width, w), by + b.h(), JournalColors.INK_FADED);
+                }
+                case BAR -> {
+                    LensSheet.Bar bar = s.bars().get(b.index());
+                    int bx = x + b.x();
+                    // the bar alone; its label is drawn wrapped inside the card below
+                    TraitBar.drawOnPaper(g, bx, by, bar.step(), bar.max(), Component.empty());
+                    lines(g, font, b, x, by, JournalColors.INK);
+                    if (bar.hasBand()) {
+                        int step = TraitBar.SEGMENT_WIDTH + TraitBar.GAP;
+                        int x0 = bx + (bar.bandLo() - 1) * step - 1;
+                        int x1 = bx + (bar.bandHi() - 1) * step + TraitBar.SEGMENT_WIDTH + 1;
+                        int top = by + (TraitBar.ROW_HEIGHT - TraitBar.BAR_HEIGHT) / 2 - 1 + TraitBar.BAR_HEIGHT + 2;
+                        g.fill(x0, top, x1, top + LensSheetLayout.BAND_ROOM, BAND);
+                    }
+                }
+                case FLAG -> {
+                    LensSheet.Flag f = s.flags().get(b.index());
+                    if (f.icon() != LensSheet.Icon.NONE) {
+                        TraitBar.drawFlag(g, flag(f.icon()), x, by);
+                    }
+                    lines(g, font, b, x, by, JournalColors.INK);
+                }
             }
         }
-        if (!s.notes().isEmpty()) {
-            cy += SECTION_GAP;
-            for (Component c : s.notes()) {
-                cy = text(g, font, c, x, cy, width, JournalColors.INK_FADED);
-            }
+        return lay.height();
+    }
+
+    /** The wrapped lines of a block, ink without shadow, inside {@code avail}. */
+    private static void lines(GuiGraphics g, Font font, LensSheetLayout.Block b, int x, int y, int colour) {
+        int ly = y;
+        for (FormattedCharSequence l : font.split(b.text(), Math.max(1, b.avail()))) {
+            g.drawString(font, l, x + b.textX(), ly + 1, colour, false);
+            ly += LensSheetLayout.LINE;
         }
-        return cy - y;
     }
 
     /** The journal legend's sprite of an icon ({@link LensSheet.Icon#NONE} has none and is never drawn). */
@@ -166,18 +125,6 @@ public final class LensSheetView {
             case AILING -> TraitBar.Flag.AILING;
             case LIKE_CULTIVAR, NONE -> TraitBar.Flag.LIKE_CULTIVAR;
         };
-    }
-
-    static int text(GuiGraphics g, Font font, Component c, int x, int y, int width, int colour) {
-        List<FormattedCharSequence> split = font.split(c, Math.max(20, width));
-        if (split.isEmpty()) {
-            return y + LINE;
-        }
-        for (FormattedCharSequence l : split) {
-            g.drawString(font, l, x, y + 1, colour, false);
-            y += LINE;
-        }
-        return y;
     }
 
     /** A sheet of paper: fill, an ink frame and a faded inner line (the journal's page edge). */
