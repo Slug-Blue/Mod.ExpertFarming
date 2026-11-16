@@ -34,10 +34,11 @@ class LensColourTest {
     void theOtherColoursListOnlyWhatIsNotNeutral() {
         assertEquals(List.of(LensColour.KEY, LensColour.KEY + ".heat.up", LensColour.KEY + ".cold.down",
                 LensColour.KEY + ".water.less"), keys(ColourClimateTest.YELLOW));
-        assertEquals(List.of(LensColour.KEY, LensColour.KEY + ".heat.up", LensColour.KEY + ".cold.down"),
-                keys(ColourClimateTest.RED));
+        assertEquals(List.of(LensColour.KEY, LensColour.KEY + ".heat.up", LensColour.KEY + ".cold.down",
+                LensColour.KEY + ".water.less", LensColour.KEY + ".saturation"), keys(ColourClimateTest.RED));
         assertEquals(List.of(LensColour.KEY, LensColour.KEY + ".cold.up"), keys(ColourClimateTest.WHITE));
-        assertEquals(List.of(LensColour.KEY, LensColour.KEY + ".heat.down"), keys(ColourClimateTest.ORANGE));
+        assertEquals(List.of(LensColour.KEY, LensColour.KEY + ".heat.down", LensColour.KEY + ".cold.up"),
+                keys(ColourClimateTest.ORANGE));
     }
 
     @Test

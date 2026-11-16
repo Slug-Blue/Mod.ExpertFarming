@@ -25,9 +25,13 @@ import net.minecraftforge.registries.ForgeRegistries;
  */
 public class ProduceItem extends Item {
 
+    /** "Root colour: %s", the colour of the stack in its tooltip and lens panel (WR-706). */
+    public static final String ROOT_COLOUR_KEY = "wildroots.tooltip.root_colour";
+
     private final CultivarInfo.FoodReference fallback;
     private final boolean toxic;
     private final boolean rootColours;
+    private final int defaultColour;
 
     public ProduceItem(Properties properties, CultivarInfo.FoodReference fallback, boolean toxic) {
         this(properties, fallback, toxic, false);
@@ -35,11 +39,28 @@ public class ProduceItem extends Item {
 
     /** {@code rootColours}: the stacks carry a yellow / purple / red root colour (WR-136a, eastern carrot). */
     public ProduceItem(Properties properties, CultivarInfo.FoodReference fallback, boolean toxic, boolean rootColours) {
+        this(properties, fallback, toxic, rootColours, ProduceStacks.YELLOW);
+    }
+
+    /** {@code defaultColour}: the colour a stack has without the colour key (yellow eastern carrot, orange carrot). */
+    public ProduceItem(Properties properties, CultivarInfo.FoodReference fallback, boolean toxic, boolean rootColours,
+                       int defaultColour) {
         super(properties.food(new FoodProperties.Builder().nutrition(fallback.nutrition())
                 .saturationMod((float) fallback.saturation()).build()));
         this.fallback = fallback;
         this.toxic = toxic;
         this.rootColours = rootColours;
+        this.defaultColour = defaultColour;
+    }
+
+    /** Colour of a stack without the colour key (WR-706). */
+    public int defaultColour() {
+        return defaultColour;
+    }
+
+    /** Root colour of a stack of this item. */
+    public int colourOf(ItemStack stack) {
+        return ProduceStacks.colour(stack.getTag(), defaultColour);
     }
 
     public boolean rootColours() {
@@ -48,14 +69,14 @@ public class ProduceItem extends Item {
 
     /**
      * The saturation multiplier of the stack's root colour (the purple root's anthocyanins, WR-703); 1 without
-     * colours. The colour name is one of the fixed ids yellow / purple / red and must equal the colour ids of the
+     * colours. The colour name is one of the fixed ids yellow / orange / purple / red and must equal the colour ids of the
      * species JSON. Server and single player apply it; a remote client has no colour data and uses 1 (accepted:
      * the server is authoritative, only client-side predictions differ).
      */
     double colourSaturation(ItemStack stack) {
         ResourceLocation id = rootColours ? ForgeRegistries.ITEMS.getKey(this) : null;
         return id == null ? 1 : GradedFood.colourSaturation(id,
-                ProduceStacks.colourName(ProduceStacks.colour(stack.getTag())));
+                ProduceStacks.colourName(colourOf(stack)));
     }
 
     public CultivarInfo.FoodReference reference() {
@@ -84,14 +105,9 @@ public class ProduceItem extends Item {
     public void appendHoverText(ItemStack stack, Level level, List<Component> tooltip, TooltipFlag flag) {
         Guarded.run("produce tooltip", "produce", () -> {
             if (rootColours) {
-                ResourceLocation id = ForgeRegistries.ITEMS.getKey(this);
-                if (id != null) {
-                    tooltip.add(Component.translatable("wildroots.cultivar." + id.getPath() + ".variant."
-                            + ProduceStacks.colourName(ProduceStacks.colour(stack.getTag()))));
-                }
-            }
-            if (rootColours && ProduceStacks.colour(stack.getTag()) == ProduceStacks.PURPLE) {
-                tooltip.add(Component.translatable("wildroots.tooltip.colour.purple"));
+                String colour = ProduceStacks.colourName(colourOf(stack));
+                tooltip.add(Component.translatable(ROOT_COLOUR_KEY, Component.translatable("wildroots.colour." + colour)));
+                tooltip.add(Component.translatable("wildroots.tooltip.colour." + colour));
             }
             tooltip.add(Component.translatable("wildroots.grade." + ProduceStacks.grade(stack.getTag())));
             if (ProduceStacks.bitter(stack.getTag())) {

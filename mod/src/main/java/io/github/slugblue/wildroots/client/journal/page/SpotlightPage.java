@@ -22,7 +22,7 @@ public record SpotlightPage(ResourceLocation item, Optional<String> variant, Opt
 
     public static final String TYPE = "spotlight";
     /** Display variants built on the client (journal v2 §3.1); the stacks never leave the client. */
-    public static final Set<String> VARIANTS = Set.of("colour=yellow", "colour=purple", "colour=red");
+    public static final Set<String> VARIANTS = Set.of("colour=yellow", "colour=purple", "colour=red", "colour=orange");
     static final Pattern VARIANT = Pattern.compile("[a-z_]{1,32}=[a-z0-9_]{1,32}");
 
     static SpotlightPage parse(JsonObject o, PageParser.Context ctx) throws GuideFormatException {

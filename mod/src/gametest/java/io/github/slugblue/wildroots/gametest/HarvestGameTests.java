@@ -216,7 +216,7 @@ public final class HarvestGameTests {
         helper.succeed();
     }
 
-    /** ADR-0007 invariant (WR-136, WR-136a): a segregating 5×5 bed gives ≤ 6 distinct stacks per harvest item, ≤ 12 with root colours. */
+    /** ADR-0007 invariant (WR-136, WR-136a): a segregating 5×5 bed gives ≤ 6 distinct stacks per harvest item, ≤ 16 with root colours. */
     @GameTest(template = SmokeGameTests.FLOOR_3X3X3, timeoutTicks = 200)
     public static void segregatingBedStaysWithinTheStackVariantBound(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
@@ -242,7 +242,7 @@ public final class HarvestGameTests {
         helper.assertTrue(!variants.isEmpty(), "no harvest");
         // ≤ 6 per item, ≤ 12 for an item with root colours (grade × bitter × colour, WR-136a)
         variants.forEach((item, tags) -> {
-            int bound = item instanceof ProduceItem p && p.rootColours() ? 12 : 6;
+            int bound = item instanceof ProduceItem p && p.rootColours() ? 16 : 6;
             helper.assertTrue(tags.size() <= bound, item + ": " + tags.size() + " variants, bound " + bound);
         });
         helper.succeed();

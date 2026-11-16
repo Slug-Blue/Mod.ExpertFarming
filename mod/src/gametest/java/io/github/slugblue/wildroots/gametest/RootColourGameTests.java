@@ -104,7 +104,7 @@ public final class RootColourGameTests {
         int[][] cases = {
             {0, 0, 0, 0, 0, ProduceStacks.YELLOW}, {0, 1, 2, 2, 0, ProduceStacks.YELLOW},
             {0, 2, 0, 0, 1, ProduceStacks.YELLOW}, {0, 2, 0, 1, 1, ProduceStacks.YELLOW},
-            {0, 2, 2, 0, 2, ProduceStacks.YELLOW}, {0, 2, 2, 1, 2, ProduceStacks.YELLOW},
+            {0, 2, 2, 0, 2, ProduceStacks.ORANGE}, {0, 2, 2, 1, 2, ProduceStacks.ORANGE},
             {1, 0, 0, 0, 3, ProduceStacks.PURPLE}, {2, 2, 2, 2, 3, ProduceStacks.PURPLE},
             {0, 2, 0, 2, 4, ProduceStacks.RED}, {0, 2, 2, 2, 4, ProduceStacks.RED}, {0, 2, 1, 2, 4, ProduceStacks.RED},
         };
@@ -151,21 +151,58 @@ public final class RootColourGameTests {
     }
 
     /**
-     * Owner decision (two eastern-carrot textures): an orange-rooted eastern
-     * carrot (variant 2) and a white-variant one (0) are yellow items, write
-     * no colour key and stack with the yellow harvest.
+     * WR-706 (owner decision 2026-11-16): yellow, orange, purple and red are four separate stacks of the eastern
+     * carrot; a white-variant root takes the default colour (yellow).
      */
     @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
-    public static void orangeAndWhiteVariantEasternCarrotsAreYellowAndStackWithYellow(GameTestHelper helper) {
+    public static void fourColoursAreFourSeparateStacks(GameTestHelper helper) {
         Player player = helper.makeMockSurvivalPlayer();
-        ItemStack yellow = harvest(helper, player, 620, 1);
-        for (int variant : new int[] {0, 2}) {
-            ItemStack other = harvest(helper, player, 620, variant);
-            helper.assertTrue(other.getTag() != null && !other.getTag().contains(ProduceStacks.COLOUR),
-                    "variant " + variant + " writes a colour: " + other.getTag());
-            helper.assertTrue(ProduceStacks.colour(other.getTag()) == ProduceStacks.YELLOW, "variant " + variant);
-            helper.assertTrue(ItemStack.isSameItemSameTags(yellow, other), "variant " + variant + " does not stack with yellow");
+        ItemStack[] by = new ItemStack[5];
+        for (int v = 0; v <= 4; v++) {
+            by[v] = harvest(helper, player, 620, v);
         }
+        helper.assertTrue(ProduceStacks.colour(by[2].getTag()) == ProduceStacks.ORANGE && by[2].getTag().getByte(ProduceStacks.COLOUR) == 3,
+                "orange tag " + by[2].getTag());
+        helper.assertTrue(ItemStack.isSameItemSameTags(by[0], by[1]), "a white-variant root is the default yellow");
+        for (int a = 1; a <= 4; a++) {
+            for (int b = a + 1; b <= 4; b++) {
+                helper.assertTrue(!ItemStack.isSameItemSameTags(by[a], by[b]), "variants " + a + " and " + b + " stack");
+            }
+        }
+        helper.succeed();
+    }
+
+    /**
+     * WR-706: the cultivar carrot has root colours too: orange by default (no key, so an old carrot stack stays
+     * orange), red for an rr plant (key 2b), and its stacks differ by colour.
+     */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, timeoutTicks = 200)
+    public static void theCarrotCultivarGivesOrangeAndRedProduce(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Player player = helper.makeMockSurvivalPlayer();
+        BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
+        ItemStack[] out = new ItemStack[2];
+        int[][] genes = {{0, 2, 2, 0}, {0, 2, 2, 2}}; // y1y1 y2y2 RR (orange), y1y1 y2y2 rr (red)
+        for (int i = 0; i < 2; i++) {
+            PlantBlockEntity be = PlantFixtures.place(helper, PlantFixtures.PLANT, 2);
+            be.init(Definitions.current().genetics(), new PlantBlockEntity.Init(PlantFixtures.SP,
+                    colourGenome(670 + i, genes[i][0], genes[i][1], genes[i][2], genes[i][3]), PlantFixtures.noise(671 + i),
+                    Passport.PLAYER, new UUID(3, 4), new Classification(Optional.of(CultivarId.of("wildroots:carrot")), 2, false),
+                    null, 0, 0, 0));
+            GrowthLogic.advance(level, abs, level.getBlockState(abs), be, be.live(level).orElseThrow(), 3);
+            out[i] = MotherRootGameTests.drops(helper, PlantFixtures.PLANT, player).stream()
+                    .filter(s -> s.is(ModItems.CARROT.get())).findFirst().orElseThrow(() -> new IllegalStateException("no carrot"));
+            helper.setBlock(PlantFixtures.PLANT, Blocks.AIR);
+        }
+        helper.assertTrue(!out[0].getTag().contains(ProduceStacks.COLOUR)
+                && ModItems.CARROT.get().colourOf(out[0]) == ProduceStacks.ORANGE, "orange carrot " + out[0].getTag());
+        helper.assertTrue(ModItems.CARROT.get().colourOf(out[1]) == ProduceStacks.RED && out[1].getTag().getByte(ProduceStacks.COLOUR) == 2,
+                "red carrot " + out[1].getTag());
+        helper.assertTrue(!ItemStack.isSameItemSameTags(out[0], out[1]), "orange and red carrots stack");
+        // an old carrot stack (grade only) is orange
+        ItemStack old = new ItemStack(ModItems.CARROT.get());
+        old.setTag(ProduceStacks.tag(3, false));
+        helper.assertTrue(ModItems.CARROT.get().colourOf(old) == ProduceStacks.ORANGE, "old carrot stack");
         helper.succeed();
     }
 }

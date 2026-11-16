@@ -100,8 +100,7 @@ public final class HarvestService {
         } else if (stage >= FieldPlantBlock.HARVEST_STAGE) {
             int grade = grade(live.get(), p.get());
             if (stage == FieldPlantBlock.HARVEST_STAGE && !live.get().data().has(PlantState.MOTHER)) {
-                food(live.get(), p.get(), grade, ProduceStacks.colourOfVariant(state.getValue(FieldPlantBlock.VARIANT)),
-                        random).ifPresent(out::add);
+                food(live.get(), p.get(), grade, state.getValue(FieldPlantBlock.VARIANT), random).ifPresent(out::add);
             }
             out.add(MotherItem.of(live.get(), grade, p.get().bitter()));
         } else {
@@ -136,7 +135,7 @@ public final class HarvestService {
     }
 
     /** {@code round_prob(food_mult·(1 + 4·P_yield))} items of one grade (GDD §5.2, §6.4). */
-    static Optional<ItemStack> food(PlantBlockEntity.Live live, Phenotype p, int grade, int colour, RandomSource random) {
+    static Optional<ItemStack> food(PlantBlockEntity.Live live, Phenotype p, int grade, int variant, RandomSource random) {
         Optional<Item> item = produceItem(live);
         if (item.isEmpty()) {
             return Optional.empty();
@@ -144,6 +143,9 @@ public final class HarvestService {
         double mult = Optional.ofNullable(live.data().cultivar()).flatMap(live.snapshot()::cultivar)
                 .map(c -> c.info().foodMult()).orElse(1.0);
         int n = roundProb(mult * (1 + 4 * p.pOr(Traits.YIELD, 0)), random);
+        // the root colour of the block's variant; a white root (variant 0) takes the item's default colour
+        int colour = ProduceStacks.colourOfVariant(variant,
+                item.get() instanceof io.github.slugblue.wildroots.item.ProduceItem pi ? pi.defaultColour() : ProduceStacks.YELLOW);
         return n <= 0 ? Optional.empty() : Optional.of(ProduceStacks.create(item.get(), grade, p.bitter(), colour, n));
     }
 

@@ -35,26 +35,26 @@ class ProduceStacksTest {
     }
 
     /**
-     * WR-136a, WR-702, ADR-0007 revision 5 (parametrised invariant): every grade (also out-of-range ones) ×
-     * bitterness × colour number (also out-of-range ones) through the colour-variant factory gives exactly 12
-     * different tags: 4 grades × yellow / purple / red, and {@code bitter} is never written.
+     * WR-706, ADR-0007 revision 6 (parametrised invariant): every grade (also out-of-range ones) x bitterness x
+     * colour number (also out-of-range ones) through the colour-variant factory gives exactly 16 different tags:
+     * 4 grades x yellow / orange / purple / red, and {@code bitter} is never written.
      */
     @Test
-    void colourVariantsAreExactlyTwelveAndNeverBitter() {
-        Set<CompoundTag> variants = new HashSet<>();
-        for (int g = -5; g <= 10; g++) {
-            for (boolean b : new boolean[] {false, true}) {
-                for (int c : new int[] {Integer.MIN_VALUE, -1, 0, 1, 2, 3, 4, 100, Integer.MAX_VALUE}) {
-                    CompoundTag t = ProduceStacks.tag(g, b, c);
-                    assertTrue(Set.of(ProduceStacks.GRADE, ProduceStacks.COLOUR).containsAll(t.getAllKeys()), t::toString);
-                    assertFalse(t.contains(ProduceStacks.BITTER), "a colour item is never bitter: " + t);
-                    assertTrue(t.getByte(ProduceStacks.GRADE) >= 1 && t.getByte(ProduceStacks.GRADE) <= 4, t::toString);
-                    variants.add(t);
+    void colourVariantsAreExactlySixteenAndNeverBitter() {
+        for (int def : new int[] {ProduceStacks.YELLOW, ProduceStacks.ORANGE}) {
+            Set<CompoundTag> variants = new HashSet<>();
+            for (int g = -5; g <= 10; g++) {
+                for (boolean b : new boolean[] {false, true}) {
+                    for (int c : new int[] {Integer.MIN_VALUE, -1, 0, 1, 2, 3, 4, 100, Integer.MAX_VALUE}) {
+                        CompoundTag t = ProduceStacks.tag(g, b, c, def);
+                        assertTrue(Set.of(ProduceStacks.GRADE, ProduceStacks.COLOUR).containsAll(t.getAllKeys()), t::toString);
+                        assertFalse(t.contains(ProduceStacks.BITTER), "a colour item is never bitter: " + t);
+                        variants.add(t);
+                    }
                 }
             }
+            assertEquals(16, variants.size(), "default " + def + ": " + variants);
         }
-        assertEquals(12, variants.size(), variants::toString);
-        // a bitter harvest keeps its grade cap even though the key is gone
         assertEquals(2, ProduceStacks.tag(4, true, ProduceStacks.PURPLE).getByte(ProduceStacks.GRADE));
         assertEquals(4, ProduceStacks.tag(4, false, ProduceStacks.PURPLE).getByte(ProduceStacks.GRADE));
     }
@@ -84,21 +84,31 @@ class ProduceStacksTest {
 
     @Test
     void colourTagsAndNumbers() {
-        assertFalse(ProduceStacks.tag(3, false, ProduceStacks.YELLOW).contains(ProduceStacks.COLOUR));
+        // the default colour of an item is not written; every other one is its number
+        assertFalse(ProduceStacks.tag(3, false, ProduceStacks.YELLOW, ProduceStacks.YELLOW).contains(ProduceStacks.COLOUR));
+        assertFalse(ProduceStacks.tag(3, false, ProduceStacks.ORANGE, ProduceStacks.ORANGE).contains(ProduceStacks.COLOUR));
         assertEquals(1, ProduceStacks.tag(3, false, ProduceStacks.PURPLE).getByte(ProduceStacks.COLOUR));
         assertEquals(2, ProduceStacks.tag(3, false, ProduceStacks.RED).getByte(ProduceStacks.COLOUR));
+        assertEquals(3, ProduceStacks.tag(3, false, ProduceStacks.ORANGE).getByte(ProduceStacks.COLOUR));
+        assertEquals(0, ProduceStacks.tag(3, false, ProduceStacks.YELLOW, ProduceStacks.ORANGE).getByte(ProduceStacks.COLOUR),
+                "a yellow carrot (orange by default) says so");
         assertEquals(ProduceStacks.tag(2, false), ProduceStacks.tag(3, true, ProduceStacks.YELLOW),
                 "yellow is the tag without a colour key; a bitter harvest is capped at 2 and the key is dropped");
-        assertEquals(ProduceStacks.PURPLE, ProduceStacks.colour(ProduceStacks.tag(2, false, ProduceStacks.PURPLE)));
-        assertEquals(ProduceStacks.RED, ProduceStacks.colour(ProduceStacks.tag(2, false, ProduceStacks.RED)));
+        for (int c = 0; c < ProduceStacks.COLOURS; c++) {
+            for (int def : new int[] {ProduceStacks.YELLOW, ProduceStacks.ORANGE}) {
+                assertEquals(c, ProduceStacks.colour(ProduceStacks.tag(2, false, c, def), def));
+            }
+        }
         assertEquals(ProduceStacks.YELLOW, ProduceStacks.colour(null));
+        assertEquals(ProduceStacks.ORANGE, ProduceStacks.colour(null, ProduceStacks.ORANGE), "an old carrot stack is orange");
+        // block variant: 1 yellow, 2 orange, 3 purple, 4 red; white takes the item's default
+        assertEquals(ProduceStacks.YELLOW, ProduceStacks.colourOfVariant(1));
+        assertEquals(ProduceStacks.ORANGE, ProduceStacks.colourOfVariant(2));
         assertEquals(ProduceStacks.PURPLE, ProduceStacks.colourOfVariant(3));
         assertEquals(ProduceStacks.RED, ProduceStacks.colourOfVariant(4));
-        // white, yellow and orange: the yellow item
-        for (int v : new int[] {0, 1, 2}) {
-            assertEquals(ProduceStacks.YELLOW, ProduceStacks.colourOfVariant(v));
-        }
+        assertEquals(ProduceStacks.ORANGE, ProduceStacks.colourOfVariant(0, ProduceStacks.ORANGE));
         assertEquals("yellow", ProduceStacks.colourName(ProduceStacks.YELLOW));
+        assertEquals("orange", ProduceStacks.colourName(ProduceStacks.ORANGE));
         assertEquals("purple", ProduceStacks.colourName(ProduceStacks.PURPLE));
         assertEquals("red", ProduceStacks.colourName(ProduceStacks.RED));
     }
@@ -124,39 +134,40 @@ class ProduceStacksTest {
         }
     }
     /**
-     * Batch 5 test pass, owner decision (WR-702: three colours, orange counts as yellow): a forged colour key
-     * reads as purple for the byte 1 and as red for the byte 2 only; 0, 3, -1, a string, a list or a compound
-     * read as yellow; every block-state variant maps to one of the three colours.
+     * WR-706: a colour key reads as its number 0-3; a number outside, a string, a list or a compound is the item's
+     * default colour. An old stack (no key, 1b, 2b) keeps its meaning; an old orange eastern carrot, merged with
+     * yellow at the time, reads as yellow.
      */
     @Test
-    void forgedColourKeysReadAsYellowUnlessOneOrTwo() {
+    void forgedColourKeysReadAsTheDefault() {
         CompoundTag t = new CompoundTag();
-        for (byte b : new byte[] {0, 3, 4, -1, Byte.MAX_VALUE, Byte.MIN_VALUE}) {
+        for (byte b : new byte[] {4, 5, -1, Byte.MAX_VALUE, Byte.MIN_VALUE}) {
             t.putByte(ProduceStacks.COLOUR, b);
             assertEquals(ProduceStacks.YELLOW, ProduceStacks.colour(t), "byte " + b);
+            assertEquals(ProduceStacks.ORANGE, ProduceStacks.colour(t, ProduceStacks.ORANGE), "byte " + b);
         }
-        t.putByte(ProduceStacks.COLOUR, (byte) 1);
-        assertEquals(ProduceStacks.PURPLE, ProduceStacks.colour(t));
-        t.putByte(ProduceStacks.COLOUR, (byte) 2);
-        assertEquals(ProduceStacks.RED, ProduceStacks.colour(t));
+        for (int c = 0; c < ProduceStacks.COLOURS; c++) {
+            t.putByte(ProduceStacks.COLOUR, (byte) c);
+            assertEquals(c, ProduceStacks.colour(t));
+        }
         t.putString(ProduceStacks.COLOUR, "1");
         assertEquals(ProduceStacks.YELLOW, ProduceStacks.colour(t), "string");
         t.put(ProduceStacks.COLOUR, new net.minecraft.nbt.ListTag());
         assertEquals(ProduceStacks.YELLOW, ProduceStacks.colour(t), "list");
         t.put(ProduceStacks.COLOUR, new CompoundTag());
         assertEquals(ProduceStacks.YELLOW, ProduceStacks.colour(t), "compound");
-        // a numeric tag of another width is read as its byte value (vanilla getByte)
         t.putInt(ProduceStacks.COLOUR, 2);
-        assertEquals(ProduceStacks.RED, ProduceStacks.colour(t), "int 2");
-        t.putInt(ProduceStacks.COLOUR, 3);
-        assertEquals(ProduceStacks.YELLOW, ProduceStacks.colour(t), "int 3");
+        assertEquals(ProduceStacks.RED, ProduceStacks.colour(t), "int 2 reads as its byte value");
+        t.putInt(ProduceStacks.COLOUR, 9);
+        assertEquals(ProduceStacks.YELLOW, ProduceStacks.colour(t), "int 9");
+        // old stacks keep their meaning
+        assertEquals(ProduceStacks.PURPLE, ProduceStacks.colour(ProduceStacks.tag(3, false, 1)));
+        assertEquals(ProduceStacks.YELLOW, ProduceStacks.colour(new CompoundTag()));
         for (int v = -4; v <= 8; v++) {
             int c = ProduceStacks.colourOfVariant(v);
-            assertTrue(c == ProduceStacks.YELLOW || c == ProduceStacks.PURPLE || c == ProduceStacks.RED, "variant " + v);
-            assertEquals(v == 3 ? ProduceStacks.PURPLE : v == 4 ? ProduceStacks.RED : ProduceStacks.YELLOW, c, "variant " + v);
+            assertTrue(c >= 0 && c < ProduceStacks.COLOURS, "variant " + v);
         }
-        // the tag builder writes only purple and red, whatever colour number it is given
-        for (int c : new int[] {Integer.MIN_VALUE, -1, 0, 3, 4, Integer.MAX_VALUE}) {
+        for (int c : new int[] {Integer.MIN_VALUE, -1, 4, Integer.MAX_VALUE}) {
             assertFalse(ProduceStacks.tag(3, false, c).contains(ProduceStacks.COLOUR), "colour " + c);
         }
     }

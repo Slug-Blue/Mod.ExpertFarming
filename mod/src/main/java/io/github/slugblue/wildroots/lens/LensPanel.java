@@ -272,12 +272,8 @@ public record LensPanel(LensSheet sheet) implements TooltipComponent {
         if (stack.getItem() instanceof ProduceItem p) {
             List<Component> header = new ArrayList<>();
             if (p.rootColours()) {
-                net.minecraft.resources.ResourceLocation id = net.minecraftforge.registries.ForgeRegistries.ITEMS
-                        .getKey(p);
-                if (id != null) {
-                    header.add(Component.translatable("wildroots.cultivar." + id.getPath() + ".variant."
-                            + ProduceStacks.colourName(ProduceStacks.colour(tag))));
-                }
+                header.add(Component.translatable(ProduceItem.ROOT_COLOUR_KEY, Component.translatable(
+                        "wildroots.colour." + ProduceStacks.colourName(p.colourOf(stack)))));
             }
             // on an item tooltip the name line stays above the panel (m6): no second title
             return Optional.of(ofProduce(shiftHint ? Component.empty() : stack.getHoverName(), header,

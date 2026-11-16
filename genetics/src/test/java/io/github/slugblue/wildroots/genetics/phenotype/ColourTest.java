@@ -324,7 +324,7 @@ class ColourTest {
     }
 
     @Test
-    void purpleHasTheSaturationBonusAndOnlyPurple() {
+    void onlyPurpleAndRedHaveASaturationBonus() {
         ColourRules c = Carrot.SPECIES.colours();
         List<String> withBonus = new ArrayList<>();
         for (String id : c.ids()) {
@@ -332,8 +332,9 @@ class ColourTest {
                 withBonus.add(id);
             }
         }
-        assertEquals(List.of("purple"), withBonus);
+        assertEquals(List.of("red", "purple"), withBonus.stream().sorted(java.util.Comparator.comparing(x -> x.equals("purple") ? 1 : 0)).toList());
         assertEquals(1.15, c.props(PURPLE).saturationMult());
+        assertEquals(1.10, c.props(RED).saturationMult());
     }
 
     @Test

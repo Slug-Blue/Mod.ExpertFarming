@@ -86,8 +86,25 @@ class ColourClimateTest {
         // lower limit 0.2 - cold property: purple 0.30, white 0.15
         assertTrue((flags(PURPLE, cold) & EnvModifiers.COLD) != 0, "purple does not stand 0.25");
         assertFalse((flags(WHITE, Environment.neutral(0.16)) & EnvModifiers.COLD) != 0, "white stands 0.16");
-        assertTrue((flags(ORANGE, Environment.neutral(0.19)) & EnvModifiers.COLD) != 0, "orange: limit 0.2");
+        // orange has the best cold tolerance (WR-706): lower limit 0.2 - 0.20 = 0.0
+        assertFalse((flags(ORANGE, Environment.neutral(0.01)) & EnvModifiers.COLD) != 0, "orange stands 0.01");
+        assertTrue((flags(ORANGE, Environment.neutral(-0.01)) & EnvModifiers.COLD) != 0, "orange: limit 0.0");
         assertFalse((flags(ORANGE, cold) & EnvModifiers.COLD) != 0);
+        ColourRules c = CARROT.colours();
+        for (int other : new int[] {WHITE, YELLOW, PURPLE, RED}) {
+            assertTrue(c.props(ORANGE).cold() > c.props(other).cold(), "orange has the best cold tolerance");
+        }
+    }
+
+    /** The owner's table of 2026-11-16 (WR-706), as data of the species JSON. */
+    @Test
+    void colourPropertiesAreTheOwnersTable() {
+        ColourRules c = CARROT.colours();
+        double[][] t = {{0, 0.05, 0, 1}, {0.15, -0.05, 0.30, 1}, {-0.05, 0.20, 0, 1}, {0.25, -0.10, 0.15, 1.15}, {0.08, -0.10, 0.05, 1.10}};
+        for (int i = 0; i < t.length; i++) {
+            ColourProps p = c.props(i);
+            assertEquals(new ColourProps(t[i][0], t[i][1], t[i][2], t[i][3]), p, c.ids().get(i));
+        }
     }
 
     @Test

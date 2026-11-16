@@ -96,7 +96,7 @@ public final class ProduceGameTests {
 
     /**
      * ADR-0007 revision 5 (review m3): every {@code ProduceStacks.create} overload, over grade (also out of range) x
-     * bitter x colour, gives at most 12 different stacks ({@code ItemStack#isSameItemSameTags}) for the eastern
+     * bitter x colour, gives at most 16 different stacks ({@code ItemStack#isSameItemSameTags}) for the eastern
      * carrot and never a bitter key; the wild root has at most 6 and no colour key. A carrot of the cultivar
      * {@code wildroots:carrot} is never bitter because its profile requires bitterness domestic (the classifier,
      * not the factory, enforces that), so its 4 variants are not asserted here.
@@ -105,23 +105,29 @@ public final class ProduceGameTests {
     public static void everyCreateOverloadStaysWithinTheStackVariantBound(GameTestHelper helper) {
         java.util.List<ItemStack> eastern = new java.util.ArrayList<>();
         java.util.List<ItemStack> wild = new java.util.ArrayList<>();
+        java.util.List<ItemStack> carrot = new java.util.ArrayList<>();
         for (int g = -2; g <= 6; g++) {
             for (boolean b : new boolean[] {false, true}) {
                 eastern.add(ProduceStacks.create(ModItems.EASTERN_CARROT.get(), g, b));
+                carrot.add(ProduceStacks.create(ModItems.CARROT.get(), g, b));
+                carrot.add(ProduceStacks.create(ModItems.CARROT.get(), g, b, 3));
                 eastern.add(ProduceStacks.create(ModItems.EASTERN_CARROT.get(), g, b, 3));
                 wild.add(ProduceStacks.create(ModItems.WILD_CARROT_ROOT.get(), g, b));
                 wild.add(ProduceStacks.create(ModItems.WILD_CARROT_ROOT.get(), g, b, 2));
                 for (int c = -1; c <= 4; c++) {
                     eastern.add(ProduceStacks.create(ModItems.EASTERN_CARROT.get(), g, b, c, 1));
+                    carrot.add(ProduceStacks.create(ModItems.CARROT.get(), g, b, c, 1));
                     wild.add(ProduceStacks.create(ModItems.WILD_CARROT_ROOT.get(), g, b, c, 1));
                 }
             }
         }
-        helper.assertTrue(eastern.stream().noneMatch(s -> s.getTag().contains(ProduceStacks.BITTER)), "bitter eastern carrot");
+        helper.assertTrue(eastern.stream().noneMatch(s -> s.getTag().contains(ProduceStacks.BITTER))
+                && carrot.stream().noneMatch(s -> s.getTag().contains(ProduceStacks.BITTER)), "bitter colour item");
         helper.assertTrue(wild.stream().noneMatch(s -> s.getTag().contains(ProduceStacks.COLOUR)), "coloured wild root");
         int e = distinct(eastern);
         int w = distinct(wild);
-        helper.assertTrue(e <= 12, "eastern carrot variants " + e);
+        helper.assertTrue(e <= 16, "eastern carrot variants " + e);
+        helper.assertTrue(distinct(carrot) <= 16, "carrot variants " + distinct(carrot));
         helper.assertTrue(w <= 6, "wild root variants " + w);
         helper.succeed();
     }
@@ -155,7 +161,10 @@ public final class ProduceGameTests {
                     .getFoodProperties(player);
             helper.assertTrue(Math.abs(purple.getSaturationModifier() - yellow.getSaturationModifier() * mult) < 1e-5,
                     "grade " + g + ": purple " + purple.getSaturationModifier() + " yellow " + yellow.getSaturationModifier());
-            helper.assertTrue(red.getSaturationModifier() == yellow.getSaturationModifier(), "red is not more filling");
+            FoodProperties orange = ProduceStacks.create(ModItems.EASTERN_CARROT.get(), g, false, ProduceStacks.ORANGE, 1)
+                    .getFoodProperties(player);
+            helper.assertTrue(Math.abs(red.getSaturationModifier() - yellow.getSaturationModifier() * 1.10) < 1e-5, "red is x1.10");
+            helper.assertTrue(orange.getSaturationModifier() == yellow.getSaturationModifier(), "orange is not more filling");
             helper.assertTrue(purple.getNutrition() == yellow.getNutrition() && purple.getEffects().isEmpty(),
                     "purple changed more than the saturation");
         }

@@ -59,9 +59,9 @@
     "properties": {
       "purple": { "heat": 0.25, "cold": -0.10, "drought": 0.15, "saturation_mult": 1.15 },
       "yellow": { "heat": 0.15, "cold": -0.05, "drought": 0.30 },
-      "red":    { "heat": 0.08, "cold": -0.10 },
+      "red":    { "heat": 0.08, "cold": -0.10, "drought": 0.05, "saturation_mult": 1.10 },
       "white":  { "cold": 0.05 },
-      "orange": { "heat": -0.05 }
+      "orange": { "heat": -0.05, "cold": 0.20 }
     }
   }
 }

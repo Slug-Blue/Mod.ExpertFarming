@@ -50,9 +50,12 @@ public final class ModItems {
     /** Harvest of the landrace {@code eastern_carrot} (step 1). */
     public static final RegistryObject<ProduceItem> EASTERN_CARROT = REGISTER.register("eastern_carrot",
             () -> new ProduceItem(new Item.Properties(), CARROT_FOOD, false, true));
-    /** Harvest of the cultivar {@code wildroots:carrot} (step 2). */
+    /**
+     * Harvest of the cultivar {@code wildroots:carrot} (step 2). WR-706: it has root colours too (orange by
+     * default, red for an rr plant), so a red-rooted carrot gives red produce.
+     */
     public static final RegistryObject<ProduceItem> CARROT = REGISTER.register("carrot",
-            () -> new ProduceItem(new Item.Properties(), CARROT_FOOD, false));
+            () -> new ProduceItem(new Item.Properties(), CARROT_FOOD, false, true, io.github.slugblue.wildroots.item.ProduceStacks.ORANGE));
 
     /** Mother root of carrot (and later beet), WR-137; GDD §5.2, narrative §7.4. */
     public static final RegistryObject<MotherItem> MOTHER_ROOT = REGISTER.register("mother_root",

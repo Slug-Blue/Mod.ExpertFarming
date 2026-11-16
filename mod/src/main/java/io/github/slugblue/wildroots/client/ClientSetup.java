@@ -21,7 +21,7 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 public final class ClientSetup {
 
     public static final ResourceLocation FILLED = Ids.mod("filled");
-    /** Eastern carrot root colour: 0 yellow, 1 purple, 2 red (WR-136a, WR-702). */
+    /** Root colour of the eastern carrot and the carrot, relative to the item's default (0 = the default; WR-706). */
     public static final ResourceLocation ROOT_COLOUR = Ids.mod("root_colour");
 
     private ClientSetup() {
@@ -32,8 +32,11 @@ public final class ClientSetup {
         event.enqueueWork(() -> {
             ItemProperties.register(ModItems.SEED_POUCH.get(), FILLED,
                     (stack, level, entity, seed) -> SeedPouchItem.filled(stack) ? 1f : 0f);
-            ItemProperties.register(ModItems.EASTERN_CARROT.get(), ROOT_COLOUR,
-                    (stack, level, entity, seed) -> ProduceStacks.colour(stack.getTag()));
+            // the value is the colour relative to the item's default, so each item's model list starts at its own base
+            for (var item : java.util.List.of(ModItems.EASTERN_CARROT.get(), ModItems.CARROT.get())) {
+                ItemProperties.register(item, ROOT_COLOUR, (stack, level, entity, seed) ->
+                        (item.colourOf(stack) - item.defaultColour() + ProduceStacks.COLOURS) % ProduceStacks.COLOURS);
+            }
         });
     }
 }

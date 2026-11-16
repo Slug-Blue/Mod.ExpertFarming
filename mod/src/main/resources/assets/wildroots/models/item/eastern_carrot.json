@@ -15,6 +15,12 @@
         "wildroots:root_colour": 2
       },
       "model": "wildroots:item/eastern_carrot_red"
+    },
+    {
+      "predicate": {
+        "wildroots:root_colour": 3
+      },
+      "model": "wildroots:item/eastern_carrot_orange"
     }
   ]
 }

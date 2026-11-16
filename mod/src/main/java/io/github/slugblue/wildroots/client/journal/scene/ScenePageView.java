@@ -151,6 +151,12 @@ public final class ScenePageView implements PageView {
         if ("colour=purple".equals(variant)) {
             return ProduceStacks.create(item, ProduceStacks.DEFAULT_GRADE, false, ProduceStacks.PURPLE, 1);
         }
+        if ("colour=red".equals(variant)) {
+            return ProduceStacks.create(item, ProduceStacks.DEFAULT_GRADE, false, ProduceStacks.RED, 1);
+        }
+        if ("colour=orange".equals(variant)) {
+            return ProduceStacks.create(item, ProduceStacks.DEFAULT_GRADE, false, ProduceStacks.ORANGE, 1);
+        }
         if ("colour=yellow".equals(variant)) {
             return ProduceStacks.create(item, ProduceStacks.DEFAULT_GRADE, false, ProduceStacks.YELLOW, 1);
         }
