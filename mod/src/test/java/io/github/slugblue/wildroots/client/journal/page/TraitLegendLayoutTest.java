@@ -27,35 +27,30 @@ class TraitLegendLayoutTest {
         LangFixture.report(v);
     }
 
-    static TraitLegendLayout.Strings legend(Map<String, String> l, String speciesPath) {
-        List<String> names = new ArrayList<>();
-        List<Integer> steps = new ArrayList<>();
-        String[] traits = {"fruit_size", "yield", "growth_speed", "flavor", "cold_tolerance", "heat_tolerance",
-            "drought_tolerance"};
-        for (int i = 0; i < traits.length; i++) {
-            String own = "wildroots.tooltip.trait_name." + traits[i] + "." + speciesPath;
-            names.add(l.getOrDefault(own, l.get("wildroots.tooltip.trait_name." + traits[i])));
-            steps.add(1 + i % 5);
-        }
-        String[] scales = {"size", "yield", "growth", "flavor", "sweetness", "tenderness", "tolerance", "expression"};
-        String[][] words = new String[8][5];
-        String[] scaleLines = new String[8];
-        for (int s = 0; s < 8; s++) {
-            for (int step = 1; step <= 5; step++) {
-                words[s][step - 1] = l.get("wildroots.tooltip.scale." + scales[s] + "." + step);
+    /** The display_traits of a species, read from the shipped species file (what the client gets synced). */
+    static Map<String, String> display(String species) throws IOException {
+        java.nio.file.Path f = LangFixture.modDir().resolve(
+                "src/main/resources/resourcepacks/lines/carrot/data/wildroots/crop_species/" + species + ".json");
+        Map<String, String> out = new java.util.HashMap<>();
+        if (java.nio.file.Files.exists(f)) {
+            var o = com.google.gson.JsonParser.parseString(java.nio.file.Files.readString(f,
+                    java.nio.charset.StandardCharsets.UTF_8)).getAsJsonObject();
+            if (o.has("display_traits")) {
+                o.getAsJsonObject("display_traits").entrySet().forEach(e -> out.put(e.getKey(),
+                        e.getValue().getAsString()));
             }
-            scaleLines[s] = l.get("wildroots.journal.guide.traits.scale").replace("%s",
-                    l.get("wildroots.journal.guide.traits.scale." + scales[s]));
         }
-        String[] flags = {"bitter", "pollination", "ailing", "looks_like"};
-        List<String> flagLabels = new ArrayList<>();
-        for (String f : flags) {
-            flagLabels.add(l.get("wildroots.journal.guide.traits.flag." + f));
-        }
-        return new TraitLegendLayout.Strings(l.get("wildroots.journal.guide.traits.intro"),
-                l.get("wildroots.journal.guide.traits.grade"), l.get("wildroots.journal.guide.traits.how_to"),
-                l.get("wildroots.species." + speciesPath), names, steps, words, scaleLines,
-                l.get("wildroots.journal.guide.traits.flags"), flagLabels, l.get("wildroots.journal.ui.example"));
+        return out;
+    }
+
+    /** The legend strings exactly as the page builds them ({@link TraitLegendView#strings}), over a lang file. */
+    static TraitLegendLayout.Strings legend(Map<String, String> l, String speciesPath) throws IOException {
+        List<Integer> example = List.of(4, 3, 2, 3, 3, 2, 2);
+        return TraitLegendView.strings(speciesPath, example, display(speciesPath), key -> {
+            String v = l.get(key);
+            assertTrue(v != null, "the legend uses a key that the lang file lacks: " + key);
+            return v;
+        });
     }
 
     @Test
