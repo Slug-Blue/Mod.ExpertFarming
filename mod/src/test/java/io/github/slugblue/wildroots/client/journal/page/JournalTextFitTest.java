@@ -155,12 +155,10 @@ class JournalTextFitTest {
 
     /**
      * Captions that need more than the {@value PageRect#CAPTION_LINES} lines under the window even over the
-     * whole spread: the scene shows them cut with an ellipsis and the whole text as a tooltip. Writers: shorten
-     * these (WR-181g text, narrative voice); the test below fails when one is short enough, so the list only
-     * shrinks.
+     * whole spread (shown cut, with a tooltip). Empty: every caption fits; the test below keeps the list
+     * honest if one is ever added.
      */
-    static final java.util.Set<String> TOO_LONG_CAPTIONS = java.util.Set.of(
-            "en_us wildroots.journal.scene.carrot_cycle.4", "ru_ru wildroots.journal.scene.carrot_cycle.4");
+    static final java.util.Set<String> TOO_LONG_CAPTIONS = java.util.Set.of();
 
     @Test
     void theListOfTooLongCaptionsHoldsOnlyTooLongOnes() throws IOException {

@@ -67,7 +67,12 @@ final class SceneRenderer implements AutoCloseable {
 
     /** Pixels per block at {@code zoom} for a window of {@code w × h}. */
     float scale(float zoom, int w, int h) {
-        double r = 0.5 * Math.sqrt(def.sizeX() * def.sizeX() + def.sizeY() * def.sizeY() + def.sizeZ() * def.sizeZ());
+        return scaleFor(def.sizeX(), def.sizeY(), def.sizeZ(), zoom, w, h);
+    }
+
+    /** The same for a structure of {@code sx × sy × sz} (the window-fit test uses it without a renderer). */
+    static float scaleFor(int sx, int sy, int sz, float zoom, int w, int h) {
+        double r = 0.5 * Math.sqrt(sx * sx + sy * sy + sz * sz);
         return (float) (Math.min(w, h) / (2 * r) * zoom);
     }
 

@@ -48,39 +48,44 @@ public final class TraitLegendView implements PageView {
         return Component.translatable(key).getString();
     }
 
-    /** The translated strings of a legend for a species. */
+    /** The translated strings of a legend for a species, in the game's language. */
     static TraitLegendLayout.Strings strings(TraitLegendPage data) {
-        String speciesPath = data.species().getPath();
         Map<String, String> display = ClientDefinitions.get().species().stream()
                 .filter(s -> s.id().equals(data.species())).findFirst()
                 .map(SyncedDefinitions.Species::displayTraits).orElse(Map.of());
+        return strings(data.species().getPath(), data.example(), display, TraitLegendView::tr);
+    }
+
+    /**
+     * The strings of a legend with any translator (a key to its text): the game's, or a lang file in
+     * JUnit, so the test checks exactly what the page draws (review m4).
+     */
+    public static TraitLegendLayout.Strings strings(String speciesPath, List<Integer> example,
+                                                    Map<String, String> display,
+                                                    java.util.function.UnaryOperator<String> tr) {
         List<String> names = new ArrayList<>();
         List<Integer> steps = new ArrayList<>();
-        for (int i = 0; i < EXAMPLE_TRAITS.size() && i < data.example().size(); i++) {
-            names.add(tr(LensScale.nameKey(EXAMPLE_TRAITS.get(i), speciesPath, display)));
-            steps.add(data.example().get(i));
+        for (int i = 0; i < EXAMPLE_TRAITS.size() && i < example.size(); i++) {
+            names.add(tr.apply(LensScale.nameKey(EXAMPLE_TRAITS.get(i), speciesPath, display)));
+            steps.add(example.get(i));
         }
         String[][] words = new String[SCALES.size()][5];
         String[] scaleLines = new String[SCALES.size()];
         for (int s = 0; s < SCALES.size(); s++) {
             for (int step = 1; step <= 5; step++) {
-                words[s][step - 1] = tr(LensScale.wordKey(SCALES.get(s), step));
+                words[s][step - 1] = tr.apply(LensScale.wordKey(SCALES.get(s), step));
             }
-            scaleLines[s] = scaleLine(s);
+            scaleLines[s] = tr.apply("wildroots.journal.guide.traits.scale").replace("%1$s", "%s").replace("%s",
+                    tr.apply("wildroots.journal.guide.traits.scale." + SCALES.get(s)));
         }
         List<String> flags = new ArrayList<>();
         for (String k : FLAG_KEYS) {
-            flags.add(tr("wildroots.journal.guide.traits.flag." + k));
+            flags.add(tr.apply("wildroots.journal.guide.traits.flag." + k));
         }
-        return new TraitLegendLayout.Strings(tr("wildroots.journal.guide.traits.intro"),
-                tr("wildroots.journal.guide.traits.grade"), tr("wildroots.journal.guide.traits.how_to"),
-                tr("wildroots.species." + speciesPath), names, steps, words, scaleLines,
-                tr("wildroots.journal.guide.traits.flags"), flags, tr("wildroots.journal.ui.example"));
-    }
-
-    static String scaleLine(int scale) {
-        return Component.translatable("wildroots.journal.guide.traits.scale",
-                Component.translatable("wildroots.journal.guide.traits.scale." + SCALES.get(scale))).getString();
+        return new TraitLegendLayout.Strings(tr.apply("wildroots.journal.guide.traits.intro"),
+                tr.apply("wildroots.journal.guide.traits.grade"), tr.apply("wildroots.journal.guide.traits.how_to"),
+                tr.apply("wildroots.species." + speciesPath), names, steps, words, scaleLines,
+                tr.apply("wildroots.journal.guide.traits.flags"), flags, tr.apply("wildroots.journal.ui.example"));
     }
 
     static List<LaidOutPage> layout(TraitLegendPage data, GuidePage page, PageContext ctx) {
@@ -100,6 +105,9 @@ public final class TraitLegendView implements PageView {
     private final String[][] words;
     private final String[] scaleLines;
     private final List<AbstractWidget> widgets = new ArrayList<>();
+    /** The styled lines of every Text item, made once per page (review m5), not per frame. */
+    private final java.util.Map<TraitLegendLayout.Text, List<net.minecraft.util.FormattedCharSequence>> styled =
+            new java.util.IdentityHashMap<>();
     private int scale;
     /** Wrapped words of the five steps for the shown scale (beside a bar: one line; stacked: up to 2). */
     private final List<List<String>> stepLabels = new ArrayList<>();
@@ -114,6 +122,19 @@ public final class TraitLegendView implements PageView {
         this.words = strings.words();
         this.scaleLines = strings.scaleLines();
         for (Object it : page.items()) {
+            if (it instanceof TraitLegendLayout.Text t) {
+                List<net.minecraft.util.FormattedCharSequence> lines = new ArrayList<>();
+                for (String l : t.lines()) {
+                    Component c = Component.literal(l);
+                    switch (t.kind()) {
+                        case BOLD -> c = ((net.minecraft.network.chat.MutableComponent) c).withStyle(ChatFormatting.BOLD);
+                        case FADED -> c = ((net.minecraft.network.chat.MutableComponent) c).withStyle(ChatFormatting.ITALIC);
+                        default -> { }
+                    }
+                    lines.add(c.getVisualOrderText());
+                }
+                styled.put(t, List.copyOf(lines));
+            }
             if (it instanceof TraitLegendLayout.ScaleLine sl) {
                 scaleButton = new ScaleButton(rect.x(), rect.y() + sl.y(), TraitLegendLayout.WIDTH, sl.h());
                 widgets.add(scaleButton);
@@ -148,14 +169,9 @@ public final class TraitLegendView implements PageView {
         }
     }
 
-    private void line(GuiGraphics g, String text, int x, int y, TraitLegendLayout.Kind kind) {
-        switch (kind) {
-            case BOLD -> g.drawString(font, Component.literal(text).withStyle(ChatFormatting.BOLD), x, y,
-                    JournalColors.INK, false);
-            case FADED -> g.drawString(font, Component.literal(text).withStyle(ChatFormatting.ITALIC), x, y,
-                    JournalColors.INK_FADED, false);
-            default -> g.drawString(font, text, x, y, JournalColors.INK, false);
-        }
+    /** A plain ink line (the words beside bars, the flag texts): no component, no style. */
+    private void ink(GuiGraphics g, String text, int x, int y) {
+        g.drawString(font, text, x, y, JournalColors.INK, false);
     }
 
     @Override
@@ -164,16 +180,18 @@ public final class TraitLegendView implements PageView {
         int y0 = rect.y();
         for (Object it : page.items()) {
             if (it instanceof TraitLegendLayout.Text t) {
-                for (int i = 0; i < t.lines().size(); i++) {
-                    line(g, t.lines().get(i), x0, y0 + t.y() + i * PageRect.LINE_HEIGHT, t.kind());
+                int color = t.kind() == TraitLegendLayout.Kind.FADED ? JournalColors.INK_FADED : JournalColors.INK;
+                List<net.minecraft.util.FormattedCharSequence> lines = styled.get(t);
+                for (int i = 0; i < lines.size(); i++) {
+                    g.drawString(font, lines.get(i), x0, y0 + t.y() + i * PageRect.LINE_HEIGHT, color, false);
                 }
             } else if (it instanceof TraitLegendLayout.Bar b) {
                 bar(g, b, x0, y0);
             } else if (it instanceof TraitLegendLayout.Flag f) {
                 TraitBar.drawFlag(g, FLAGS[f.flag()], x0, y0 + f.y());
                 for (int i = 0; i < f.lines().size(); i++) {
-                    line(g, f.lines().get(i), x0 + TraitLegendLayout.FLAG_TEXT_X,
-                            y0 + f.y() + 1 + i * PageRect.LINE_HEIGHT, TraitLegendLayout.Kind.INK);
+                    ink(g, f.lines().get(i), x0 + TraitLegendLayout.FLAG_TEXT_X,
+                            y0 + f.y() + 1 + i * PageRect.LINE_HEIGHT);
                 }
             }
         }
@@ -183,7 +201,7 @@ public final class TraitLegendView implements PageView {
         List<String> label = b.stepIndex() >= 0 ? stepLabels.get(b.stepIndex()) : b.label();
         if (b.stacked()) {
             for (int i = 0; i < label.size(); i++) {
-                line(g, label.get(i), x0, y0 + b.y() + i * PageRect.LINE_HEIGHT, TraitLegendLayout.Kind.INK);
+                ink(g, label.get(i), x0, y0 + b.y() + i * PageRect.LINE_HEIGHT);
             }
             TraitBar.drawOnPaper(g, x0 + 1, y0 + b.barY(), b.step(), TraitBar.SEGMENTS, Component.empty());
         } else {

@@ -53,19 +53,51 @@ public final class CalloutLayout {
         for (int i : order) {
             Want w = wants.get(i);
             // a callout wider than the window starts at its left edge (review 1, m8)
-            int x = Math.max(minX, Math.min(maxX - w.w(), w.anchorX() - w.w() / 2));
+            int pref = Math.max(minX, Math.min(maxX - w.w(), w.anchorX() - w.w() / 2));
+            int x = pref;
             int y = w.anchorY() - 3 - w.h();
             int rows = 0;
-            while (overlapsAny(out, x, y, w.w(), w.h()) && rows < MAX_ROWS) {
+            // in each row: above the anchor if free, else slid sideways to the nearest free spot (next to the
+            // callouts in the way); only when the row has none does it climb (review m2: the window is 102 high)
+            while (rows <= MAX_ROWS) {
+                int free = freeX(out, pref, y, w.w(), w.h(), minX, maxX);
+                if (free != Integer.MIN_VALUE) {
+                    x = free;
+                    break;
+                }
                 y -= w.h() + GAP;
                 rows++;
             }
-            if (y < minY || overlapsAny(out, x, y, w.w(), w.h())) {
+            if (rows > MAX_ROWS || y < minY) {
                 continue;
             }
-            out.add(new Placed(i, x, y, w.w(), w.h(), rows > 0));
+            out.add(new Placed(i, x, y, w.w(), w.h(), rows > 0 || x != pref));
         }
         return out;
+    }
+
+    /**
+     * The x nearest to {@code pref} in {@code [minX, maxX - w]} where a
+     * callout at row {@code y} overlaps no placed one, or
+     * {@code Integer.MIN_VALUE}.
+     */
+    static int freeX(List<Placed> placed, int pref, int y, int w, int h, int minX, int maxX) {
+        if (!overlapsAny(placed, pref, y, w, h)) {
+            return pref;
+        }
+        int best = Integer.MIN_VALUE;
+        for (Placed p : placed) {
+            if (!p.overlaps(pref, y, w, h)) {
+                continue;
+            }
+            for (int x : new int[] {p.x() + p.w() + GAP, p.x() - GAP - w}) {
+                if (x >= minX && x + w <= maxX && !overlapsAny(placed, x, y, w, h)
+                        && (best == Integer.MIN_VALUE || Math.abs(x - pref) < Math.abs(best - pref))) {
+                    best = x;
+                }
+            }
+        }
+        return best;
     }
 
     static boolean overlapsAny(List<Placed> placed, int x, int y, int w, int h) {

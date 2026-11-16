@@ -79,7 +79,8 @@ public final class JournalBookScreen extends Screen implements PageContext {
     private FormattedCharSequence titleLine = FormattedCharSequence.EMPTY;
     /** The header title is shrunk to at most 70 % to fit, then cut; {@code titleFull} is its tooltip when it was. */
     private float titleScale = 1f;
-    private Component titleFull;
+    /** The whole title wrapped to 180 px, at most 6 lines, as the other tooltips; empty when the title fits. */
+    private List<FormattedCharSequence> titleTip = List.of();
     private int titleMax;
     private Component pageNumber = Component.empty();
     private final Set<String> markedRead = new HashSet<>();
@@ -182,7 +183,15 @@ public final class JournalBookScreen extends Screen implements PageContext {
         titleMax = maxTitle;
         titleScale = TextFit.shrinkScale(font.width(full), maxTitle, TextFit.MIN_SHRINK);
         titleLine = fit(full, Math.round(maxTitle / titleScale));
-        titleFull = titleScale < 1f || font.width(full) * titleScale > maxTitle ? full : null;
+        if (titleScale < 1f || font.width(full) * titleScale > maxTitle) {
+            List<FormattedCharSequence> tip = new ArrayList<>();
+            for (String l : TextFit.wrapMax(full.getString(), 180, 6, false, TextFit.of(font))) {
+                tip.add(Component.literal(l).getVisualOrderText());
+            }
+            titleTip = List.copyOf(tip);
+        } else {
+            titleTip = List.of();
+        }
         layoutBuilds++;
         location = location.withSpread(Math.min(location.spread(), spreads.size() - 1));
         showSpread(location.spread());
@@ -521,9 +530,9 @@ public final class JournalBookScreen extends Screen implements PageContext {
         } else {
             g.drawString(font, titleLine, tx, geo.headerY(), JournalColors.INK, false);
         }
-        if (titleFull != null && mouseX >= tx && mouseX < tx + titleMax && mouseY >= geo.headerY() - 1
+        if (!titleTip.isEmpty() && mouseX >= tx && mouseX < tx + titleMax && mouseY >= geo.headerY() - 1
                 && mouseY < geo.headerY() + 10) {
-            setTooltipForNextRenderPass(titleFull);
+            setTooltipForNextRenderPass(titleTip);
         }
         if (spreads.size() > 1) {
             g.drawString(font, pageNumber, geo.right().right() - font.width(pageNumber), geo.headerY(),
