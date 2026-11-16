@@ -89,10 +89,22 @@ public class HandLensItem extends Item {
         return InteractionResultHolder.consume(lens);
     }
 
-    /** The lot in the other hand, inspected; {@code false} if there is none. */
+    /**
+     * The lot or the mother root in the other hand, inspected; {@code false} if there is none. This is
+     * the way to inspect in the creative inventory (hint {@link io.github.slugblue.wildroots.lens.LensPanel#CLICK_HAND}).
+     */
     static boolean inspectOtherHand(ServerLevel level, ServerPlayer player, InteractionHand lensHand) {
         ItemStack other = player.getItemInHand(lensHand == InteractionHand.MAIN_HAND ? InteractionHand.OFF_HAND
                 : InteractionHand.MAIN_HAND);
+        if (other.is(ModItems.MOTHER_ROOT.get())) {
+            if (!Lens.inspectMother(other, level, player)) {
+                return false;
+            }
+            if (player.connection != null) {
+                player.displayClientMessage(Component.translatable(INSPECTED_ROOT), true);
+            }
+            return true;
+        }
         if (!other.is(ModItems.SEED_LOT.get()) || !Lens.inspectLot(other, level, player)) {
             return false;
         }
@@ -145,7 +157,8 @@ public class HandLensItem extends Item {
         // the creative inventory screen handles clicks on the client only (SetCreativeModeSlot), so the
         // server never inspects there: the click stays a vanilla swap (review 1, minor 1); the panel works.
         // Its menu is the creative ItemPickerMenu (id 0, set as containerMenu), not inventoryMenu (review 2, N1)
-        if (player.level().isClientSide() && player.isCreative() && player.containerMenu.containerId == 0) {
+        if (io.github.slugblue.wildroots.lens.LensPanel.creativeInventoryClick(player.level().isClientSide(), player.isCreative(),
+                player.containerMenu.containerId)) {
             return false;
         }
         if (io.github.slugblue.wildroots.lens.LensPanel.inspected(target)

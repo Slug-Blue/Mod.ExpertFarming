@@ -14,6 +14,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.inventory.Slot;
@@ -90,10 +91,13 @@ public final class ClientLensPanel implements ClientTooltipComponent {
     /** The last stack, its tag and its panel: one parse while the cursor rests on a slot (review 1, minor 8). */
     private static ItemStack lastStack = ItemStack.EMPTY;
     private static net.minecraft.nbt.CompoundTag lastTag;
+    private static boolean lastCreative;
     private static Optional<LensPanel> lastPanel = Optional.empty();
 
     static Optional<LensPanel> cached(ItemStack stack) {
-        if (stack != lastStack || stack.getTag() != lastTag) {
+        boolean creative = Minecraft.getInstance().screen instanceof CreativeModeInventoryScreen;
+        if (stack != lastStack || stack.getTag() != lastTag || creative != lastCreative) {
+            lastCreative = creative;
             lastStack = stack;
             lastTag = stack.getTag();
             lastPanel = LensPanel.of(stack);

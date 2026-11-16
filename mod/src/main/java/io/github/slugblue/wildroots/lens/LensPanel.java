@@ -43,6 +43,36 @@ public record LensPanel(LensSheet sheet) implements TooltipComponent {
     public static final String GRADE = "wildroots.panel.lens.grade";
     public static final String GRADE_WORD = "wildroots.panel.grade.";
     public static final String CLICK = "wildroots.panel.lens.click";
+    /** The hint where a click cannot inspect (the creative inventory screen is client-only): lens in a hand. */
+    public static final String CLICK_HAND = "wildroots.panel.lens.click.hand";
+    /** Client hook: whether the creative inventory screen is open. Never set on a server. */
+    private static volatile java.util.function.BooleanSupplier creativeScreen = () -> false;
+
+    public static void creativeScreen(java.util.function.BooleanSupplier s) {
+        creativeScreen = s == null ? () -> false : s;
+    }
+
+    /**
+     * Whether a click is one of the creative inventory screen (pure, JUnit). That screen is
+     * client-only on <em>every</em> tab, the "Survival Inventory" tab included: it overrides
+     * {@code slotClicked}, runs {@code inventoryMenu.clicked} or the {@code ItemPickerMenu} click locally
+     * and tells the server only through {@code ServerboundSetCreativeModeSlotPacket}; it never sends a
+     * container click (proved from the bytecode: no {@code handleInventoryMouseClick}). The player's
+     * {@code containerMenu} is then the picker (id 0). A chest or any other menu has another id.
+     */
+    public static boolean creativeInventoryClick(boolean clientSide, boolean creative, int containerId) {
+        return clientSide && creative && containerId == 0;
+    }
+
+    /** Which hint tells the truth (pure, JUnit): the click where it works, the other hand in the creative inventory. */
+    public static String clickHintKey(boolean creativeInventory) {
+        return creativeInventory ? CLICK_HAND : CLICK;
+    }
+
+    /** The hint for the screen that is open now. */
+    public static String clickHintKey() {
+        return clickHintKey(creativeScreen.getAsBoolean());
+    }
     /** Under a planted root's bars: only the planting noise moves it (item 6). */
     public static final String ROOT_VARY = "wildroots.panel.lens.root_vary";
     /** The tooltip's hint that Shift shows the text lines. */
@@ -133,7 +163,7 @@ public record LensPanel(LensSheet sheet) implements TooltipComponent {
         Optional<LensRow> row = inspected ? row(disp) : Optional.empty();
         if (row.isEmpty()) {
             return Optional.of(new LensPanel(new LensSheet(title, header, LensSheet.Icon.NONE, Optional.empty(),
-                    List.of(), List.of(), List.of(Component.translatable(CLICK)))));
+                    List.of(), List.of(), List.of(Component.translatable(clickHintKey())))));
         }
         boolean seedling = r instanceof LotNbt.Lot l && l.seedling();
         LensSheet s = LensSheet.lot(title, header, row.get(), species, seedling);
@@ -159,7 +189,7 @@ public record LensPanel(LensSheet sheet) implements TooltipComponent {
         Optional<LensRow> row = row(MotherNbt.disp(root));
         if (row.isEmpty()) {
             return Optional.of(new LensPanel(new LensSheet(title, header, LensSheet.Icon.NONE, Optional.empty(),
-                    List.of(), List.of(), List.of(Component.translatable(CLICK)))));
+                    List.of(), List.of(), List.of(Component.translatable(clickHintKey())))));
         }
         List<Component> notes = new ArrayList<>();
         if (!row.get().bands().isEmpty()) {

@@ -98,6 +98,98 @@ public final class LensPanelGameTests {
         helper.succeed();
     }
 
+    private static ItemStack mother(GameTestHelper helper, ServerPlayer p) {
+        PlantBlockEntity be = PlantFixtures.plant(PlantFixtures.place(helper, PlantFixtures.PLANT,
+                FieldPlantBlock.HARVEST_STAGE), 81);
+        helper.assertTrue(be.live(helper.getLevel()).isPresent(), "no plant");
+        return MotherRootGameTests.drops(helper, PlantFixtures.PLANT, p).stream()
+                .filter(s -> s.is(ModItems.MOTHER_ROOT.get())).findFirst().orElseThrow();
+    }
+
+    /** B12: the carried lens over a lot and a mother root in a hotbar slot, and in a chest, inspects on the server. */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "d2_lens_panel")
+    public static void lensClickWorksInTheHotbarAndInAChest(GameTestHelper helper) {
+        ServerPlayer p = JournalGameTests.survival(helper, "b12_hotbar");
+        try {
+            ItemStack lens = new ItemStack(ModItems.HAND_LENS.get());
+            // hotbar: menu slots 36-44 of the inventory menu
+            p.getInventory().setItem(0, mother(helper, p));
+            p.inventoryMenu.setCarried(lens.copy());
+            click(p, 36);
+            helper.assertTrue(LensPanel.inspected(p.getInventory().getItem(0)), "hotbar mother root not inspected");
+            helper.assertTrue(p.inventoryMenu.getCarried().is(ModItems.HAND_LENS.get()), "lens left the cursor");
+            p.getCooldowns().removeCooldown(ModItems.HAND_LENS.get());
+            p.getInventory().setItem(8, PlantingGameTests.lot(helper.getLevel(), 4));
+            click(p, 44);
+            helper.assertTrue(LensPanel.inspected(p.getInventory().getItem(8))
+                    && p.getInventory().getItem(8).getCount() == 4, "hotbar lot not inspected");
+
+            // a chest (menu id 1): the stack is in the chest container
+            p.getCooldowns().removeCooldown(ModItems.HAND_LENS.get());
+            net.minecraft.world.SimpleContainer box = new net.minecraft.world.SimpleContainer(27);
+            box.setItem(3, mother(helper, p));
+            box.setItem(4, PlantingGameTests.lot(helper.getLevel(), 2));
+            net.minecraft.world.inventory.ChestMenu chest = net.minecraft.world.inventory.ChestMenu.threeRows(1,
+                    p.getInventory(), box);
+            chest.setCarried(lens.copy());
+            chest.clicked(3, 0, ClickType.PICKUP, p);
+            helper.assertTrue(LensPanel.inspected(box.getItem(3)), "chest mother root not inspected");
+            helper.assertTrue(chest.getCarried().is(ModItems.HAND_LENS.get()), "chest click swapped");
+            p.getCooldowns().removeCooldown(ModItems.HAND_LENS.get());
+            chest.clicked(4, 0, ClickType.PICKUP, p);
+            helper.assertTrue(LensPanel.inspected(box.getItem(4)), "chest lot not inspected");
+            // the same click in the player's own part of the chest screen
+            p.getCooldowns().removeCooldown(ModItems.HAND_LENS.get());
+            p.getInventory().setItem(20, mother(helper, p));
+            chest.clicked(27 + 11, 0, ClickType.PICKUP, p);
+            helper.assertTrue(LensPanel.inspected(p.getInventory().getItem(20)), "inventory part of a chest");
+        } finally {
+            p.discard();
+        }
+        helper.succeed();
+    }
+
+    /**
+     * B12: a creative player on the server inspects too. The creative inventory screen never sends a
+     * container click (it is client-only), so the real way there is the lens in one hand and the root in
+     * the other.
+     */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "d2_lens_panel")
+    public static void creativeServerClickAndTheOtherHandInspectARoot(GameTestHelper helper) {
+        net.minecraft.world.InteractionHand main = net.minecraft.world.InteractionHand.MAIN_HAND;
+        net.minecraft.world.InteractionHand off = net.minecraft.world.InteractionHand.OFF_HAND;
+        ServerPlayer p = JournalGameTests.survival(helper, "b12_creative");
+        try {
+            p.gameMode.changeGameModeForPlayer(net.minecraft.world.level.GameType.CREATIVE);
+            ItemStack root = mother(helper, p);
+            // the server side of a click is not blocked in creative (only the client's creative screen is)
+            p.getInventory().setItem(9, root.copy());
+            p.inventoryMenu.setCarried(new ItemStack(ModItems.HAND_LENS.get()));
+            click(p, 9);
+            helper.assertTrue(LensPanel.inspected(p.getInventory().getItem(9)), "creative server click");
+
+            // the lens in the main hand, the root in the other: a right-click
+            p.getCooldowns().removeCooldown(ModItems.HAND_LENS.get());
+            p.setItemInHand(main, new ItemStack(ModItems.HAND_LENS.get()));
+            p.setItemInHand(off, root.copy());
+            p.getItemInHand(main).use(helper.getLevel(), p, main);
+            ItemStack after = p.getItemInHand(off);
+            helper.assertTrue(LensPanel.inspected(after), "mother root in the other hand not inspected");
+            helper.assertTrue(NbtLimits.mother(after.getTag().get(MotherNbt.KEY)).ok(), "mother root over 512 B");
+            helper.assertTrue(LensPanel.of(after).orElseThrow().bars().size()
+                    == PlantFixtures.carrot().def().quantitative().size(), "bars of the inspected root");
+            // the lens in the off hand, the root in the main hand
+            p.getCooldowns().removeCooldown(ModItems.HAND_LENS.get());
+            p.setItemInHand(off, new ItemStack(ModItems.HAND_LENS.get()));
+            p.setItemInHand(main, root.copy());
+            p.getItemInHand(off).use(helper.getLevel(), p, off);
+            helper.assertTrue(LensPanel.inspected(p.getItemInHand(main)), "root in the main hand not inspected");
+        } finally {
+            p.discard();
+        }
+        helper.succeed();
+    }
+
     @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "d2_lens_panel")
     public static void produceClickStaysVanillaAndPanelShowsGradeAndBitterness(GameTestHelper helper) {
         ServerPlayer p = JournalGameTests.survival(helper, "d2_produce");

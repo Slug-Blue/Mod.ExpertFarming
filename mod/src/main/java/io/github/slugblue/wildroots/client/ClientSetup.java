@@ -30,6 +30,9 @@ public final class ClientSetup {
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
+            // the creative inventory is client-only, a click cannot inspect there: the panel says so
+            io.github.slugblue.wildroots.lens.LensPanel.creativeScreen(() -> net.minecraft.client.Minecraft
+                    .getInstance().screen instanceof net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen);
             ItemProperties.register(ModItems.SEED_POUCH.get(), FILLED,
                     (stack, level, entity, seed) -> SeedPouchItem.filled(stack) ? 1f : 0f);
             // the value is the colour relative to the item's default, so each item's model list starts at its own base
