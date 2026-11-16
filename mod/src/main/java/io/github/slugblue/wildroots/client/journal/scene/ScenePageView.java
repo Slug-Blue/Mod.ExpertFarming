@@ -38,7 +38,8 @@ import org.lwjgl.glfw.GLFW;
 
 /**
  * A scene page over the whole spread (journal v2 §3.13): the scene window
- * 264 × 112, the caption of the step (two lines), the control row; the
+ * 264 × 102, the caption of the step (up to three lines, then an
+ * ellipsis and the whole text as a tooltip), the control row; the
  * view of {@code {"type": "scene"}} pages, created once per layout.
  *
  * <p><b>Modes.</b> 3D while the scene loaded, {@code journalScenes} is on,
