@@ -142,6 +142,15 @@ public final class ProduceStacks {
 
     /** {@code s_ref · m}, × 0.5 when bitter (GDD §6.4, §3.6). */
     public static float saturation(double sRef, int grade, boolean bitter) {
-        return (float) (sRef * multiplier(grade) * (bitter ? 0.5 : 1));
+        return saturation(sRef, grade, bitter, 1);
+    }
+
+    /**
+     * The same times the colour's saturation multiplier (anthocyanins of the purple root, {@code saturation_mult}
+     * of the species' colour properties, WR-703); 1 = no change. Only the saturation: no effect is added.
+     */
+    public static float saturation(double sRef, int grade, boolean bitter, double colourMult) {
+        double m = Double.isFinite(colourMult) && colourMult > 0 ? colourMult : 1;
+        return (float) (sRef * multiplier(grade) * (bitter ? 0.5 : 1) * m);
     }
 }

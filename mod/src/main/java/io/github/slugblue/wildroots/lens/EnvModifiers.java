@@ -1,5 +1,6 @@
 package io.github.slugblue.wildroots.lens;
 
+import io.github.slugblue.wildroots.genetics.api.ColourProps;
 import io.github.slugblue.wildroots.genetics.api.Defaults;
 import io.github.slugblue.wildroots.genetics.api.Environment;
 import io.github.slugblue.wildroots.genetics.api.Phenotype;
@@ -15,8 +16,10 @@ import java.util.List;
  * (playtest 2, item 6): the same terms of {@code E} that
  * {@code PhenotypeCalculator} adds to {@code vigor_affected} traits (GDD
  * §3.5), as flags. Cold / hot: the cell's temperature is outside the
- * species' window widened by {@code 0.6·P} of the tolerance; dry: the
- * farmland is not moist; dark: light below 9; compost: a bonus. Pure (JUnit).
+ * species' window widened by {@code 0.6·P} of the tolerance and moved by the
+ * plant's colour (heat up, cold down: purple stands more heat, WR-703); dry: the
+ * farmland is not moist and {@code P_drought} plus the colour's water bonus is
+ * below 1; dark: light below 9; compost: a bonus. Pure (JUnit).
  */
 public final class EnvModifiers {
 
@@ -37,8 +40,9 @@ public final class EnvModifiers {
 
     /** The modifiers active for a plant with phenotype {@code p} in {@code env}. */
     public static int of(SpeciesDef def, Environment env, Phenotype p) {
-        double lo = def.tempMin() - Defaults.TOLERANCE_WIDENING * tolerance(def, p, Traits.COLD_TOLERANCE);
-        double hi = def.tempMax() + Defaults.TOLERANCE_WIDENING * tolerance(def, p, Traits.HEAT_TOLERANCE);
+        ColourProps colour = p.colourProps();
+        double lo = def.tempMin() - Defaults.TOLERANCE_WIDENING * tolerance(def, p, Traits.COLD_TOLERANCE) - colour.cold();
+        double hi = def.tempMax() + Defaults.TOLERANCE_WIDENING * tolerance(def, p, Traits.HEAT_TOLERANCE) + colour.heat();
         double t = env.temperature();
         int bits = 0;
         if (t < lo) {
@@ -47,7 +51,7 @@ public final class EnvModifiers {
             bits |= HOT;
         }
         // dry farmland costs 0.05 · (1 − P_drought): a fully drought-hardy plant loses nothing
-        if (!env.moisturized() && tolerance(def, p, Traits.DROUGHT_TOLERANCE) < 1) {
+        if (!env.moisturized() && Math.min(1, tolerance(def, p, Traits.DROUGHT_TOLERANCE) + colour.drought()) < 1) {
             bits |= DRY;
         }
         if (env.light() < Defaults.ENV_DARK_LIGHT) {

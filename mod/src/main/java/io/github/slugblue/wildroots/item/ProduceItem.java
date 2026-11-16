@@ -46,6 +46,13 @@ public class ProduceItem extends Item {
         return rootColours;
     }
 
+    /** The saturation multiplier of the stack's root colour (the purple root's anthocyanins, WR-703); 1 without colours. */
+    double colourSaturation(ItemStack stack) {
+        ResourceLocation id = rootColours ? ForgeRegistries.ITEMS.getKey(this) : null;
+        return id == null ? 1 : GradedFood.colourSaturation(id,
+                ProduceStacks.colourName(ProduceStacks.colour(stack.getTag())));
+    }
+
     public CultivarInfo.FoodReference reference() {
         ResourceLocation id = ForgeRegistries.ITEMS.getKey(this);
         return id == null ? fallback : GradedFood.referenceOf(id).orElse(fallback);
@@ -55,8 +62,8 @@ public class ProduceItem extends Item {
     @EntryPoint
     public FoodProperties getFoodProperties(ItemStack stack, LivingEntity entity) {
         return Guarded.call("produce food", "produce", () -> GradedFood.of(reference(),
-                ProduceStacks.grade(stack.getTag()), ProduceStacks.bitter(stack.getTag()), toxic),
-                super.getFoodProperties(stack, entity));
+                ProduceStacks.grade(stack.getTag()), ProduceStacks.bitter(stack.getTag()), toxic,
+                colourSaturation(stack)), super.getFoodProperties(stack, entity));
     }
 
     /** D3: eating time by grade ({@link ProduceStacks#eatTicks}); bitterness does not change it. */
@@ -77,6 +84,9 @@ public class ProduceItem extends Item {
                     tooltip.add(Component.translatable("wildroots.cultivar." + id.getPath() + ".variant."
                             + ProduceStacks.colourName(ProduceStacks.colour(stack.getTag()))));
                 }
+            }
+            if (rootColours && ProduceStacks.colour(stack.getTag()) == ProduceStacks.PURPLE) {
+                tooltip.add(Component.translatable("wildroots.tooltip.colour.purple"));
             }
             tooltip.add(Component.translatable("wildroots.grade." + ProduceStacks.grade(stack.getTag())));
             if (ProduceStacks.bitter(stack.getTag())) {

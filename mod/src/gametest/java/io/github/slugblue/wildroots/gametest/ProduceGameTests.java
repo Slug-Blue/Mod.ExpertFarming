@@ -95,6 +95,35 @@ public final class ProduceGameTests {
     }
 
     /**
+     * WR-703: the purple eastern carrot is more filling by the colour's {@code saturation_mult} of the species JSON
+     * (x1.15), the yellow and the red one are not; nutrition and effects are the same.
+     */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
+    public static void purpleEasternCarrotIsMoreFillingByTheDataMultiplier(GameTestHelper helper) {
+        Player player = helper.makeMockSurvivalPlayer();
+        double mult = io.github.slugblue.wildroots.data.Definitions.current().species(PlantFixtures.SP).orElseThrow().def()
+                .colours().props(3).saturationMult(); // 3 = purple in the carrot's colours.ids
+        helper.assertTrue(Math.abs(mult - 1.15) < 1e-9, "purple saturation_mult " + mult);
+        for (int g = 1; g <= 4; g++) {
+            FoodProperties yellow = ProduceStacks.create(ModItems.EASTERN_CARROT.get(), g, false, ProduceStacks.YELLOW, 1)
+                    .getFoodProperties(player);
+            FoodProperties purple = ProduceStacks.create(ModItems.EASTERN_CARROT.get(), g, false, ProduceStacks.PURPLE, 1)
+                    .getFoodProperties(player);
+            FoodProperties red = ProduceStacks.create(ModItems.EASTERN_CARROT.get(), g, false, ProduceStacks.RED, 1)
+                    .getFoodProperties(player);
+            helper.assertTrue(Math.abs(purple.getSaturationModifier() - yellow.getSaturationModifier() * mult) < 1e-5,
+                    "grade " + g + ": purple " + purple.getSaturationModifier() + " yellow " + yellow.getSaturationModifier());
+            helper.assertTrue(red.getSaturationModifier() == yellow.getSaturationModifier(), "red is not more filling");
+            helper.assertTrue(purple.getNutrition() == yellow.getNutrition() && purple.getEffects().isEmpty(),
+                    "purple changed more than the saturation");
+        }
+        // the other cultivars have no colours: unchanged
+        helper.assertTrue(Math.abs(ProduceStacks.create(ModItems.CARROT.get(), 3, false).getFoodProperties(player)
+                .getSaturationModifier() - 0.6f) < 1e-5, "carrot saturation");
+        helper.succeed();
+    }
+
+    /**
      * D3 (owner, 2026-11-11): coarse produce takes longer to eat. Grades 1–4
      * eat in 48 / 40 / 32 / 29 ticks, bitter or not; a mother root by its
      * own grade; the real use timer of a player follows it.

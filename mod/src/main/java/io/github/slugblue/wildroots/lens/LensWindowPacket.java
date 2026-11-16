@@ -12,7 +12,8 @@ import net.minecraft.network.FriendlyByteBuf;
  * lines. Everything is display data the server wrote: a header line (name ·
  * stage, or the lot's name), the compact {@link LensRow} line, the active
  * environment modifiers ({@link EnvModifiers} bits) and, for a plant on
- * farmland, its block state id for the small model. At most
+ * farmland, its block state id for the small model, and from stage 3 the
+ * colour lines ({@link LensColour}, WR-703, protocol 3). At most
  * {@value #MAX_BYTES} bytes; the decoder checks every length before it
  * reads and refuses extra bytes.
  *
@@ -22,9 +23,16 @@ import net.minecraft.network.FriendlyByteBuf;
  * @param row      the lens row line ({@link LensRow#KEY})
  * @param env      {@link EnvModifiers} bits (a plant only)
  * @param state    block state id of the plant on farmland, or {@value #NO_MODEL}
+ * @param colour   the colour lines of a plant at stage 3 or more (at most {@value LensColour#MAX_LINES}), else empty
  */
 public record LensWindowPacket(Kind kind, String species, DispCodec.Line header, DispCodec.Line row, int env,
-                               int state) {
+                               int state, java.util.List<DispCodec.Line> colour) {
+
+    /** A window without colour lines (a lot, or a plant of stage 1 or 2). */
+    public LensWindowPacket(Kind kind, String species, DispCodec.Line header, DispCodec.Line row, int env,
+                            int state) {
+        this(kind, species, header, row, env, state, java.util.List.of());
+    }
 
     /** Largest encoded packet. */
     public static final int MAX_BYTES = 1024;
@@ -44,9 +52,12 @@ public record LensWindowPacket(Kind kind, String species, DispCodec.Line header,
     public LensWindowPacket {
         if (kind == null || species == null || species.length() > MAX_SPECIES || !DispCodec.valid(header)
                 || !DispCodec.valid(row) || header.key().length() > MAX_KEY || row.key().length() > MAX_KEY
-                || (env & ~EnvModifiers.ALL) != 0 || state < NO_MODEL) {
+                || (env & ~EnvModifiers.ALL) != 0 || state < NO_MODEL || colour == null
+                || colour.size() > LensColour.MAX_LINES || !colour.stream().allMatch(
+                        l -> DispCodec.valid(l) && l.key().length() <= MAX_KEY)) {
             throw new IllegalArgumentException("invalid lens window");
         }
+        colour = java.util.List.copyOf(colour);
     }
 
     /**
@@ -56,8 +67,14 @@ public record LensWindowPacket(Kind kind, String species, DispCodec.Line header,
      */
     public static java.util.Optional<LensWindowPacket> of(Kind kind, String species, DispCodec.Line header,
                                                           DispCodec.Line row, int env, int state) {
+        return of(kind, species, header, row, env, state, java.util.List.of());
+    }
+
+    public static java.util.Optional<LensWindowPacket> of(Kind kind, String species, DispCodec.Line header,
+                                                          DispCodec.Line row, int env, int state,
+                                                          java.util.List<DispCodec.Line> colour) {
         try {
-            LensWindowPacket p = new LensWindowPacket(kind, species, header, row, env, state);
+            LensWindowPacket p = new LensWindowPacket(kind, species, header, row, env, state, colour);
             return p.size() <= MAX_BYTES ? java.util.Optional.of(p) : java.util.Optional.empty();
         } catch (RuntimeException e) {
             return java.util.Optional.empty();
@@ -72,6 +89,8 @@ public record LensWindowPacket(Kind kind, String species, DispCodec.Line header,
         write(buf, row);
         buf.writeVarInt(env);
         buf.writeVarInt(state);
+        buf.writeVarInt(colour.size());
+        colour.forEach(l -> write(buf, l));
         if (buf.writerIndex() - start > MAX_BYTES) {
             throw new IllegalStateException("lens window of " + (buf.writerIndex() - start) + " bytes");
         }
@@ -88,6 +107,8 @@ public record LensWindowPacket(Kind kind, String species, DispCodec.Line header,
             write(b, row);
             b.writeVarInt(env);
             b.writeVarInt(state);
+            b.writeVarInt(colour.size());
+            colour.forEach(l -> write(b, l));
             return b.writerIndex() - start;
         } finally {
             b.release();
@@ -129,9 +150,14 @@ public record LensWindowPacket(Kind kind, String species, DispCodec.Line header,
         DispCodec.Line row = read(buf);
         int env = buf.readVarInt();
         int state = buf.readVarInt();
+        int n = BoundedReader.readSize(buf, LensColour.MAX_LINES);
+        java.util.List<DispCodec.Line> colour = new java.util.ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            colour.add(read(buf));
+        }
         BoundedReader.requireFullyRead(buf);
         try {
-            return new LensWindowPacket(Kind.values()[k], species, header, row, env, state);
+            return new LensWindowPacket(Kind.values()[k], species, header, row, env, state, colour);
         } catch (IllegalArgumentException e) {
             throw new DecoderException(e.getMessage());
         }

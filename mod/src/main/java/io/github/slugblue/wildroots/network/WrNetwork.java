@@ -22,7 +22,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
  */
 public final class WrNetwork {
 
-    public static final String PROTOCOL = "2";
+    public static final String PROTOCOL = "3";
 
     public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(Ids.mod("main"), () -> PROTOCOL,
             PROTOCOL::equals, PROTOCOL::equals);

@@ -135,7 +135,13 @@ public record LensSheet(Component title, List<Component> header, Icon headIcon, 
 
     /** The sheet of a plant reading: its bars, flags and environment. */
     public static LensSheet plant(Component title, LensRow row, String species, int env) {
-        List<Component> notes = new ArrayList<>(environment(env));
+        return plant(title, row, species, env, List.of());
+    }
+
+    /** The same with the colour lines of a plant of stage 3 or more ({@link LensColour}), before the environment. */
+    public static LensSheet plant(Component title, LensRow row, String species, int env, List<Component> colour) {
+        List<Component> notes = new ArrayList<>(colour);
+        notes.addAll(environment(env));
         if (row.more()) {
             notes.add(Component.translatable(LensRow.MORE_KEY));
         }

@@ -65,11 +65,18 @@ public final class LensWindowScreen extends Screen {
         Component title = DispCodec.toComponent(p.header());
         Optional<LensRow> row = LensRow.parse(p.row());
         if (row.isEmpty()) {
+            java.util.List<Component> notes = new java.util.ArrayList<>(colour(p));
+            notes.addAll(LensSheet.environment(p.env()));
             return Optional.of(new LensSheet(title, java.util.List.of(), LensSheet.Icon.NONE, Optional.empty(),
-                    java.util.List.of(), java.util.List.of(), LensSheet.environment(p.env())));
+                    java.util.List.of(), java.util.List.of(), notes));
         }
         return Optional.of(p.kind() == LensWindowPacket.Kind.LOT ? LensSheet.lot(title, java.util.List.of(), row.get(),
-                p.species(), io.github.slugblue.wildroots.lens.Lens.SEEDLING_HEADER.equals(p.header().key())) : LensSheet.plant(title, row.get(), p.species(), p.env()));
+                p.species(), io.github.slugblue.wildroots.lens.Lens.SEEDLING_HEADER.equals(p.header().key())) : LensSheet.plant(title, row.get(), p.species(), p.env(), colour(p)));
+    }
+
+    /** The colour lines of a packet as components (a plant of stage 3 or more). */
+    static java.util.List<Component> colour(LensWindowPacket p) {
+        return p.colour().stream().map(DispCodec::toComponent).toList();
     }
 
     /** The plant's block state for the model, only a known non-air state. */
@@ -101,6 +108,7 @@ public final class LensWindowScreen extends Screen {
         }
         mc.gui.getChat().addMessage(DispCodec.toComponent(p.header()));
         LensRow.parse(p.row()).ifPresent(r -> r.expand(p.species()).forEach(mc.gui.getChat()::addMessage));
+        colour(p).forEach(mc.gui.getChat()::addMessage);
         LensSheet.environment(p.env()).forEach(mc.gui.getChat()::addMessage);
         return false;
     }

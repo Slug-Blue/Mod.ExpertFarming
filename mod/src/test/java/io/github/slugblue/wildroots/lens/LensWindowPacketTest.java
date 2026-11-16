@@ -88,6 +88,7 @@ class LensWindowPacketTest {
         writeLine(env, p.row());
         env.writeVarInt(1 << 9);
         env.writeVarInt(0);
+        env.writeVarInt(0); // colour lines (protocol 3)
         assertThrows(DecoderException.class, () -> LensWindowPacket.decode(env));
 
         FriendlyByteBuf args = new FriendlyByteBuf(Unpooled.buffer());
@@ -135,5 +136,46 @@ class LensWindowPacketTest {
         assertTrue(EnvModifiers.negative("wildroots.window.lens.env.cold"));
         assertFalse(EnvModifiers.negative("wildroots.window.lens.env.compost"));
         assertEquals(2, LensSheet.environment(EnvModifiers.DRY | EnvModifiers.COMPOST).size());
+    }
+
+    /** WR-703: the colour lines of a plant of stage 3 or more round-trip, are bounded and refuse forged input. */
+    @Test
+    void colourLinesRoundTripAndAreBounded() {
+        List<DispCodec.Line> colour = List.of(DispCodec.Line.of(LensColour.KEY, DispCodec.keyArg("wildroots.colour.purple")),
+                DispCodec.Line.of(LensColour.KEY + ".heat.up"), DispCodec.Line.of(LensColour.KEY + ".cold.down"),
+                DispCodec.Line.of(LensColour.KEY + ".water.less"), DispCodec.Line.of(LensColour.KEY + ".saturation"));
+        LensWindowPacket p = new LensWindowPacket(LensWindowPacket.Kind.PLANT, "wildroots:wild_carrot",
+                plant().header(), ROW.line(), EnvModifiers.DRY, 1234, colour);
+        FriendlyByteBuf b = encoded(p);
+        assertEquals(p.size(), b.readableBytes());
+        assertTrue(p.size() <= LensWindowPacket.MAX_BYTES, "window of " + p.size() + " bytes");
+        assertEquals(p, LensWindowPacket.decode(b));
+        assertTrue(p.size() - plant().size() < 400, "the colour adds " + (p.size() - plant().size()) + " bytes");
+        // a plant without colour lines is the old packet plus one byte (the count 0)
+        assertEquals(plant().size(), encoded(plant()).readableBytes());
+        assertEquals(LensWindowPacket.of(p.kind(), p.species(), p.header(), p.row(), p.env(), p.state(), colour),
+                Optional.of(p));
+        // more lines than the colour has, or an invalid line: refused
+        List<DispCodec.Line> six = new java.util.ArrayList<>(colour);
+        six.add(DispCodec.Line.of(LensColour.KEY + ".extra"));
+        assertThrows(IllegalArgumentException.class, () -> new LensWindowPacket(LensWindowPacket.Kind.PLANT, "x",
+                plant().header(), ROW.line(), 0, 0, six));
+        assertThrows(IllegalArgumentException.class, () -> new LensWindowPacket(LensWindowPacket.Kind.PLANT, "x",
+                plant().header(), ROW.line(), 0, 0, List.of(DispCodec.Line.of("bad key"))));
+        assertEquals(Optional.empty(), LensWindowPacket.of(p.kind(), "x", p.header(), p.row(), 0, 0, six));
+        // a forged count above the bound makes the decoder throw before it reads the lines
+        FriendlyByteBuf forged = new FriendlyByteBuf(Unpooled.buffer());
+        forged.writeByte(0);
+        forged.writeUtf("x");
+        forged.writeUtf(plant().header().key());
+        forged.writeVarInt(plant().header().args().size());
+        plant().header().args().forEach(a -> forged.writeUtf(a));
+        forged.writeUtf(ROW.line().key());
+        forged.writeVarInt(ROW.line().args().size());
+        ROW.line().args().forEach(a -> forged.writeUtf(a));
+        forged.writeVarInt(0);
+        forged.writeVarInt(0);
+        forged.writeVarInt(1000);
+        assertThrows(DecoderException.class, () -> LensWindowPacket.decode(forged));
     }
 }

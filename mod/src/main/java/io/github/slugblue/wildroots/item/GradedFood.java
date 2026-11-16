@@ -25,7 +25,7 @@ public final class GradedFood {
     /** Poison of a toxic bitter harvest: 4 s. */
     public static final int POISON_TICKS = 80;
 
-    private record Key(int nRef, double sRef, int grade, boolean bitter, boolean toxic) {
+    private record Key(int nRef, double sRef, int grade, boolean bitter, boolean toxic, double colourMult) {
     }
 
     private static final Map<Key, FoodProperties> CACHE = new ConcurrentHashMap<>();
@@ -34,11 +34,17 @@ public final class GradedFood {
     }
 
     public static FoodProperties of(CultivarInfo.FoodReference ref, int grade, boolean bitter, boolean toxic) {
+        return of(ref, grade, bitter, toxic, 1);
+    }
+
+    /** With the saturation multiplier of the root's colour ({@link #colourSaturation}); 1 = none. */
+    public static FoodProperties of(CultivarInfo.FoodReference ref, int grade, boolean bitter, boolean toxic,
+                                    double colourMult) {
         int g = ProduceStacks.normalise(grade, bitter);
-        return CACHE.computeIfAbsent(new Key(ref.nutrition(), ref.saturation(), g, bitter, toxic), k -> {
+        return CACHE.computeIfAbsent(new Key(ref.nutrition(), ref.saturation(), g, bitter, toxic, colourMult), k -> {
             FoodProperties.Builder b = new FoodProperties.Builder()
                     .nutrition(ProduceStacks.nutrition(k.nRef(), k.grade()))
-                    .saturationMod(ProduceStacks.saturation(k.sRef(), k.grade(), k.bitter()));
+                    .saturationMod(ProduceStacks.saturation(k.sRef(), k.grade(), k.bitter(), k.colourMult()));
             if (k.bitter()) {
                 b.effect(() -> k.toxic() ? new MobEffectInstance(MobEffects.POISON, POISON_TICKS)
                         : new MobEffectInstance(MobEffects.CONFUSION, NAUSEA_TICKS), 1.0f);
@@ -50,6 +56,25 @@ public final class GradedFood {
     /** Cached objects (tests). */
     static int cached() {
         return CACHE.size();
+    }
+
+    /**
+     * Saturation multiplier of the root colour {@code colourName} (yellow, purple, red) for the cultivar whose
+     * harvest item is {@code item}, from the {@code colours.properties} of its species; 1 where the species
+     * (with its colour properties, which only the server has) is not known.
+     */
+    public static double colourSaturation(ResourceLocation item, String colourName) {
+        DefinitionsSnapshot snap = Definitions.current();
+        for (DefinitionsSnapshot.CultivarEntry c : snap.cultivars().values()) {
+            if (c.info().produceItem().filter(item::equals).isPresent()) {
+                return snap.species(c.def().species()).map(s -> {
+                    var rules = s.def().colours();
+                    int i = rules.indexOf(colourName);
+                    return i < 0 ? 1.0 : rules.props(i).saturationMult();
+                }).orElse(1.0);
+            }
+        }
+        return 1.0;
     }
 
     /** {@code food_reference} of the cultivar whose harvest item is {@code item}, if loaded. */

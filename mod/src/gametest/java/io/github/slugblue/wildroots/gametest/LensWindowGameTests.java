@@ -3,6 +3,7 @@ package io.github.slugblue.wildroots.gametest;
 import io.github.slugblue.wildroots.WildRoots;
 import io.github.slugblue.wildroots.core.registry.ModItems;
 import io.github.slugblue.wildroots.lens.Lens;
+import io.github.slugblue.wildroots.lens.LensColour;
 import io.github.slugblue.wildroots.lens.LensNetwork;
 import io.github.slugblue.wildroots.lens.LensRow;
 import io.github.slugblue.wildroots.lens.LensWindowPacket;
@@ -125,6 +126,43 @@ public final class LensWindowGameTests {
         } finally {
             sent.close();
             p.discard();
+        }
+        helper.succeed();
+    }
+
+    /**
+     * WR-703: the window names the colour and what it does (heat, cold, water, saturation) only from stage 3,
+     * when the root's shoulder shows it; on stage 1 and 2 the window says nothing about the colour. The reading
+     * is the one a purple plant gives; the packet stays within its bound.
+     */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, timeoutTicks = 200)
+    public static void colourAndItsPropertiesShowFromStageThree(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
+        for (int stage = 1; stage <= 3; stage++) {
+            PlantBlockEntity be = PlantFixtures.place(helper, PlantFixtures.PLANT, stage);
+            be.init(io.github.slugblue.wildroots.data.Definitions.current().genetics(),
+                    new PlantBlockEntity.Init(PlantFixtures.SP, RootColourGameTests.colourGenome(660 + stage, 1, 0, 0, 0),
+                            PlantFixtures.noise(661 + stage), io.github.slugblue.wildroots.plant.Passport.PLAYER,
+                            new java.util.UUID(5, 6), io.github.slugblue.wildroots.genetics.api.Classification.WILD, null, 0, 0, 0));
+            Lens.PlantReading r = Lens.readPlant(level, abs, null).orElseThrow(() -> new IllegalStateException("no reading"));
+            LensWindowPacket w = r.packet().orElseThrow();
+            if (stage < 3) {
+                helper.assertTrue(r.colour().isEmpty() && w.colour().isEmpty(), "stage " + stage + " names a colour: " + r.colour());
+                helper.assertTrue(r.lines().stream().noneMatch(l -> l.key().startsWith("wildroots.window.lens.colour")),
+                        "stage " + stage + " lines " + r.lines());
+            } else {
+                java.util.List<String> keys = w.colour().stream().map(l -> l.key()).toList();
+                helper.assertTrue(keys.equals(java.util.List.of(LensColour.KEY, LensColour.KEY + ".heat.up",
+                        LensColour.KEY + ".cold.down", LensColour.KEY + ".water.less", LensColour.KEY + ".saturation")),
+                        "stage 3 colour lines " + keys);
+                helper.assertTrue(w.colour().get(0).args().equals(java.util.List.of(
+                        io.github.slugblue.wildroots.core.safety.DispCodec.keyArg("wildroots.colour.purple"))),
+                        "colour name " + w.colour().get(0));
+                helper.assertTrue(r.lines().containsAll(w.colour()), "the chat form lacks the colour");
+                helper.assertTrue(w.size() <= LensWindowPacket.MAX_BYTES, "window of " + w.size() + " bytes");
+            }
+            helper.setBlock(PlantFixtures.PLANT, net.minecraft.world.level.block.Blocks.AIR);
         }
         helper.succeed();
     }

@@ -54,13 +54,14 @@ public final class Lens {
      * @param env     active environment modifiers ({@link EnvModifiers})
      * @param species species id
      * @param model   the plant's block state id when it stands on farmland, else {@link LensWindowPacket#NO_MODEL}
+     * @param colour  the colour lines ({@link LensColour}): only from stage 3, when the root shows its colour
      */
     public record PlantReading(DispCodec.Line header, List<DispCodec.Line> lines, LensRow row, int env,
-                               String species, int model) {
+                               String species, int model, List<DispCodec.Line> colour) {
 
         /** The window, or empty if it cannot be sent (the caller falls back to chat). */
         public Optional<LensWindowPacket> packet() {
-            return LensWindowPacket.of(LensWindowPacket.Kind.PLANT, species, header, row.line(), env, model);
+            return LensWindowPacket.of(LensWindowPacket.Kind.PLANT, species, header, row.line(), env, model, colour);
         }
     }
 
@@ -98,6 +99,10 @@ public final class Lens {
         Optional<CultivarDef> looks = tierOne(out, live.get().snapshot(), def, live.get().species().info(), p.get(),
                 how, Optional.ofNullable(d.cultivar()), d.tier());
         LensRow row = LensRow.of(def, live.get().species().info(), p.get(), how, looks);
+        // the colour is seen on the root's shoulder from stage 3 (00-vision item 27): the lens says nothing before
+        List<DispCodec.Line> colour = FieldPlantBlock.stage(state.get()) >= FieldPlantBlock.HARVEST_STAGE
+                ? LensColour.lines(def, p.get()) : List.of();
+        out.addAll(colour);
         boolean farmland = LoadedLevelAccess.blockState(level, pos.below())
                 .map(b -> b.getBlock() instanceof net.minecraft.world.level.block.FarmBlock).orElse(false);
         int model = farmland ? net.minecraft.world.level.block.Block.getId(state.get()) : LensWindowPacket.NO_MODEL;
@@ -107,7 +112,7 @@ public final class Lens {
                     DispCodec.keyArg(JournalTriggers.nameKey("cultivar", c.id().value()))));
         }
         return Optional.of(new PlantReading(header, List.copyOf(out), row, EnvModifiers.of(def, env, p.get()),
-                species, model));
+                species, model, colour));
     }
 
     /** Header key of the lot window: "%s · seeds". */

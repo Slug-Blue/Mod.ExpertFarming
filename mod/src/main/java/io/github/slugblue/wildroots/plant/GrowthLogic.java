@@ -23,7 +23,8 @@ import net.minecraftforge.common.ForgeHooks;
  *
  * <p>Chance of the next stage per random tick:
  * {@code p = 68.3 / (60·t_stage) · m · dry}, {@code m = 0.7 + 0.6·P_growth},
- * {@code dry = 1 − 0.5·(1 − P_drought)} on dry farmland, clamped to
+ * {@code dry = 1 − 0.5·(1 − P_drought)} on dry farmland ({@code P_drought} plus the colour's
+ * water bonus, at most 1: yellow and purple need less water, WR-703), clamped to
  * {@code [1e-6, 0.95]}. {@code P_growth} already carries {@code E}
  * (temperature out of the window, dryness, darkness; GDD §3.5), so a plant
  * far out of its window grows slower but never dies. The chance is cached in
@@ -83,7 +84,8 @@ public final class GrowthLogic {
         }
         double minutes = stageMinutes(s.timing(), stage + 1) + (stage == 0 ? dormancyMinutes : 0);
         double m = 0.7 + 0.6 * p.pOr(Traits.GROWTH_SPEED, 0.3);
-        double dry = env.moisturized() ? 1 : 1 - 0.5 * (1 - p.pOr(Traits.DROUGHT_TOLERANCE, 0));
+        double dry = env.moisturized() ? 1
+                : 1 - 0.5 * (1 - Math.min(1, p.pOr(Traits.DROUGHT_TOLERANCE, 0) + p.colourProps().drought()));
         double c = minutes <= 0 ? MAX_CHANCE : TICK_SECONDS / (60 * minutes) * m * dry;
         return Double.isFinite(c) ? Math.max(MIN_CHANCE, Math.min(MAX_CHANCE, c)) : MIN_CHANCE;
     }
