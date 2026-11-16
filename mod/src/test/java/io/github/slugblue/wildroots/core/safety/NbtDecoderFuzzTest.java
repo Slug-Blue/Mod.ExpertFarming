@@ -129,6 +129,12 @@ class NbtDecoderFuzzTest {
         g.putString("sp", now.species());
         g.putLong("lh", now.lh());
         g.putLongArray("a", now.a());
+        // second seed (review m4): the raw v1 record, whose mutations arrive through Genetics.decode and the migration
+        fuzz("genome via migration", 1975, List.of(v1), t -> {
+            GenomeRecord r = new GenomeRecord(t.getInt("v"), t.getString("sp"), t.getLong("lh"), t.getLongArray("a"));
+            DecodeResult d = SNAP.genetics().decode(r, CarrotLineDataTestAccess.wildCarrot());
+            return d instanceof DecodeResult.Valid ? Outcome.VALID : Outcome.INERT;
+        });
         fuzz("genome", 1971, List.of(g), t -> {
             // the raw getters never throw; GenomeCodec must judge whatever they return
             GenomeRecord r = new GenomeRecord(t.getInt("v"), t.getString("sp"), t.getLong("lh"), t.getLongArray("a"));

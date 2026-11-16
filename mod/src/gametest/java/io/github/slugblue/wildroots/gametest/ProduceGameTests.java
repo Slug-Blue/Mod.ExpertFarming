@@ -95,6 +95,48 @@ public final class ProduceGameTests {
     }
 
     /**
+     * ADR-0007 revision 5 (review m3): every {@code ProduceStacks.create} overload, over grade (also out of range) x
+     * bitter x colour, gives at most 12 different stacks ({@code ItemStack#isSameItemSameTags}) for the eastern
+     * carrot and never a bitter key; the wild root has at most 6 and no colour key. A carrot of the cultivar
+     * {@code wildroots:carrot} is never bitter because its profile requires bitterness domestic (the classifier,
+     * not the factory, enforces that), so its 4 variants are not asserted here.
+     */
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3)
+    public static void everyCreateOverloadStaysWithinTheStackVariantBound(GameTestHelper helper) {
+        java.util.List<ItemStack> eastern = new java.util.ArrayList<>();
+        java.util.List<ItemStack> wild = new java.util.ArrayList<>();
+        for (int g = -2; g <= 6; g++) {
+            for (boolean b : new boolean[] {false, true}) {
+                eastern.add(ProduceStacks.create(ModItems.EASTERN_CARROT.get(), g, b));
+                eastern.add(ProduceStacks.create(ModItems.EASTERN_CARROT.get(), g, b, 3));
+                wild.add(ProduceStacks.create(ModItems.WILD_CARROT_ROOT.get(), g, b));
+                wild.add(ProduceStacks.create(ModItems.WILD_CARROT_ROOT.get(), g, b, 2));
+                for (int c = -1; c <= 4; c++) {
+                    eastern.add(ProduceStacks.create(ModItems.EASTERN_CARROT.get(), g, b, c, 1));
+                    wild.add(ProduceStacks.create(ModItems.WILD_CARROT_ROOT.get(), g, b, c, 1));
+                }
+            }
+        }
+        helper.assertTrue(eastern.stream().noneMatch(s -> s.getTag().contains(ProduceStacks.BITTER)), "bitter eastern carrot");
+        helper.assertTrue(wild.stream().noneMatch(s -> s.getTag().contains(ProduceStacks.COLOUR)), "coloured wild root");
+        int e = distinct(eastern);
+        int w = distinct(wild);
+        helper.assertTrue(e <= 12, "eastern carrot variants " + e);
+        helper.assertTrue(w <= 6, "wild root variants " + w);
+        helper.succeed();
+    }
+
+    static int distinct(java.util.List<ItemStack> stacks) {
+        java.util.List<ItemStack> seen = new java.util.ArrayList<>();
+        for (ItemStack s : stacks) {
+            if (seen.stream().noneMatch(o -> ItemStack.isSameItemSameTags(o, s))) {
+                seen.add(s);
+            }
+        }
+        return seen.size();
+    }
+
+    /**
      * WR-703: the purple eastern carrot is more filling by the colour's {@code saturation_mult} of the species JSON
      * (x1.15), the yellow and the red one are not; nutrition and effects are the same.
      */

@@ -59,7 +59,11 @@ class ProduceStacksTest {
         assertEquals(4, ProduceStacks.tag(4, false, ProduceStacks.PURPLE).getByte(ProduceStacks.GRADE));
     }
 
-    /** The other two kinds of produce: no colour key ever; 6 variants with bitterness (wild root), 4 without (carrot). */
+    /**
+     * The other kinds of produce: no colour key ever; 6 variants with bitterness (wild root). The 4 of the
+     * cultivar carrot are NOT enforced by the factory: a carrot is never bitter because its profile requires
+     * bitterness domestic (the classifier), so here the bitter-free subset is only counted.
+     */
     @Test
     void plainProduceHasAtMostSixAndNoColour() {
         Set<CompoundTag> withBitter = new HashSet<>();
@@ -75,7 +79,7 @@ class ProduceStacksTest {
             }
         }
         assertEquals(6, withBitter.size(), "wild_carrot_root");
-        assertEquals(4, without.size(), "carrot never has bitterness (the cultivar requires it domestic)");
+        assertEquals(4, without.size(), "the bitter-free subset: 4 grades");
     }
 
     @Test
