@@ -98,6 +98,29 @@ class CultivarClassifierTest {
                         Carrot.PROFILES, Optional.empty()).cultivar());
     }
 
+    /**
+     * S1 review N3, owner decision 2026-11-16: {@code carrot} has no {@code color_r} requirement. A red-rooted plant
+     * ({@code y1y1 rr}) with {@code y2y2 pp} is the cultivar carrot (the red root is cosmetic), whatever {@code R}
+     * is; purple is still excluded and falls back to the tier-1 eastern carrot; a red plant that is not
+     * {@code y2y2} stays an eastern carrot.
+     */
+    @Test
+    void redRootedPlantIsTheCarrotCultivarAndPurpleIsNot() {
+        TraitId r = TraitId.of("color_r");
+        assertFalse(Carrot.CARROT.qualitative().containsKey(r), "the shipped carrot has no color_r requirement");
+        for (int[] rr : new int[][] {{1, 1}, {0, 1}, {0, 0}}) { // rr, Rr, RR
+            Genome g = plant(18, 11, Map.of(BITTER, DOM, Y1, DOM, Y2, DOM, P, WILD, r, rr));
+            Classification c = classify(g, Carrot.PROFILES, Optional.empty());
+            assertEquals(Optional.of(Carrot.CARROT.id()), c.cultivar(), "color_r " + rr[0] + rr[1]);
+            assertEquals(2, c.tier());
+        }
+        Genome purpleRed = plant(18, 11, Map.of(BITTER, DOM, Y1, DOM, Y2, DOM, P, new int[] {0, 1}, r, DOM));
+        assertEquals(Optional.of(Carrot.EASTERN.id()), classify(purpleRed, Carrot.PROFILES, Optional.empty()).cultivar());
+        Genome redYellowBase = plant(18, 11, Map.of(BITTER, DOM, Y1, DOM, Y2, WILD, P, WILD, r, DOM));
+        assertEquals(Optional.of(Carrot.EASTERN.id()),
+                classify(redYellowBase, Carrot.PROFILES, Optional.empty()).cultivar());
+    }
+
     static CultivarDef profile(String id, int tier, int priority, double fruitMin, double hysteresis) {
         return new CultivarDef(CultivarId.of(id), Carrot.SPECIES.id(), tier, priority,
                 Map.of(FRUIT, Range.atLeast(fruitMin)), Map.of(), List.of(), hysteresis,
