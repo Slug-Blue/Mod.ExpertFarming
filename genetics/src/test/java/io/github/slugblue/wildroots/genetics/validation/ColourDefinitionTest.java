@@ -65,13 +65,11 @@ class ColourDefinitionTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    void moreThanEightColoursAreAnError() {
+    void moreColoursThanBlockVariantsAreAnError() {
         Object json = carrot();
         List<Object> ids = (List<Object>) colours(json).get("ids");
-        for (int i = 0; i < 4; i++) {
-            ids.add("extra" + i);
-        }
-        assertEquals(9, ids.size());
+        assertEquals(DataLimits.MAX_COLOURS, ids.size(), "the carrot uses every variant of the block");
+        ids.add("extra");
         List<Problem> p = speciesProblems(json);
         assertTrue(has(p, Problem.Severity.ERROR, "colours.ids"), p::toString);
     }
@@ -95,7 +93,7 @@ class ColourDefinitionTest {
         Map<String, Object> props = (Map<String, Object>) colours(json).get("properties");
         props.put("blue", Map.of("heat", 0.1));
         ((Map<String, Object>) props.get("purple")).put("heat", 7.0);
-        ((Map<String, Object>) props.get("purple")).put("saturation_mult", -1.0);
+        ((Map<String, Object>) props.get("purple")).put("saturation_mult", 0.0);
         List<Problem> p = speciesProblems(json);
         assertTrue(has(p, Problem.Severity.ERROR, "colours.properties.blue"), p::toString);
         assertTrue(has(p, Problem.Severity.ERROR, "colours.properties.purple.heat"), p::toString);

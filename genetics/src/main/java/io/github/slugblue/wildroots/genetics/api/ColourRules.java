@@ -5,7 +5,6 @@ import io.github.slugblue.wildroots.genetics.model.TraitId;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
-import java.util.function.Predicate;
 
 /**
  * Colour phenotype of a species as data (docs/design/carrot-colours-climate.md
@@ -51,28 +50,6 @@ public record ColourRules(List<String> ids, List<Rule> rules, SortedMap<String, 
     /** Number of the colour {@code id}, or −1. */
     public int indexOf(String id) {
         return ids.indexOf(id);
-    }
-
-    /**
-     * Colour number of a genotype: the first rule whose traits all show the
-     * required phenotype; −1 if none matches.
-     *
-     * @param domestic phenotype of a qualitative trait: {@code true} = domestic (unknown trait: {@code false})
-     */
-    public int resolve(Predicate<TraitId> domestic) {
-        for (Rule r : rules) {
-            boolean all = true;
-            for (Map.Entry<TraitId, QualReq> e : r.when().entrySet()) {
-                if (domestic.test(e.getKey()) != (e.getValue() == QualReq.DOMESTIC)) {
-                    all = false;
-                    break;
-                }
-            }
-            if (all) {
-                return indexOf(r.id());
-            }
-        }
-        return -1;
     }
 
     /** Properties of the colour number {@code colour}; {@link ColourProps#ZERO} for −1 or an unknown colour. */

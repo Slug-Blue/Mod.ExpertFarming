@@ -1,6 +1,7 @@
 package io.github.slugblue.wildroots.plant;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.github.slugblue.wildroots.data.CarrotLineDataTestAccess;
 import io.github.slugblue.wildroots.genetics.api.ColourRules;
@@ -66,7 +67,7 @@ class GrowthVariantTest {
                     for (int r = 0; r < 3; r++) {
                         int v = GrowthLogic.variant(CARROT, pheno(CARROT, genome(p, y1, y2, r)));
                         assertEquals(oracle(p, y1, y2, r), v, "P" + p + " y1 " + y1 + " y2 " + y2 + " r " + r);
-                        assertEquals(true, v >= 0 && v <= FieldPlantBlock.MAX_VARIANT);
+                        assertTrue(v >= 0 && v <= FieldPlantBlock.MAX_VARIANT);
                         n++;
                     }
                 }
@@ -85,15 +86,21 @@ class GrowthVariantTest {
                         Genome g = genome(p, y1, y2, r);
                         int rules = GrowthLogic.variant(CARROT, pheno(CARROT, g));
                         int old = GrowthLogic.variant(COLOURLESS, pheno(COLOURLESS, g));
-                        boolean red = rules == 4;
-                        assertEquals(red ? old >= 1 && old <= 2 : true, true, "red covers yellow or orange only");
-                        if (!red) {
+                        if (rules == 4) {
+                            assertTrue(old >= 1 && old <= 2, "red covers yellow or orange only");
+                        } else {
                             assertEquals(old, rules, "P" + p + " y1 " + y1 + " y2 " + y2 + " r " + r);
                         }
                     }
                 }
             }
         }
+    }
+
+    /** The limit of the validator is the number of values of the block property. */
+    @Test
+    void maxColoursEqualsTheBlockVariants() {
+        assertEquals(FieldPlantBlock.MAX_VARIANT + 1, io.github.slugblue.wildroots.genetics.validation.DataLimits.MAX_COLOURS);
     }
 
     @Test

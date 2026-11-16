@@ -46,7 +46,12 @@ public class ProduceItem extends Item {
         return rootColours;
     }
 
-    /** The saturation multiplier of the stack's root colour (the purple root's anthocyanins, WR-703); 1 without colours. */
+    /**
+     * The saturation multiplier of the stack's root colour (the purple root's anthocyanins, WR-703); 1 without
+     * colours. The colour name is one of the fixed ids yellow / purple / red and must equal the colour ids of the
+     * species JSON. Server and single player apply it; a remote client has no colour data and uses 1 (accepted:
+     * the server is authoritative, only client-side predictions differ).
+     */
     double colourSaturation(ItemStack stack) {
         ResourceLocation id = rootColours ? ForgeRegistries.ITEMS.getKey(this) : null;
         return id == null ? 1 : GradedFood.colourSaturation(id,

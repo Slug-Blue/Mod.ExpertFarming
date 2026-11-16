@@ -16,7 +16,9 @@ import io.github.slugblue.wildroots.genetics.model.TraitId;
  * @param patchAlleles S-alleles present in one wild patch (GDD §3.6: 6 of 10)
  * @param legacyAllele allele both copies get when an old genome that has no such locus is migrated
  *                     ({@link #NO_LEGACY}: the usual background value from the wild frequency;
- *                     0 = wild, 1 = domestic; {@code legacy_default} in the JSON)
+ *                     0 = wild, 1 = domestic; {@code legacy_default} in the JSON). Only for a locus appended
+ *                     after a release: it also makes wild and village plants draw the locus last
+ *                     (ADR-0002 revision 3)
  */
 public record QualTrait(TraitId id, Dominance dominant, double wildFreq, boolean toxic, int alleles,
                         boolean selfIncompat, int patchAlleles, int legacyAllele) {

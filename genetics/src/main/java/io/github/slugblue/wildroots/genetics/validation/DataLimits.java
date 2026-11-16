@@ -23,12 +23,18 @@ public final class DataLimits {
     public static final int MAX_VILLAGE_TEMPLATES = 64;
     public static final int MAX_QUANT_TRAITS = 32;
     public static final int MAX_QUAL_TRAITS = 16;
-    /** Colours of a species: the {@code variant} block property holds 0-7 (colour rules, carrot-colours-climate §1.3). */
-    public static final int MAX_COLOURS = 8;
+    /**
+     * Colours of a species: the {@code variant} block property of {@code :mod} has the values 0-4
+     * ({@code FieldPlantBlock.MAX_VARIANT}); genetics cannot see the mod, so the number is repeated here and
+     * a test in {@code :mod} keeps both equal (colour rules, carrot-colours-climate §1.3).
+     */
+    public static final int MAX_COLOURS = 5;
     public static final int MAX_COLOUR_RULES = 32;
     /** Bound of a colour's heat, cold and drought modifiers (a window is about 1 wide). */
     public static final double MAX_COLOUR_MODIFIER = 1;
     public static final double MAX_COLOUR_SATURATION = 4;
+    /** Lower bound, exclusive, of the saturation multiplier (the food code reads 0 or less as 1). */
+    public static final double MIN_COLOUR_SATURATION_EXCLUSIVE = 0;
     public static final int MIN_LOCI = 1;
     public static final int MAX_LOCI = 16;
     public static final int MAX_LOAD_LOCI = 16;

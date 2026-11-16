@@ -235,7 +235,8 @@ public final class DefinitionValidator {
             return;
         }
         if (c.ids().size() > DataLimits.MAX_COLOURS) {
-            out.add(Problem.error("colours.ids", c.ids().size() + " colours > " + DataLimits.MAX_COLOURS));
+            out.add(Problem.error("colours.ids", c.ids().size() + " colours > " + DataLimits.MAX_COLOURS
+                    + " (the values of the block property variant)"));
         }
         Set<String> seen = new HashSet<>();
         for (int i = 0; i < c.ids().size(); i++) {
@@ -272,7 +273,10 @@ public final class DefinitionValidator {
             range(v.heat(), -DataLimits.MAX_COLOUR_MODIFIER, DataLimits.MAX_COLOUR_MODIFIER, p + ".heat", out);
             range(v.cold(), -DataLimits.MAX_COLOUR_MODIFIER, DataLimits.MAX_COLOUR_MODIFIER, p + ".cold", out);
             range(v.drought(), -DataLimits.MAX_COLOUR_MODIFIER, DataLimits.MAX_COLOUR_MODIFIER, p + ".drought", out);
-            range(v.saturationMult(), 0, DataLimits.MAX_COLOUR_SATURATION, p + ".saturation_mult", out);
+            if (range(v.saturationMult(), 0, DataLimits.MAX_COLOUR_SATURATION, p + ".saturation_mult", out)
+                    && v.saturationMult() <= DataLimits.MIN_COLOUR_SATURATION_EXCLUSIVE) {
+                out.add(Problem.error(p + ".saturation_mult", "must be > 0"));
+            }
         }
     }
 

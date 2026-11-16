@@ -102,6 +102,9 @@ class DeterminismGoldenTest {
         assertEquals(Long.toHexString(BREEDING), Long.toHexString(acc), "breeding digest");
     }
 
+    // Re-pinned once for WR-701 (locus color_r): the layout is 144 bits, so the packed genomes differ, and the new
+    // locus shifts the meiosis stream of the loci after it. The wild and village draws of every OLDER allele are
+    // unchanged; PopulationTest.theColourLocusDoesNotMoveTheDrawsOfOlderLoci proves that allele by allele.
     static final long WILD_AND_VILLAGE = 0x8f1664715d8a8141L;
     static final long BREEDING = 0x882f0aa6e2bdce12L;
 }
