@@ -1,6 +1,5 @@
 package io.github.slugblue.wildroots.client.journal.page;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -112,9 +111,9 @@ class TraitLegendLayoutTest {
             TraitLegendLayout.Strings s = legend(lang(lang), "wild_carrot");
             for (String[] scale : s.words()) {
                 for (String word : scale) {
-                    List<String> two = TextFit.wrapMax(word, TraitLegendLayout.WIDTH, 2, false, M);
-                    assertEquals(word, String.join(" ", two).replace("…", word.equals(String.join(" ", two)) ? "" : "…"),
-                            lang + ": \"" + word + "\" is cut");
+                    // a word is cut (ends with an ellipsis) only if it needs more than the two lines allowed
+                    int lines = TextFit.wrap(word, TraitLegendLayout.WIDTH, false, M).size();
+                    assertTrue(lines <= 2, lang + ": \"" + word + "\" needs " + lines + " lines, so it would be cut");
                 }
             }
         }
