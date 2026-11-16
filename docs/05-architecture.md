@@ -703,7 +703,7 @@ BloomIndex (на ServerLevel, только в памяти)
 
 Решение: ADR-0013.
 
-- **Канал:** `NetworkRegistry.newSimpleChannel(new ResourceLocation("wildroots", "main"), () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals)`. `PROTOCOL` = `"2"` (с партии 6c: новый S→C-пакет `LensWindow` сдвинул индексы C→S-пакетов) и поднимается при любом несовместимом изменении. Клиент без мода к серверу с модом не подключится, и это ожидаемо: мод обязателен с обеих сторон.
+- **Канал:** `NetworkRegistry.newSimpleChannel(new ResourceLocation("wildroots", "main"), () -> PROTOCOL, PROTOCOL::equals, PROTOCOL::equals)`. `PROTOCOL` = `"3"` (с партии 6c — `"2"`: новый S→C-пакет `LensWindow` сдвинул индексы C→S-пакетов; WR-703 — `"3"`: `LensWindow` несёт до 5 строк цвета растения, до ≈ 400 Б сверх прежних ≈ 200 Б при пределе 1024 Б, клиент с `"2"` к серверу не подключится) и поднимается при любом несовместимом изменении. Клиент без мода к серверу с модом не подключится, и это ожидаемо: мод обязателен с обеих сторон.
 - **Сначала ванильные механизмы:** `BlockState` для рендера, синхронизация контейнеров для предметов, `ServerboundContainerButtonClickPacket` (`clickMenuButton`) для кнопок машин, `NetworkHooks.openScreen` с буфером доп. данных для открытия экранов с результатами анализа, которые посчитал сервер.
 
 | Пакет | Направление | Когда | Содержимое |
