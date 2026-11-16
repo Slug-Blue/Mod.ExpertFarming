@@ -10,6 +10,7 @@ import io.github.slugblue.wildroots.core.safety.DispCodec;
 import io.github.slugblue.wildroots.core.safety.Guarded;
 import io.github.slugblue.wildroots.lens.LensRow;
 import io.github.slugblue.wildroots.lens.LensSheet;
+import io.github.slugblue.wildroots.lens.LensSheetLayout;
 import io.github.slugblue.wildroots.lens.LensWindowPacket;
 import java.util.Optional;
 import net.minecraft.client.Minecraft;
@@ -54,6 +55,8 @@ public final class LensWindowScreen extends Screen {
     private int top;
     private int sheetHeight;
     private int sheetWidth;
+    /** The sheet laid out in {@link #init} (again on a resize), not per frame. */
+    private LensSheetLayout.Prepared prepared;
 
     LensWindowScreen(LensSheet sheet, Optional<BlockState> plant) {
         super(sheet.title());
@@ -122,8 +125,9 @@ public final class LensWindowScreen extends Screen {
         // the sheet is as wide as its widest element, at most what the screen leaves beside the model
         int beside = plant.isPresent() ? MODEL + PAD : 0;
         int cap = Math.max(80, Math.min(MAX_SHEET, width - 2 * SCREEN_MARGIN - 2 * PAD - beside));
-        sheetWidth = LensSheetView.width(font, sheet, cap);
-        sheetHeight = LensSheetView.height(font, sheet, sheetWidth);
+        prepared = LensSheetView.prepare(font, sheet, cap);
+        sheetWidth = prepared.width();
+        sheetHeight = prepared.layout().height();
         int w = sheetWidth + 2 * PAD + beside;
         int h = Math.max(sheetHeight, plant.isPresent() ? MODEL : 0) + 2 * PAD;
         left = (width - w) / 2;
@@ -163,7 +167,7 @@ public final class LensWindowScreen extends Screen {
             int w = sheetWidth + 2 * PAD + (plant.isPresent() ? MODEL + PAD : 0);
             int h = Math.max(sheetHeight, plant.isPresent() ? MODEL : 0) + 2 * PAD;
             LensSheetView.paper(g, left, top, left + w, top + h);
-            LensSheetView.draw(g, font, sheet, left + PAD, top + PAD, sheetWidth);
+            LensSheetView.draw(g, font, sheet, prepared, left + PAD, top + PAD);
             plant.ifPresent(p -> {
                 int mx = left + PAD + sheetWidth + PAD;
                 int my = top + PAD;

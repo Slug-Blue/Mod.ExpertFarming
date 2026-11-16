@@ -7,6 +7,7 @@ import io.github.slugblue.wildroots.core.registry.ModItems;
 import io.github.slugblue.wildroots.core.safety.EntryPoint;
 import io.github.slugblue.wildroots.core.safety.Guarded;
 import io.github.slugblue.wildroots.lens.LensPanel;
+import io.github.slugblue.wildroots.lens.LensSheetLayout;
 import java.util.List;
 import java.util.Optional;
 import net.minecraft.client.Minecraft;
@@ -49,27 +50,31 @@ public final class ClientLensPanel implements ClientTooltipComponent {
     static final int SCREEN_MARGIN = 40;
 
     private final LensPanel data;
-    private int width = -1;
 
     public ClientLensPanel(LensPanel data) {
         this.data = data;
     }
 
+    /**
+     * The sheet laid out for this screen: real measured text, capped by the
+     * screen's width; wider content wraps inside the card. Cached by sheet,
+     * cap and font, so the width, the height and the drawing of every frame
+     * share one layout (this component itself is built again each frame).
+     */
+    private LensSheetLayout.Prepared prepared(Font font) {
+        int screen = Minecraft.getInstance().getWindow().getGuiScaledWidth();
+        int cap = Math.max(80, Math.min(MAX_WIDTH, screen - SCREEN_MARGIN)) - 2;
+        return LensSheetView.prepare(font, data.sheet(), cap);
+    }
+
     @Override
     public int getHeight() {
-        Font font = Minecraft.getInstance().font;
-        return LensSheetView.height(font, data.sheet(), getWidth(font) - 2) + 2;
+        return prepared(Minecraft.getInstance().font).layout().height() + 2;
     }
 
     @Override
     public int getWidth(Font font) {
-        if (width < 0) {
-            // real measured text, capped by the screen: wider content wraps inside the card (never past it)
-            int screen = Minecraft.getInstance().getWindow().getGuiScaledWidth();
-            int cap = Math.max(80, Math.min(MAX_WIDTH, screen - SCREEN_MARGIN));
-            width = LensSheetView.width(font, data.sheet(), cap) + 2;
-        }
-        return width;
+        return prepared(font).width() + 2;
     }
 
     @Override
@@ -78,8 +83,9 @@ public final class ClientLensPanel implements ClientTooltipComponent {
         Guarded.run("lens panel render", "client", () -> {
             // a card of paper under the panel: the tooltip around it keeps vanilla colours when other
             // lines stay (review 1, m6), and the ink reads only on paper
-            g.fill(x - 1, y - 1, x + getWidth(font), y + getHeight() - 1, LensSheetView.PAPER);
-            LensSheetView.draw(g, font, data.sheet(), x + 1, y, getWidth(font) - 2);
+            LensSheetLayout.Prepared p = prepared(font);
+            g.fill(x - 1, y - 1, x + p.width() + 2, y + p.layout().height() + 1, LensSheetView.PAPER);
+            LensSheetView.draw(g, font, data.sheet(), p, x + 1, y);
         });
     }
 

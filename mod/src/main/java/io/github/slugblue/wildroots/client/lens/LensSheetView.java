@@ -31,41 +31,52 @@ public final class LensSheetView {
     private LensSheetView() {
     }
 
-    /** The real font as the layout's measure. */
+    /** The real font as the layout's measure; one per font, so the cache key stays the same between frames. */
+    private static Font measureFont;
+    private static LensSheetLayout.Measure measure;
+
     static LensSheetLayout.Measure measure(Font font) {
-        return new LensSheetLayout.Measure() {
-            @Override
-            public int width(Component c) {
-                return font.width(c);
-            }
-
-            @Override
-            public List<Integer> wrap(Component c, int maxWidth) {
-                List<Integer> out = new java.util.ArrayList<>();
-                for (FormattedCharSequence l : font.split(c, Math.max(1, maxWidth))) {
-                    out.add(font.width(l));
+        if (font != measureFont) {
+            measureFont = font;
+            measure = new LensSheetLayout.Measure() {
+                @Override
+                public int width(Component c) {
+                    return font.width(c);
                 }
-                if (out.isEmpty()) {
-                    out.add(0);
+
+                @Override
+                public List<LensSheetLayout.Wrapped> wrap(Component c, int maxWidth) {
+                    List<FormattedCharSequence> split = font.split(c, Math.max(1, maxWidth));
+                    List<LensSheetLayout.Wrapped> out = new java.util.ArrayList<>(Math.max(1, split.size()));
+                    for (FormattedCharSequence l : split) {
+                        out.add(new LensSheetLayout.Wrapped(font.width(l), l));
+                    }
+                    if (out.isEmpty()) {
+                        out.add(new LensSheetLayout.Wrapped(0, FormattedCharSequence.EMPTY));
+                    }
+                    return out;
                 }
-                return out;
-            }
-        };
+            };
+        }
+        return measure;
     }
 
-    /** The card's width for {@code s}: its widest element, at most {@code cap} (review: playtest 2 overflow). */
-    public static int width(Font font, LensSheet s, int cap) {
-        return LensSheetLayout.width(measure(font), s, cap);
+    private static final LensSheetLayout.Cache CACHE = new LensSheetLayout.Cache();
+
+    /**
+     * The sheet laid out once for its content width, at most {@code cap}
+     * (playtest 2 overflow; review M1): the same sheet, cap and font return
+     * the stored layout and its wrapped lines, so width, height and drawing
+     * in every frame measure and wrap nothing. Render thread only.
+     */
+    public static LensSheetLayout.Prepared prepare(Font font, LensSheet s, int cap) {
+        return CACHE.get(measure(font), s, cap);
     }
 
-    /** Height at {@code width}: the real number of wrapped lines. */
-    public static int height(Font font, LensSheet s, int width) {
-        return LensSheetLayout.layout(measure(font), s, width).height();
-    }
-
-    /** Draws the sheet with its top left at {@code x, y} on a card {@code width} wide; returns the height used. */
-    public static int draw(GuiGraphics g, Font font, LensSheet s, int x, int y, int width) {
-        LensSheetLayout.Layout lay = LensSheetLayout.layout(measure(font), s, width);
+    /** Draws a prepared sheet with its top left at {@code x, y}; returns the height used. */
+    public static int draw(GuiGraphics g, Font font, LensSheet s, LensSheetLayout.Prepared prepared, int x, int y) {
+        LensSheetLayout.Layout lay = prepared.layout();
+        int width = prepared.width();
         if (s.headIcon() != LensSheet.Icon.NONE) {
             TraitBar.drawFlag(g, flag(s.headIcon()), x, y);
         }
@@ -76,8 +87,7 @@ public final class LensSheetView {
                 case HEADER, NOTE -> lines(g, font, b, x, by, JournalColors.INK_FADED);
                 case BARS_TITLE -> {
                     lines(g, font, b, x, by, JournalColors.INK);
-                    int w = b.lines().stream().mapToInt(Integer::intValue).max().orElse(0);
-                    g.fill(x, by + b.h() - 1, x + Math.min(width, w), by + b.h(), JournalColors.INK_FADED);
+                    g.fill(x, by + b.h() - 1, x + Math.min(width, b.textWidth()), by + b.h(), JournalColors.INK_FADED);
                 }
                 case BAR -> {
                     LensSheet.Bar bar = s.bars().get(b.index());
@@ -108,8 +118,8 @@ public final class LensSheetView {
     /** The wrapped lines of a block, ink without shadow, inside {@code avail}. */
     private static void lines(GuiGraphics g, Font font, LensSheetLayout.Block b, int x, int y, int colour) {
         int ly = y;
-        for (FormattedCharSequence l : font.split(b.text(), Math.max(1, b.avail()))) {
-            g.drawString(font, l, x + b.textX(), ly + 1, colour, false);
+        for (LensSheetLayout.Wrapped l : b.lines()) {
+            g.drawString(font, (FormattedCharSequence) l.text(), x + b.textX(), ly + 1, colour, false);
             ly += LensSheetLayout.LINE;
         }
     }

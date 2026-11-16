@@ -99,24 +99,24 @@ class LensSheetLayoutTest {
         }
 
         @Override
-        public List<Integer> wrap(Component c, int maxWidth) {
+        public List<LensSheetLayout.Wrapped> wrap(Component c, int maxWidth) {
             int perLine = Math.max(1, maxWidth / px);
-            List<Integer> out = new ArrayList<>();
+            List<LensSheetLayout.Wrapped> out = new ArrayList<>();
             StringBuilder line = new StringBuilder();
             for (String word : resolve(lang, c).split(" ", -1)) {
                 while (word.codePointCount(0, word.length()) > perLine) {
                     if (line.length() > 0) {
-                        out.add(w(line.toString()));
+                        out.add(new LensSheetLayout.Wrapped(w(line.toString()), null));
                         line.setLength(0);
                     }
                     int cut = word.offsetByCodePoints(0, perLine);
-                    out.add(w(word.substring(0, cut)));
+                    out.add(new LensSheetLayout.Wrapped(w(word.substring(0, cut)), null));
                     word = word.substring(cut);
                 }
                 int need = line.length() == 0 ? word.length() : line.codePointCount(0, line.length()) + 1
                         + word.codePointCount(0, word.length());
                 if (line.length() > 0 && need > perLine) {
-                    out.add(w(line.toString()));
+                    out.add(new LensSheetLayout.Wrapped(w(line.toString()), null));
                     line.setLength(0);
                 }
                 if (line.length() > 0) {
@@ -124,7 +124,7 @@ class LensSheetLayoutTest {
                 }
                 line.append(word);
             }
-            out.add(w(line.toString()));
+            out.add(new LensSheetLayout.Wrapped(w(line.toString()), null));
             return out;
         }
     }
@@ -290,6 +290,80 @@ class LensSheetLayoutTest {
         natural = Math.max(natural, m.width(s.barsTitle().get()));
         assertEquals(natural, LensSheetLayout.width(m, s, 10_000));
         assertEquals(200, LensSheetLayout.width(m, s, 200));
+    }
+
+    /** A measure that counts how often the font is asked. */
+    static final class Counting implements LensSheetLayout.Measure {
+        final LensSheetLayout.Measure inner;
+        int widths;
+        int wraps;
+
+        Counting(LensSheetLayout.Measure inner) {
+            this.inner = inner;
+        }
+
+        @Override
+        public int width(Component c) {
+            widths++;
+            return inner.width(c);
+        }
+
+        @Override
+        public List<LensSheetLayout.Wrapped> wrap(Component c, int maxWidth) {
+            wraps++;
+            return inner.wrap(c, maxWidth);
+        }
+    }
+
+    /**
+     * Review M1: a tooltip or window draws every frame and asks for its width
+     * and height too; with the same sheet, cap and font the layout is made
+     * once, and again only when the key changes.
+     */
+    @Test
+    void theLayoutRunsOnceForRepeatedWidthHeightAndDrawCalls() {
+        Map<String, String> ru = lang("ru_ru");
+        Counting m = new Counting(new Fake(ru, 7));
+        LensSheet s = kitchenSink(ru, allBars(ru).subList(0, 7));
+        LensSheetLayout.Cache cache = new LensSheetLayout.Cache();
+        LensSheetLayout.Prepared first = cache.get(m, s, 200);
+        int widths = m.widths;
+        int wraps = m.wraps;
+        assertTrue(wraps > 0 && widths > 0, "the first call measures");
+        for (int frame = 0; frame < 100; frame++) {
+            // what one frame does: the width, the height, the draw
+            LensSheetLayout.Prepared p = cache.get(m, s, 200);
+            assertTrue(p == first, "the same layout object");
+            assertEquals(first.width(), p.width());
+            assertEquals(first.layout().height(), p.layout().height());
+            assertEquals(first.layout().blocks().size(), p.layout().blocks().size());
+        }
+        assertEquals(widths, m.widths, "the font was measured again");
+        assertEquals(wraps, m.wraps, "text was wrapped again");
+        // a new cap, a new sheet or a new measure lays out again
+        cache.get(m, s, 120);
+        assertTrue(m.wraps > wraps, "a new cap did not lay out");
+        int afterCap = m.wraps;
+        cache.get(m, s, 120);
+        assertEquals(afterCap, m.wraps);
+        cache.get(m, kitchenSink(ru, allBars(ru).subList(7, 14)), 120);
+        assertTrue(m.wraps > afterCap, "a new sheet did not lay out");
+        int afterSheet = m.wraps;
+        Counting other = new Counting(new Fake(ru, 7));
+        LensSheet same = kitchenSink(ru, allBars(ru).subList(7, 14));
+        cache.get(other, same, 120);
+        assertTrue(other.wraps > 0, "a new font did not lay out");
+        assertEquals(afterSheet, m.wraps);
+    }
+
+    /** One layout is one pass: each block is wrapped exactly once, and the cached lines are what is drawn. */
+    @Test
+    void aLayoutWrapsEveryBlockOnce() {
+        Map<String, String> en = lang("en_us");
+        Counting m = new Counting(new Fake(en, 6));
+        LensSheet s = kitchenSink(en, allBars(en).subList(0, 7));
+        LensSheetLayout.Prepared p = LensSheetLayout.prepare(m, s, 200);
+        assertEquals(p.layout().blocks().size(), m.wraps, "one wrap per block");
     }
 
     @Test

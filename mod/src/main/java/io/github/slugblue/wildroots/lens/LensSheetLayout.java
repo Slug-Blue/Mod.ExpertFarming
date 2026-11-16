@@ -46,8 +46,16 @@ public final class LensSheetLayout {
         /** Pixel width of {@code c} on one line. */
         int width(Component c);
 
-        /** Pixel widths of the lines {@code c} wraps to at {@code maxWidth}; at least one. */
-        List<Integer> wrap(Component c, int maxWidth);
+        /** The lines {@code c} wraps to at {@code maxWidth}; at least one. */
+        List<Wrapped> wrap(Component c, int maxWidth);
+    }
+
+    /**
+     * One wrapped line: its pixel width and what the drawing code needs to
+     * draw it ({@code text}: the real font's {@code FormattedCharSequence},
+     * kept so the line is split once, not again each frame; null in tests).
+     */
+    public record Wrapped(int width, Object text) {
     }
 
     /** What a block is. */
@@ -61,16 +69,55 @@ public final class LensSheetLayout {
      * {@code avail} the width the text may use, {@code lines} the pixel
      * width of each wrapped line, {@code h} its height.
      */
-    public record Block(Kind kind, Component text, int index, int x, int textX, int y, int avail, List<Integer> lines,
+    public record Block(Kind kind, Component text, int index, int x, int textX, int y, int avail, List<Wrapped> lines,
                         int h) {
+
+        /** Width of the widest line. */
+        public int textWidth() {
+            int w = 0;
+            for (Wrapped l : lines) {
+                w = Math.max(w, l.width());
+            }
+            return w;
+        }
 
         /** Right edge of the widest line (or of the bar, if wider). */
         public int right() {
-            int w = 0;
-            for (int l : lines) {
-                w = Math.max(w, l);
+            return textX + textWidth();
+        }
+    }
+
+    /** A sheet laid out once: the card's width and every block with its wrapped lines. */
+    public record Prepared(int width, Layout layout) {
+    }
+
+    /** Lays {@code s} out at the width its content wants, at most {@code cap}: one layout, wrapped lines kept. */
+    public static Prepared prepare(Measure m, LensSheet s, int cap) {
+        int w = width(m, s, cap);
+        return new Prepared(w, layout(m, s, w));
+    }
+
+    /**
+     * A one-entry cache of {@link #prepare}: while the same sheet, cap and
+     * measure come again (every frame a tooltip or window is drawn, and for
+     * its width and height calls) the stored layout is returned and nothing
+     * is measured or wrapped. A different key lays out again.
+     */
+    public static final class Cache {
+
+        private Measure measure;
+        private LensSheet sheet;
+        private int cap = -1;
+        private Prepared prepared;
+
+        public Prepared get(Measure m, LensSheet s, int c) {
+            if (prepared == null || m != measure || s != sheet || c != cap) {
+                prepared = prepare(m, s, c);
+                measure = m;
+                sheet = s;
+                cap = c;
             }
-            return textX + w;
+            return prepared;
         }
     }
 
@@ -143,14 +190,14 @@ public final class LensSheetLayout {
         boolean icon = s.headIcon() != LensSheet.Icon.NONE;
         if (!noTitle(s)) {
             int x0 = iconIndent(icon);
-            List<Integer> lines = m.wrap(s.title(), Math.max(MIN_TEXT, w - x0));
+            List<Wrapped> lines = m.wrap(s.title(), Math.max(MIN_TEXT, w - x0));
             int h = Math.max(lines.size(), 1) * LINE;
             out.add(new Block(Kind.TITLE, s.title(), 0, 0, x0, y, w - x0, lines, h));
             y += h;
         }
         for (int i = 0; i < s.header().size(); i++) {
             Component c = s.header().get(i);
-            List<Integer> lines = m.wrap(c, Math.max(MIN_TEXT, w));
+            List<Wrapped> lines = m.wrap(c, Math.max(MIN_TEXT, w));
             int h = Math.max(lines.size(), 1) * LINE;
             out.add(new Block(Kind.HEADER, c, i, 0, 0, y, w, lines, h));
             y += h;
@@ -160,7 +207,7 @@ public final class LensSheetLayout {
         }
         if (s.barsTitle().isPresent()) {
             Component c = s.barsTitle().get();
-            List<Integer> lines = m.wrap(c, Math.max(MIN_TEXT, w));
+            List<Wrapped> lines = m.wrap(c, Math.max(MIN_TEXT, w));
             int h = Math.max(lines.size(), 1) * LINE;
             out.add(new Block(Kind.BARS_TITLE, c, 0, 0, 0, y, w, lines, h));
             y += h;
@@ -170,7 +217,7 @@ public final class LensSheetLayout {
             LensSheet.Bar b = s.bars().get(i);
             int lx = labelX(b);
             int avail = Math.max(MIN_TEXT, w - lx);
-            List<Integer> lines = m.wrap(b.label(), avail);
+            List<Wrapped> lines = m.wrap(b.label(), avail);
             int h = Math.max(ROW_HEIGHT, Math.max(lines.size(), 1) * LINE) + band;
             out.add(new Block(Kind.BAR, b.label(), i, BAR_X, lx, y, avail, lines, h));
             y += h;
@@ -180,7 +227,7 @@ public final class LensSheetLayout {
             for (int i = 0; i < s.flags().size(); i++) {
                 Component c = s.flags().get(i).text();
                 int x0 = ICON + ICON_GAP;
-                List<Integer> lines = m.wrap(c, Math.max(MIN_TEXT, w - x0));
+                List<Wrapped> lines = m.wrap(c, Math.max(MIN_TEXT, w - x0));
                 int h = Math.max(lines.size(), 1) * LINE;
                 out.add(new Block(Kind.FLAG, c, i, 0, x0, y, w - x0, lines, h));
                 y += h;
@@ -190,7 +237,7 @@ public final class LensSheetLayout {
             y += SECTION_GAP;
             for (int i = 0; i < s.notes().size(); i++) {
                 Component c = s.notes().get(i);
-                List<Integer> lines = m.wrap(c, Math.max(MIN_TEXT, w));
+                List<Wrapped> lines = m.wrap(c, Math.max(MIN_TEXT, w));
                 int h = Math.max(lines.size(), 1) * LINE;
                 out.add(new Block(Kind.NOTE, c, i, 0, 0, y, w, lines, h));
                 y += h;
