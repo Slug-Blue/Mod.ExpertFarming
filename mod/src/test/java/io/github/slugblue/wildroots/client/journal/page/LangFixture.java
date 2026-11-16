@@ -14,9 +14,9 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /** The real lang files, for the layout tests. */
-final class LangFixture {
+public final class LangFixture {
 
-    static final List<String> LANGS = List.of("en_us", "ru_ru");
+    public static final List<String> LANGS = List.of("en_us", "ru_ru");
 
     private LangFixture() {
     }
@@ -34,7 +34,7 @@ final class LangFixture {
         throw new IllegalStateException("mod sources not found");
     }
 
-    static Map<String, String> lang(String name) throws IOException {
+    public static Map<String, String> lang(String name) throws IOException {
         Path f = modDir().resolve("src/main/resources/assets/wildroots/lang/" + name + ".json");
         JsonObject o = JsonParser.parseString(Files.readString(f, StandardCharsets.UTF_8)).getAsJsonObject();
         Map<String, String> m = new TreeMap<>();
@@ -45,7 +45,7 @@ final class LangFixture {
     }
 
     /** Link markup out ({@code [[id|text]]} shows its text), as the reader sees the text. */
-    static String plain(String s) {
+    public static String plain(String s) {
         return s.replaceAll("\\[\\[[^|\\]]*\\|([^\\]]*)]]", "$1").replaceAll("\\[\\[([^\\]]*)]]", "$1")
                 .replace("%1$s", "99").replace("%2$s", "99").replace("%s", "99");
     }

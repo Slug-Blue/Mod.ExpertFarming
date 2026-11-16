@@ -7,11 +7,11 @@ package io.github.slugblue.wildroots.client.journal.page;
  * bold. Real text only gets narrower than this, so a layout that fits here
  * fits in the game.
  */
-final class FakeFont implements TextFit.Measure {
+public final class FakeFont implements TextFit.Measure {
 
-    static final FakeFont INSTANCE = new FakeFont();
+    public static final FakeFont INSTANCE = new FakeFont();
 
-    static int charWidth(char c) {
+    public static int charWidth(char c) {
         if ("il.,:;!'|".indexOf(c) >= 0) {
             return 3;
         }

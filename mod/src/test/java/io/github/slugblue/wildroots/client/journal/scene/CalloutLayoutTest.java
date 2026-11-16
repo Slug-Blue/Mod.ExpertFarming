@@ -158,4 +158,17 @@ class CalloutLayoutTest {
             }
         }
     }
+
+    /** Review m2: near the top of the 102 px window a callout slides sideways instead of being dropped. */
+    @Test
+    void aCalloutNearTheTopSlidesSidewaysInsteadOfBeingDropped() {
+        // the growth-stages step 1 case: anchors at y 39 and 31, widths 58 and 107, nothing above them
+        List<CalloutLayout.Want> wants = List.of(new CalloutLayout.Want(113, 39, 58, H),
+                new CalloutLayout.Want(158, 31, 107, H));
+        List<CalloutLayout.Placed> p = CalloutLayout.place(wants, 1, 263, 1);
+        assertEquals(2, p.size(), "both are placed");
+        assertNoOverlap(p);
+        assertTrue(p.stream().anyMatch(CalloutLayout.Placed::moved), "one is moved, so it gets a leader line");
+        p.forEach(x -> assertTrue(x.x() >= 1 && x.x() + x.w() <= 263 && x.y() >= 1, x.toString()));
+    }
 }
