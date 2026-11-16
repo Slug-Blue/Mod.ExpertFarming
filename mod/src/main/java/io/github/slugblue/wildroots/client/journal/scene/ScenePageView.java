@@ -6,6 +6,7 @@ import io.github.slugblue.wildroots.client.journal.page.PageContext;
 import io.github.slugblue.wildroots.client.journal.page.PageRect;
 import io.github.slugblue.wildroots.client.journal.page.PageView;
 import io.github.slugblue.wildroots.client.journal.page.ScenePage;
+import io.github.slugblue.wildroots.client.journal.page.TextFit;
 import io.github.slugblue.wildroots.item.ProduceStacks;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -359,7 +360,7 @@ public final class ScenePageView implements PageView {
         }
         JournalAtlas.nineSlice(g, JournalAtlas.SCENE_FRAME, JournalAtlas.SCENE_FRAME_BORDER, wx - 4, wy - 4,
                 WINDOW_W + 8, WINDOW_H + 8);
-        renderCaption(g, font);
+        renderCaption(g, font, mouseX, mouseY);
         if (ctx.debug()) {
             renderDebug(g, font);
         }
@@ -702,20 +703,34 @@ public final class ScenePageView implements PageView {
 
     // ------------------------------------------------------------------ caption, debug, hover
 
-    private void renderCaption(GuiGraphics g, Font font) {
+    private void renderCaption(GuiGraphics g, Font font, int mouseX, int mouseY) {
         if (captionStep != timeline.step()) {
             captionStep = timeline.step();
-            Component c = Component.translatable("wildroots.journal.ui.step", captionStep + 1, timeline.steps().size())
-                    .append(". ").append(Component.translatable(timeline.current().caption()));
-            List<FormattedCharSequence> lines = font.split(c, WINDOW_W);
-            caption = lines.size() > 2 ? lines.subList(0, 2) : lines;
+            String text = Component.translatable("wildroots.journal.ui.step", captionStep + 1,
+                    timeline.steps().size()).getString() + ". "
+                    + Component.translatable(timeline.current().caption()).getString();
+            TextFit.Measure m = TextFit.of(font);
+            List<FormattedCharSequence> lines = new ArrayList<>();
+            for (String l : TextFit.wrapMax(text, WINDOW_W, PageRect.CAPTION_LINES, false, m)) {
+                lines.add(Component.literal(l).getVisualOrderText());
+            }
+            caption = lines;
+            captionTip = TextFit.wrap(text, WINDOW_W, false, m).size() > PageRect.CAPTION_LINES
+                    ? TextFit.wrap(text, 180, false, m).stream().<Component>map(Component::literal).toList() : List.of();
         }
         int y = rect.y() + PageRect.CAPTION_Y;
         for (FormattedCharSequence line : caption) {
             g.drawString(font, line, rect.x(), y, JournalColors.INK, false);
             y += PageRect.LINE_HEIGHT;
         }
+        if (!captionTip.isEmpty() && mouseX >= rect.x() && mouseX < rect.x() + WINDOW_W
+                && mouseY >= rect.y() + PageRect.CAPTION_Y && mouseY < y) {
+            ctx.tooltip(captionTip);
+        }
     }
+
+    /** The whole caption as tooltip lines when it was cut to {@link PageRect#CAPTION_LINES}; else empty. */
+    private List<Component> captionTip = List.of();
 
     private void renderDebug(GuiGraphics g, Font font) {
         SceneMesh mesh = renderer == null ? null : renderer.mesh();

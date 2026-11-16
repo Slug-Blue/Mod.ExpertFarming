@@ -99,8 +99,12 @@ public final class FallbackFrameView implements PageView {
             icons.add(row);
             Component c = Component.translatable("wildroots.journal.ui.step", i + 1, steps.size()).append(" ")
                     .append(Component.translatable(s.caption()));
-            List<FormattedCharSequence> lines = font.split(c, PageRect.SPREAD_WIDTH);
-            captions.add(lines.subList(0, Math.min(2, lines.size())));
+            List<FormattedCharSequence> lines = new ArrayList<>();
+            for (String l : TextFit.wrapMax(c.getString(), PageRect.SPREAD_WIDTH, PageRect.CAPTION_LINES, false,
+                    TextFit.of(font))) {
+                lines.add(Component.literal(l).getVisualOrderText());
+            }
+            captions.add(lines);
         }
         this.textOnly = !any;
         if (textOnly) {

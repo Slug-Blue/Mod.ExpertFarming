@@ -26,9 +26,12 @@ public record PageRect(int x, int y, int width, int height) {
     public static final int HEIGHT = 148;
     public static final int SPREAD_HEIGHT = 154;
     public static final int SCENE_WINDOW_W = 264;
-    public static final int SCENE_WINDOW_H = 112;
+    /** 102, not the spec's 112: the caption gets three lines (owner playtest 3: Russian captions need them). */
+    public static final int SCENE_WINDOW_H = 102;
     public static final int SCENE_WINDOW_Y = 4;
-    public static final int CAPTION_Y = 122;
+    public static final int CAPTION_Y = 112;
+    /** Lines of the caption under a scene window; a longer one is cut with an ellipsis and shown whole as a tooltip. */
+    public static final int CAPTION_LINES = 3;
     public static final int CONTROLS_Y = 141;
     public static final int LINE_HEIGHT = 9;
     public static final int LINES = HEIGHT / LINE_HEIGHT;
