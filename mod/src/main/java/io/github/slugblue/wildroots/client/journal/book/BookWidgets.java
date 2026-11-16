@@ -1,6 +1,7 @@
 package io.github.slugblue.wildroots.client.journal.book;
 
 import io.github.slugblue.wildroots.client.journal.JournalColors;
+import io.github.slugblue.wildroots.client.journal.page.TextFit;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -177,6 +178,7 @@ public final class BookWidgets {
         private final int labelWidth;
         private final int rightWidth;
         private final int textX;
+        private final float labelScale;
 
         public RowButton(int x, int y, int width, BookIcon icon, Component label, Component right, boolean isNew,
                          boolean bullet, Runnable action) {
@@ -197,13 +199,19 @@ public final class BookWidgets {
             this.rightWidth = right.getString().isEmpty() ? 0 : font.width(right);
             int maxLabel = width - tx - (rightWidth > 0 ? rightWidth + 4 : 0) - (isNew ? 6 : 0);
             Component l = label;
-            if (font.width(l) > maxLabel) {
-                String cut = font.plainSubstrByWidth(l.getString(), Math.max(0, maxLabel - font.width("…")));
+            // too long: shrink a little (to 70 %), and only then cut with an ellipsis; the full text is the tooltip
+            float scale = TextFit.shrinkScale(font.width(l), maxLabel, TextFit.MIN_SHRINK);
+            if (font.width(l) * scale > maxLabel) {
+                int room = Math.max(0, Math.round(maxLabel / scale));
+                String cut = font.plainSubstrByWidth(l.getString(), Math.max(0, room - font.width("…")));
                 l = Component.literal(cut + "…").withStyle(label.getStyle());
+            }
+            if (scale < 1f || l != label) {
                 setTooltip(Tooltip.create(label));
             }
+            this.labelScale = scale;
             this.shownLabel = l;
-            this.labelWidth = font.width(l);
+            this.labelWidth = Math.round(font.width(l) * scale);
         }
 
         @Override
@@ -221,7 +229,15 @@ public final class BookWidgets {
                 g.drawString(font, "•", getX() + 1, getY() + 3, JournalColors.INK, false);
             }
             int color = isHoveredOrFocused() ? JournalColors.LINK : JournalColors.INK;
-            g.drawString(font, shownLabel, tx, getY() + 3, color, false);
+            if (labelScale < 1f) {
+                g.pose().pushPose();
+                g.pose().translate(tx, getY() + 3 + (9 - 9 * labelScale) / 2f, 0);
+                g.pose().scale(labelScale, labelScale, 1f);
+                g.drawString(font, shownLabel, 0, 0, color, false);
+                g.pose().popPose();
+            } else {
+                g.drawString(font, shownLabel, tx, getY() + 3, color, false);
+            }
             if (isNew) {
                 JournalAtlas.blit(g, JournalAtlas.NEW_DOT, tx + labelWidth + 2, getY() + 5);
             }

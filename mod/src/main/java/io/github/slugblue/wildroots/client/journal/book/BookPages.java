@@ -169,8 +169,7 @@ final class BookPages {
                     false, true, () -> jump.accept(d.target())));
         }
         if (items.isEmpty()) {
-            items.add(new ListPageView.Row(BookIcon.NONE, Component.translatable("wildroots.journal.ui.search.none"),
-                    Component.empty(), false, false, () -> { }));
+            items.add(ListPageView.Note.of(Component.translatable("wildroots.journal.ui.search.none")));
         }
         return ListPageView.pages(items);
     }

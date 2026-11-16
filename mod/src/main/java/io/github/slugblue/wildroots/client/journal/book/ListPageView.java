@@ -21,7 +21,7 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 public final class ListPageView implements PageView {
 
     /** One line of a list page. */
-    public sealed interface Item permits Heading, Gap, Row {
+    public sealed interface Item permits Heading, Gap, Row, Note {
 
         int height();
     }
@@ -31,6 +31,19 @@ public final class ListPageView implements PageView {
         @Override
         public int height() {
             return 12;
+        }
+    }
+
+    /** Wrapped text (a message such as "nothing found"): its lines are wrapped to the page when it is made. */
+    public record Note(List<net.minecraft.util.FormattedCharSequence> lines) implements Item {
+
+        public static Note of(Component text) {
+            return new Note(List.copyOf(Minecraft.getInstance().font.split(text, PageRect.HALF_WIDTH)));
+        }
+
+        @Override
+        public int height() {
+            return lines.size() * PageRect.LINE_HEIGHT + 4;
         }
     }
 
@@ -54,12 +67,22 @@ public final class ListPageView implements PageView {
     private final PageRect rect;
     private final List<Item> items;
     private final List<BookWidgets.RowButton> rows = new ArrayList<>();
+    /** Headings cut with an ellipsis to the page width, measured once (a heading is one line). */
+    private final java.util.Map<Heading, net.minecraft.util.FormattedCharSequence> headings =
+            new java.util.IdentityHashMap<>();
 
     public ListPageView(PageRect rect, List<Item> items) {
         this.rect = rect;
         this.items = List.copyOf(items);
+        var font = Minecraft.getInstance().font;
         int y = rect.y();
         for (Item it : items) {
+            if (it instanceof Heading h) {
+                net.minecraft.network.chat.FormattedText t = font.width(h.text()) <= rect.width() ? h.text()
+                        : net.minecraft.network.chat.FormattedText.composite(font.substrByWidth(h.text(),
+                                rect.width() - font.width("…")), net.minecraft.network.chat.FormattedText.of("…"));
+                headings.put(h, net.minecraft.locale.Language.getInstance().getVisualOrder(t));
+            }
             if (it instanceof Row r) {
                 rows.add(new BookWidgets.RowButton(rect.x(), y, rect.width(), r.icon(), r.label(), r.right(), r.isNew(),
                         r.bullet(), r.action()));
@@ -115,7 +138,13 @@ public final class ListPageView implements PageView {
         int y = rect.y();
         for (Item it : items) {
             if (it instanceof Heading h) {
-                g.drawString(Minecraft.getInstance().font, h.text(), rect.x(), y + 1, JournalColors.INK, false);
+                g.drawString(Minecraft.getInstance().font, headings.get(h), rect.x(), y + 1, JournalColors.INK, false);
+            } else if (it instanceof Note n) {
+                int ly = y;
+                for (var line : n.lines()) {
+                    g.drawString(Minecraft.getInstance().font, line, rect.x(), ly, JournalColors.INK_FADED, false);
+                    ly += PageRect.LINE_HEIGHT;
+                }
             }
             y += it.height();
         }

@@ -13,6 +13,7 @@ import io.github.slugblue.wildroots.client.journal.page.PageContext;
 import io.github.slugblue.wildroots.client.journal.page.PageRect;
 import io.github.slugblue.wildroots.client.journal.page.PageTypes;
 import io.github.slugblue.wildroots.client.journal.page.PageView;
+import io.github.slugblue.wildroots.client.journal.page.TextFit;
 import io.github.slugblue.wildroots.core.Ids;
 import io.github.slugblue.wildroots.core.config.ClientConfig;
 import io.github.slugblue.wildroots.core.safety.LogThrottle;
@@ -76,6 +77,10 @@ public final class JournalBookScreen extends Screen implements PageContext {
     private List<Spread> spreads = List.of();
     private int shown = -1;
     private FormattedCharSequence titleLine = FormattedCharSequence.EMPTY;
+    /** The header title is shrunk to at most 70 % to fit, then cut; {@code titleFull} is its tooltip when it was. */
+    private float titleScale = 1f;
+    private Component titleFull;
+    private int titleMax;
     private Component pageNumber = Component.empty();
     private final Set<String> markedRead = new HashSet<>();
     private PageView focusedView;
@@ -173,7 +178,11 @@ public final class JournalBookScreen extends Screen implements PageContext {
         }
         builtFor = location;
         int maxTitle = PageRect.HALF_WIDTH - 14 - (location.kind() == BookLocation.Kind.CONTENTS ? 0 : 14);
-        titleLine = fit(titleOf(location), maxTitle);
+        Component full = titleOf(location);
+        titleMax = maxTitle;
+        titleScale = TextFit.shrinkScale(font.width(full), maxTitle, TextFit.MIN_SHRINK);
+        titleLine = fit(full, Math.round(maxTitle / titleScale));
+        titleFull = titleScale < 1f || font.width(full) * titleScale > maxTitle ? full : null;
         layoutBuilds++;
         location = location.withSpread(Math.min(location.spread(), spreads.size() - 1));
         showSpread(location.spread());
@@ -503,7 +512,19 @@ public final class JournalBookScreen extends Screen implements PageContext {
         JournalAtlas.nineSlice(g, searchBox.isFocused() ? JournalAtlas.SEARCH_FIELD_FOCUSED : JournalAtlas.SEARCH_FIELD, 3,
                 geo.x() + SEARCH_X, geo.navY() + 1, SEARCH_W, 14);
         int tx = geo.x() + BookGeometry.INSET + (location.kind() == BookLocation.Kind.CONTENTS ? 0 : 14);
-        g.drawString(font, titleLine, tx, geo.headerY(), JournalColors.INK, false);
+        if (titleScale < 1f) {
+            g.pose().pushPose();
+            g.pose().translate(tx, geo.headerY() + (9 - 9 * titleScale) / 2f, 0);
+            g.pose().scale(titleScale, titleScale, 1f);
+            g.drawString(font, titleLine, 0, 0, JournalColors.INK, false);
+            g.pose().popPose();
+        } else {
+            g.drawString(font, titleLine, tx, geo.headerY(), JournalColors.INK, false);
+        }
+        if (titleFull != null && mouseX >= tx && mouseX < tx + titleMax && mouseY >= geo.headerY() - 1
+                && mouseY < geo.headerY() + 10) {
+            setTooltipForNextRenderPass(titleFull);
+        }
         if (spreads.size() > 1) {
             g.drawString(font, pageNumber, geo.right().right() - font.width(pageNumber), geo.headerY(),
                     JournalColors.INK_FADED, false);

@@ -108,6 +108,21 @@ public final class TextFit {
         return out;
     }
 
+    /** Smallest scale a one-line title is shrunk to before it is cut with an ellipsis. */
+    public static final float MIN_SHRINK = 0.7f;
+
+    /**
+     * The scale at which a line {@code width} px wide fits {@code avail}:
+     * 1 if it fits, else {@code avail / width} but not below {@code min}
+     * (below that the text is cut with an ellipsis instead).
+     */
+    public static float shrinkScale(int width, int avail, float min) {
+        if (width <= avail || width <= 0) {
+            return 1f;
+        }
+        return Math.max(min, (float) avail / width);
+    }
+
     /** The widest line. */
     public static int widest(List<String> lines, boolean bold, Measure m) {
         int w = 0;
