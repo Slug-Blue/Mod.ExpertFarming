@@ -38,11 +38,17 @@ public final class GridPageView implements PageView {
 
     private final PageRect rect;
     private final Component counter;
+    private final net.minecraft.util.FormattedCharSequence counterLine;
     private final List<CellButton> cells = new ArrayList<>();
 
     GridPageView(PageRect rect, Component counter, List<Cell> page) {
         this.rect = rect;
         this.counter = counter;
+        // one line, cut with an ellipsis if a language needs more than the page (owner playtest 3)
+        var font = Minecraft.getInstance().font;
+        this.counterLine = net.minecraft.locale.Language.getInstance().getVisualOrder(font.width(counter) <= rect.width()
+                ? counter : net.minecraft.network.chat.FormattedText.composite(font.substrByWidth(counter,
+                        rect.width() - font.width("…")), net.minecraft.network.chat.FormattedText.of("…")));
         int w = rect.width() / COLUMNS;
         for (int i = 0; i < page.size(); i++) {
             int x = rect.x() + (i % COLUMNS) * w;
@@ -74,7 +80,7 @@ public final class GridPageView implements PageView {
 
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
-        g.drawString(Minecraft.getInstance().font, counter, rect.x(), rect.y(), JournalColors.INK_FADED, false);
+        g.drawString(Minecraft.getInstance().font, counterLine, rect.x(), rect.y(), JournalColors.INK_FADED, false);
     }
 
     /** A cell: icon and name (cut to fit, the full name as tooltip). */

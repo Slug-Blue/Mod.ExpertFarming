@@ -156,15 +156,18 @@ public final class RecordsLayout {
             blocks.add(TextLayout.block(ctx.font(), lines.get(i), PageRect.HALF_WIDTH, false, e.id()));
         }
         Component name = lines.isEmpty() ? Component.empty() : lines.get(0);
-        int textTop = 48;
+        // the name under the picture: up to two lines, the rule and the text move down with it
+        List<FormattedCharSequence> nameLines = io.github.slugblue.wildroots.client.journal.page.GuidePageTypes
+                .fitLines(ctx.font(), name, PageRect.HALF_WIDTH, 2, true);
+        int ruleY = 35 + Math.max(1, nameLines.size()) * PageRect.LINE_HEIGHT + 1;
+        int textTop = ruleY + 3;
         int capacity = (PageRect.HEIGHT - textTop) / PageRect.LINE_HEIGHT;
         List<List<TextLayout.Line>> pages = Paginator.paginate(blocks, capacity, blank());
         List<TextLayout.Line> first = pages.get(0);
         List<TextLayout.Line> rest = new ArrayList<>();
         pages.subList(1, pages.size()).forEach(rest::addAll);
-        List<FormattedCharSequence> nameLines = ctx.font().split(name, PageRect.HALF_WIDTH);
         List<LaidOutPage> out = new ArrayList<>();
-        out.add(new LaidOutPage(PageSpan.HALF, rect -> new RecordView(rect, stack, nameLines, first, textTop, ctx),
+        out.add(new LaidOutPage(PageSpan.HALF, rect -> new RecordView(rect, stack, nameLines, first, ruleY, ctx),
                 List.of(e.id())));
         if (!rest.isEmpty()) {
             out.addAll(TextLayout.textPages(List.of(Paginator.Block.paragraph(rest)), ctx));
@@ -187,10 +190,14 @@ public final class RecordsLayout {
         private final TextPageView text;
         private final List<AbstractWidget> widgets = new ArrayList<>();
 
+        private final int ruleY;
+
         RecordView(PageRect rect, ItemStack stack, List<FormattedCharSequence> name, List<TextLayout.Line> lines,
-                   int textTop, PageContext ctx) {
+                   int ruleY, PageContext ctx) {
             this.rect = rect;
-            this.name = name.subList(0, Math.min(1, name.size()));
+            this.ruleY = ruleY;
+            int textTop = ruleY + 3;
+            this.name = name;
             this.item = new PageWidgets.ItemWidget(rect.x() + (rect.width() - 32) / 2, rect.y(), 32, stack, ctx);
             this.text = new TextPageView(rect, lines, ctx, rect.y() + textTop);
             widgets.add(item);
@@ -210,11 +217,12 @@ public final class RecordsLayout {
         @Override
         public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
             var font = Minecraft.getInstance().font;
+            int y = rect.y() + 35;
             for (FormattedCharSequence l : name) {
-                g.drawString(font, l, rect.x() + (rect.width() - font.width(l)) / 2, rect.y() + 35, JournalColors.INK,
-                        false);
+                g.drawString(font, l, rect.x() + (rect.width() - font.width(l)) / 2, y, JournalColors.INK, false);
+                y += PageRect.LINE_HEIGHT;
             }
-            g.hLine(rect.x(), rect.right() - 1, rect.y() + 45, JournalColors.INK_FADED);
+            g.hLine(rect.x(), rect.right() - 1, rect.y() + ruleY, JournalColors.INK_FADED);
             text.render(g, mouseX, mouseY, partialTick);
         }
     }

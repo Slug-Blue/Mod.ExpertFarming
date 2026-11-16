@@ -23,7 +23,7 @@ All four files are 8-bit RGBA PNGs with no metadata chunks, as `AssetIntegrityTe
 - Paper `#F4EEDE` is lighter than vanilla and low in contrast. Ink `0x3A2A1A`, link `0x2B5C8A` and new `0x2E7D32` all read on it.
 - Tabs (wider after owner playtest 2, 2026-11-15): draw each tab at `book.x - 22`. The tab is 34 wide; its right 12 px go under the cover, so draw tabs before the spread. `tab_selected` is paper-coloured and full width, so it joins the page. Place the 16 × 16 icon at tab +3, +2, wholly outside the book (`book.x - 19` … `book.x - 3`). The book with its tabs is 310 × 200 and still fits 320 × 240. Draw `new_dot` at the tab's top-left corner. Bookmark ribbons go under the tabs, at `book.x - 9`.
 - Nav strip: `nav_bar` at (0, 182) relative to the book. The nav buttons are 16 × 16 on top of it.
-- Scene page (§3.13): window 264 × 112 at book (12, 22). Draw `scene_frame` 9-slice (border 4) on the window grown by 4, so the frame covers y 18–138 and also the spine. The caption takes y 140–158 (two lines) and the controls row y 159–171.
+- Scene page (§3.13; window 102 high since owner playtest 3, the caption needs three lines in Russian): window 264 × 102 at book (12, 22). Draw `scene_frame` 9-slice (border 4) on the window grown by 4, so the frame covers y 18–128 and also the spine. The caption takes y 130–157 (three lines, the rest cut with an ellipsis and shown whole as a tooltip) and the controls row y 159–171.
 
 ## UV table
 

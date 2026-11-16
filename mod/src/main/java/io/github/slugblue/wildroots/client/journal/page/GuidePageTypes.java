@@ -35,7 +35,7 @@ import net.minecraftforge.registries.ForgeRegistries;
  * {@code links}. Registered by {@link PageTypes}.
  */
 @OnlyIn(Dist.CLIENT)
-final class GuidePageTypes {
+public final class GuidePageTypes {
 
     /** Most text lines under a spotlight item or a recipe before the rest goes to a text page (§3.1). */
     static final int SPOTLIGHT_LINES = 8;
@@ -82,6 +82,19 @@ final class GuidePageTypes {
 
     // ------------------------------------------------------------------ spotlight
 
+    /**
+     * {@code c} wrapped to {@code width} in at most {@code max} lines (the last
+     * cut with an ellipsis), keeping its style: a long item name or title
+     * never leaves the page (owner playtest 3).
+     */
+    public static List<FormattedCharSequence> fitLines(Font font, Component c, int width, int max, boolean bold) {
+        List<FormattedCharSequence> out = new ArrayList<>();
+        for (String l : TextFit.wrapMax(c.getString(), width, max, bold, TextFit.of(font))) {
+            out.add(Component.literal(l).withStyle(c.getStyle()).getVisualOrderText());
+        }
+        return out;
+    }
+
     /** The stack a spotlight shows: the item, or a display variant built here and never sent anywhere (§3.1). */
     static ItemStack displayStack(ResourceLocation id, Optional<String> variant) {
         Item item = ForgeRegistries.ITEMS.getValue(id);
@@ -114,43 +127,44 @@ final class GuidePageTypes {
         }
         Font font = ctx.font();
         boolean owned = data.ownedBadge() && owned(data.item(), ctx);
-        Optional<FormattedCharSequence> title = data.title().map(t -> TextLayout.heading(Component.translatable(t))
-                .getVisualOrderText());
-        int top = title.isPresent() ? 12 : 2;
+        List<FormattedCharSequence> title = data.title().map(t -> fitLines(font,
+                TextLayout.heading(Component.translatable(t)), PageRect.HALF_WIDTH, 2, true)).orElse(List.of());
+        int top = title.isEmpty() ? 2 : title.size() * PageRect.LINE_HEIGHT + 3;
+        List<FormattedCharSequence> name = fitLines(font, stack.getHoverName(), PageRect.HALF_WIDTH, 2, false);
+        List<FormattedCharSequence> badge = owned ? fitLines(font, Component.literal("✓ ")
+                .append(Component.translatable("wildroots.journal.ui.owned")), PageRect.HALF_WIDTH - 4, 2, false)
+                : List.of();
         int nameY = top + 34;
-        int ruleY = nameY + (owned ? 20 : 11);
+        int ruleY = nameY + (name.size() + badge.size()) * PageRect.LINE_HEIGHT + 2;
         int textY = ruleY + 4;
         int capacity = Math.min(SPOTLIGHT_LINES, (PageRect.HEIGHT - textY) / PageRect.LINE_HEIGHT);
         List<TextLayout.Line> lines = data.text().map(k -> flatLines(ctx, k)).orElse(List.of());
         List<TextLayout.Line> here = lines.subList(0, Math.min(capacity, lines.size()));
         List<TextLayout.Line> rest = lines.subList(here.size(), lines.size());
-        FormattedCharSequence name = stack.getHoverName().getVisualOrderText();
-        LaidOutPage first = LaidOutPage.half(rect -> new SpotlightView(rect, stack, title, name, font.width(name),
-                owned, top, nameY, ruleY, textY, here, ctx));
+        LaidOutPage first = LaidOutPage.half(rect -> new SpotlightView(rect, stack, title, name, badge,
+                top, nameY, ruleY, textY, here, ctx));
         return withOverflow(first, rest, ctx);
     }
 
     static final class SpotlightView implements PageView {
 
         private final PageRect rect;
-        private final Optional<FormattedCharSequence> title;
-        private final FormattedCharSequence name;
-        private final int nameWidth;
-        private final boolean owned;
+        private final List<FormattedCharSequence> title;
+        private final List<FormattedCharSequence> name;
+        private final List<FormattedCharSequence> badge;
         private final int nameY;
         private final int ruleY;
         private final TextPageView text;
         private final PageWidgets.ItemWidget item;
         private final List<AbstractWidget> widgets = new ArrayList<>();
 
-        SpotlightView(PageRect rect, ItemStack stack, Optional<FormattedCharSequence> title, FormattedCharSequence name,
-                      int nameWidth, boolean owned, int top, int nameY, int ruleY, int textY,
-                      List<TextLayout.Line> lines, PageContext ctx) {
+        SpotlightView(PageRect rect, ItemStack stack, List<FormattedCharSequence> title,
+                      List<FormattedCharSequence> name, List<FormattedCharSequence> badge, int top, int nameY,
+                      int ruleY, int textY, List<TextLayout.Line> lines, PageContext ctx) {
             this.rect = rect;
             this.title = title;
             this.name = name;
-            this.nameWidth = nameWidth;
-            this.owned = owned;
+            this.badge = badge;
             this.nameY = rect.y() + nameY;
             this.ruleY = rect.y() + ruleY;
             this.item = new PageWidgets.ItemWidget(rect.x() + (rect.width() - 32) / 2, rect.y() + top, 32, stack, ctx);
@@ -172,11 +186,17 @@ final class GuidePageTypes {
         @Override
         public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
             Font font = Minecraft.getInstance().font;
-            title.ifPresent(t -> g.drawString(font, t, rect.x(), rect.y(), JournalColors.INK, false));
-            g.drawString(font, name, rect.x() + (rect.width() - nameWidth) / 2, nameY, JournalColors.INK, false);
-            if (owned) {
-                g.drawString(font, Component.literal("✓ ").append(Component.translatable("wildroots.journal.ui.owned")),
-                        rect.x() + 4, nameY + 10, JournalColors.NEW, false);
+            for (int i = 0; i < title.size(); i++) {
+                g.drawString(font, title.get(i), rect.x(), rect.y() + i * PageRect.LINE_HEIGHT, JournalColors.INK, false);
+            }
+            int y = nameY;
+            for (FormattedCharSequence l : name) {
+                g.drawString(font, l, rect.x() + (rect.width() - font.width(l)) / 2, y, JournalColors.INK, false);
+                y += PageRect.LINE_HEIGHT;
+            }
+            for (FormattedCharSequence l : badge) {
+                g.drawString(font, l, rect.x() + 4, y, JournalColors.NEW, false);
+                y += PageRect.LINE_HEIGHT;
             }
             g.hLine(rect.x(), rect.right() - 1, ruleY, JournalColors.INK_FADED);
             text.render(g, mouseX, mouseY, partialTick);
@@ -220,16 +240,19 @@ final class GuidePageTypes {
         }
         Component station = recipe.getType() == RecipeType.CRAFTING
                 ? Component.translatable("block.minecraft.crafting_table") : Component.empty();
-        FormattedCharSequence title = TextLayout.heading(result.getHoverName()).getVisualOrderText();
-        int gridY = 12;
+        Font font = ctx.font();
+        List<FormattedCharSequence> title = fitLines(font, TextLayout.heading(result.getHoverName()),
+                PageRect.HALF_WIDTH, 2, true);
+        List<FormattedCharSequence> stationLines = fitLines(font, station, PageRect.HALF_WIDTH - 6, 2, false);
+        int gridY = title.size() * PageRect.LINE_HEIGHT + 3;
         int stationY = gridY + 3 * SLOT + 3;
-        int ruleY = stationY + 11;
+        int ruleY = stationY + Math.max(1, stationLines.size()) * PageRect.LINE_HEIGHT + 2;
         int textY = ruleY + 4;
         int capacity = Math.min(CRAFTING_LINES, (PageRect.HEIGHT - textY) / PageRect.LINE_HEIGHT);
         List<TextLayout.Line> lines = data.text().map(k -> flatLines(ctx, k)).orElse(List.of());
         List<TextLayout.Line> here = lines.subList(0, Math.min(capacity, lines.size()));
         List<TextLayout.Line> rest = lines.subList(here.size(), lines.size());
-        LaidOutPage first = LaidOutPage.half(rect -> new CraftingView(rect, title, grid, result, station.getVisualOrderText(),
+        LaidOutPage first = LaidOutPage.half(rect -> new CraftingView(rect, title, grid, result, stationLines,
                 gridY, stationY, ruleY, textY, here, ctx));
         return withOverflow(first, rest, ctx);
     }
@@ -237,8 +260,8 @@ final class GuidePageTypes {
     static final class CraftingView implements PageView {
 
         private final PageRect rect;
-        private final FormattedCharSequence title;
-        private final FormattedCharSequence station;
+        private final List<FormattedCharSequence> title;
+        private final List<FormattedCharSequence> station;
         private final int gridX;
         private final int gridY;
         private final int stationY;
@@ -249,8 +272,8 @@ final class GuidePageTypes {
         private final List<AbstractWidget> widgets = new ArrayList<>();
         private int ticks;
 
-        CraftingView(PageRect rect, FormattedCharSequence title, List<List<ItemStack>> grid, ItemStack result,
-                     FormattedCharSequence station, int gridY, int stationY, int ruleY, int textY,
+        CraftingView(PageRect rect, List<FormattedCharSequence> title, List<List<ItemStack>> grid, ItemStack result,
+                     List<FormattedCharSequence> station, int gridY, int stationY, int ruleY, int textY,
                      List<TextLayout.Line> lines, PageContext ctx) {
             this.rect = rect;
             this.title = title;
@@ -294,7 +317,9 @@ final class GuidePageTypes {
         @Override
         public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
             Font font = Minecraft.getInstance().font;
-            g.drawString(font, title, rect.x(), rect.y(), JournalColors.INK, false);
+            for (int i = 0; i < title.size(); i++) {
+                g.drawString(font, title.get(i), rect.x(), rect.y() + i * PageRect.LINE_HEIGHT, JournalColors.INK, false);
+            }
             for (int i = 0; i < 9; i++) {
                 int x = gridX + (i % 3) * SLOT;
                 int y = gridY + (i / 3) * SLOT;
@@ -303,7 +328,10 @@ final class GuidePageTypes {
             int ax = gridX + 3 * SLOT + 10;
             JournalAtlas.blit(g, JournalAtlas.Arrow.RIGHT.sprite(), ax, gridY + SLOT + 5);
             g.renderOutline(result.getX() - 1, result.getY() - 1, SLOT, SLOT, JournalColors.INK);
-            g.drawString(font, station, gridX, stationY, JournalColors.INK_FADED, false);
+            for (int i = 0; i < station.size(); i++) {
+                g.drawString(font, station.get(i), gridX, stationY + i * PageRect.LINE_HEIGHT, JournalColors.INK_FADED,
+                        false);
+            }
             g.hLine(rect.x(), rect.right() - 1, ruleY, JournalColors.INK_FADED);
             text.render(g, mouseX, mouseY, partialTick);
         }
