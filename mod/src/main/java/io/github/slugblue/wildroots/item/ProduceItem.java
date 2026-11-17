@@ -3,7 +3,9 @@ package io.github.slugblue.wildroots.item;
 import io.github.slugblue.wildroots.core.safety.EntryPoint;
 import io.github.slugblue.wildroots.core.safety.Guarded;
 import io.github.slugblue.wildroots.data.CultivarInfo;
+import io.github.slugblue.wildroots.lens.LensColour;
 import java.util.List;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
@@ -107,7 +109,14 @@ public class ProduceItem extends Item {
             if (rootColours) {
                 String colour = ProduceStacks.colourName(colourOf(stack));
                 tooltip.add(Component.translatable(ROOT_COLOUR_KEY, Component.translatable("wildroots.colour." + colour)));
-                tooltip.add(Component.translatable("wildroots.tooltip.colour." + colour));
+                // what the colour does comes from the sign of the species' colour properties (WR-704): where the
+                // client has no such data (a remote client, SyncedDefinitions) the name line stands alone
+                ResourceLocation id = ForgeRegistries.ITEMS.getKey(this);
+                if (id != null) {
+                    for (String key : LensColour.propertyKeys(GradedFood.colourProps(id, colour))) {
+                        tooltip.add(Component.translatable(key).withStyle(ChatFormatting.GRAY));
+                    }
+                }
             }
             tooltip.add(Component.translatable("wildroots.grade." + ProduceStacks.grade(stack.getTag())));
             if (ProduceStacks.bitter(stack.getTag())) {

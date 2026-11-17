@@ -3,6 +3,7 @@ package io.github.slugblue.wildroots.item;
 import io.github.slugblue.wildroots.data.CultivarInfo;
 import io.github.slugblue.wildroots.data.Definitions;
 import io.github.slugblue.wildroots.data.DefinitionsSnapshot;
+import io.github.slugblue.wildroots.genetics.api.ColourProps;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -59,22 +60,30 @@ public final class GradedFood {
     }
 
     /**
-     * Saturation multiplier of the root colour {@code colourName} (yellow, purple, red) for the cultivar whose
-     * harvest item is {@code item}, from the {@code colours.properties} of its species; 1 where the species
-     * (with its colour properties, which only the server has) is not known.
+     * Properties of the root colour {@code colourName} (yellow, orange, purple, red) for the cultivar whose
+     * harvest item is {@code item}, from the {@code colours.properties} of its species;
+     * {@link ColourProps#ZERO} where the species (with its colour properties, which only the server has) is not
+     * known. The tooltip words come from the sign of these numbers, never from the numbers (WR-704).
      */
-    public static double colourSaturation(ResourceLocation item, String colourName) {
+    public static ColourProps colourProps(ResourceLocation item, String colourName) {
         DefinitionsSnapshot snap = Definitions.current();
         for (DefinitionsSnapshot.CultivarEntry c : snap.cultivars().values()) {
             if (c.info().produceItem().filter(item::equals).isPresent()) {
                 return snap.species(c.def().species()).map(s -> {
                     var rules = s.def().colours();
-                    int i = rules.indexOf(colourName);
-                    return i < 0 ? 1.0 : rules.props(i).saturationMult();
-                }).orElse(1.0);
+                    return rules.props(rules.indexOf(colourName));
+                }).orElse(ColourProps.ZERO);
             }
         }
-        return 1.0;
+        return ColourProps.ZERO;
+    }
+
+    /**
+     * Saturation multiplier of the root colour {@code colourName} for the cultivar whose harvest item is
+     * {@code item} ({@link #colourProps}); 1 where unknown.
+     */
+    public static double colourSaturation(ResourceLocation item, String colourName) {
+        return colourProps(item, colourName).saturationMult();
     }
 
     /** {@code food_reference} of the cultivar whose harvest item is {@code item}, if loaded. */
