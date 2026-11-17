@@ -189,8 +189,13 @@ public final class GrowthLogic {
         if (live.isEmpty()) {
             return;
         }
-        if (Wilting.youngStage(stage) && Wilting.tick(state, level, pos, be.get(), live.get())) {
-            return; // wilted: no growth (§4.3)
+        if (Wilting.youngStage(stage)) {
+            if (Wilting.tick(state, level, pos, be.get(), live.get())) {
+                return; // wilted: no growth (§4.3)
+            }
+            // the tick may have set the block's strain: a stage change builds on the current state, not the old one
+            BlockState old = state;
+            state = LoadedLevelAccess.blockState(level, pos).filter(s -> s.is(old.getBlock())).orElse(state);
         }
         double chance = cachedChance(level, pos, stage, be.get(), live.get());
         if (chance > 0 && random.nextDouble() < chance && ForgeHooks.onCropsGrowPre(level, pos, state, true)) {

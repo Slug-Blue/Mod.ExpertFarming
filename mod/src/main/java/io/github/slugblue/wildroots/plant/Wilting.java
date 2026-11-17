@@ -245,7 +245,21 @@ public final class Wilting {
 
     /** A starter patch placed outside the window shields the plants of the player around it (§4.6). */
     private static boolean startersPlant(ServerLevel level, BlockPos pos) {
-        return StarterPatch.data(level.getServer()).map(d -> d.exempts(pos)).orElse(false);
+        java.util.function.BiPredicate<ServerLevel, BlockPos> shield = starterShield;
+        return shield != null ? shield.test(level, pos)
+                : StarterPatch.data(level.getServer()).map(d -> d.exempts(pos)).orElse(false);
+    }
+
+    /** GameTests only: replaces the answer of the world's starter-patch data; {@code null} restores it. */
+    private static volatile java.util.function.BiPredicate<ServerLevel, BlockPos> starterShield;
+
+    /**
+     * GameTests only: the random seed of the test world decides whether the real starter patch lies outside the
+     * window and so shields the test area; a test says what the shield answers for its span, {@code null} restores
+     * the world's data.
+     */
+    public static void overrideStarterShieldForTests(java.util.function.BiPredicate<ServerLevel, BlockPos> shield) {
+        starterShield = shield;
     }
 
     private static void setStrain(ServerLevel level, BlockPos pos, BlockState state, PlantBlockEntity be, int ticks,
