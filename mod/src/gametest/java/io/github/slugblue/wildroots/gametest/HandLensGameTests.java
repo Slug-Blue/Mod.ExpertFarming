@@ -55,7 +55,7 @@ public final class HandLensGameTests {
             BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
             List<DispCodec.Line> lines = Lens.inspectPlant(level, abs, p).orElseThrow();
             PlantBlockEntity.Live live = be.live(level).orElseThrow();
-            Phenotype ph = GrowthLogic.phenotype(live, GrowthLogic.environment(level, abs)).orElseThrow();
+            Phenotype ph = GrowthLogic.phenotype(live, GrowthLogic.environment(level, abs, PlantFixtures.carrot().def())).orElseThrow();
 
             DispCodec.Line header = lines.get(0);
             helper.assertTrue(header.key().equals(Lens.HEADER)

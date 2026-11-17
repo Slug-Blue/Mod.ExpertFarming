@@ -1,6 +1,7 @@
 package io.github.slugblue.wildroots.plant;
 
 import io.github.slugblue.wildroots.core.safety.LoadedLevelAccess;
+import io.github.slugblue.wildroots.genetics.api.ClimateStress;
 import io.github.slugblue.wildroots.genetics.api.Environment;
 import io.github.slugblue.wildroots.genetics.api.Phenotype;
 import io.github.slugblue.wildroots.genetics.api.SpeciesDef;
@@ -11,8 +12,10 @@ import io.github.slugblue.wildroots.genetics.random.Hash64;
 import io.github.slugblue.wildroots.pollination.PollinationService;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.FarmBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.ForgeHooks;
@@ -43,6 +46,10 @@ import net.minecraftforge.common.ForgeHooks;
  * chance is 0 and neither bone meal nor {@code growCrops} moves it on. Only a
  * planted mother root flowers and sets seed (3 → 4 → 5). Wild plants placed
  * by worldgen keep their generated stage (flowering wild plants exist).
+ *
+ * <p>Climate (carrot-colours-climate §3.1, §4; {@link Wilting}): {@link #environment(ServerLevel, BlockPos, SpeciesDef)}
+ * hands {@code E} the effective temperature {@code T_eff} (humid biome, shelter, irrigation); a young plant of the
+ * player that stays at the stress margin wilts: its chance is 0 and it drops nothing.
  */
 public final class GrowthLogic {
 
@@ -128,6 +135,30 @@ public final class GrowthLogic {
         return new Environment(ClimateService.temperature(level, pos), moist, level.getRawBrightness(pos, 0), 0);
     }
 
+    /**
+     * Environment of a plant of species {@code def} (carrot-colours-climate §3.1, §4.5): like
+     * {@link #environment(ServerLevel, BlockPos)}, but the temperature is the effective one,
+     * {@code T_eff = T_mid + (T + humid − T_mid)·(1 − buffer)}: a jungle adds its humid penalty, a sheltered cell
+     * (sky light at most the species' limit) and irrigated farmland (moisture 7) each add a buffer. A species
+     * without climate stress, and any cell in the middle of the window, keep the plain temperature of the cell.
+     */
+    public static Environment environment(ServerLevel level, BlockPos pos, SpeciesDef def) {
+        ClimateStress cs = def.climateStress();
+        if (!cs.enabled()) {
+            return environment(level, pos);
+        }
+        Holder<Biome> biome = level.getBiome(pos);
+        double t = ClimateService.temperature(biome, pos);
+        double humid = cs.humid(Wilting.humidBiome(cs, biome));
+        double buffer = cs.buffer(Wilting.sheltered(level, pos, cs), Wilting.irrigated(level, pos));
+        boolean moist = LoadedLevelAccess.blockState(level, pos.below())
+                .filter(b -> b.hasProperty(FarmBlock.MOISTURE))
+                .map(b -> b.getValue(FarmBlock.MOISTURE) > 0)
+                .orElse(false);
+        double eff = humid == 0 && buffer == 0 ? t : ClimateStress.effectiveTemperature(ClimateStress.mid(def), t, humid, buffer);
+        return new Environment(eff, moist, level.getRawBrightness(pos, 0), 0);
+    }
+
     public static Optional<Phenotype> phenotype(PlantBlockEntity.Live live, Environment env) {
         return live.genetics().phenotype(live.genome(), live.def(), env, live.noise());
     }
@@ -137,7 +168,7 @@ public final class GrowthLogic {
                                       PlantBlockEntity.Live live) {
         float c = be.growthChance();
         if (Float.isNaN(c)) {
-            Environment env = environment(level, pos);
+            Environment env = environment(level, pos, live.def());
             c = (float) (double) phenotype(live, env).map(p -> chance(live, p, env, pos, stage)).orElse(0.0);
             be.setGrowthChance(c);
         }
@@ -158,6 +189,13 @@ public final class GrowthLogic {
         if (live.isEmpty()) {
             return;
         }
+        if (Wilting.youngStage(stage)) {
+            // the tick may set the block's strain: a stage change builds on the state it returns, not on the old one
+            state = Wilting.tick(state, level, pos, be.get(), live.get());
+            if (state == null) {
+                return; // wilted: no growth (§4.3)
+            }
+        }
         double chance = cachedChance(level, pos, stage, be.get(), live.get());
         if (chance > 0 && random.nextDouble() < chance && ForgeHooks.onCropsGrowPre(level, pos, state, true)) {
             advance(level, pos, state, be.get(), live.get(), stage + 1);
@@ -171,7 +209,7 @@ public final class GrowthLogic {
      * block refuses it as a target, so the bone meal is not spent).
      */
     static void bonemeal(ServerLevel level, RandomSource random, BlockPos pos, BlockState state) {
-        if (FieldPlantBlock.bonemealStage(FieldPlantBlock.stage(state)) && !waits(level, pos, state)
+        if (FieldPlantBlock.bonemealStage(FieldPlantBlock.stage(state)) && !Wilting.wilted(state) && !waits(level, pos, state)
                 && random.nextFloat() < BONEMEAL_CHANCE) {
             grow(level, pos, state);
         }
@@ -190,7 +228,7 @@ public final class GrowthLogic {
      */
     static void grow(ServerLevel level, BlockPos pos, BlockState state) {
         int stage = FieldPlantBlock.stage(state);
-        if (stage >= FieldPlantBlock.MAX_STAGE) {
+        if (stage >= FieldPlantBlock.MAX_STAGE || Wilting.wilted(state)) {
             return;
         }
         LoadedLevelAccess.blockEntity(level, pos, PlantBlockEntity.class)
@@ -206,7 +244,7 @@ public final class GrowthLogic {
      */
     public static void advance(ServerLevel level, BlockPos pos, BlockState state, PlantBlockEntity be,
                                PlantBlockEntity.Live live, int newStage) {
-        Environment env = environment(level, pos);
+        Environment env = environment(level, pos, live.def());
         Optional<Phenotype> p = phenotype(live, env);
         if (p.isEmpty()) {
             return;
@@ -220,6 +258,12 @@ public final class GrowthLogic {
             PollinationService.seedSet(level, pos, be, live);
         }
         BlockState next = look(state.setValue(FieldPlantBlock.STAGE, newStage), live.def(), p.get());
+        if (!Wilting.youngStage(newStage) || !Wilting.enabled()) {
+            // a ripe root waits and never wilts (§4.2): the strain of the young plant ends with the stage; with
+            // climate.wilting off a plant that moves on (bone meal, growCrops) does not keep a stale wilted state
+            next = next.setValue(FieldPlantBlock.STRAIN, 0);
+            be.setStrainTicks(0);
+        }
         level.setBlock(pos, next, 2);
         if (newStage == FieldPlantBlock.HARVEST_STAGE && oldStage < FieldPlantBlock.HARVEST_STAGE) {
             Phenotype ph = p.get();

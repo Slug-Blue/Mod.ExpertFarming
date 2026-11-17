@@ -3,6 +3,7 @@ package io.github.slugblue.wildroots.genetics.testutil;
 import io.github.slugblue.wildroots.genetics.api.AlleleFreq;
 import io.github.slugblue.wildroots.genetics.api.Bees;
 import io.github.slugblue.wildroots.genetics.api.Budget;
+import io.github.slugblue.wildroots.genetics.api.ClimateStress;
 import io.github.slugblue.wildroots.genetics.api.ColourProps;
 import io.github.slugblue.wildroots.genetics.api.ColourRules;
 import io.github.slugblue.wildroots.genetics.api.CultivarDef;
@@ -177,7 +178,7 @@ public final class DefJson {
 
         return new SpeciesDef(id, tMin, tMax, quant, trade, budget,
                 new WildFrequencies(bg, el, eliteLoci, rich, richExtra), wildF, qual, starter, load, mut, pol,
-                timing, axes, d.colours(m.get("colours")));
+                timing, axes, d.colours(m.get("colours")), d.climateStress(m.get("climate_stress")));
     }
 
     @SuppressWarnings("unchecked")
@@ -252,6 +253,20 @@ public final class DefJson {
             }
         }
         return new ColourRules(ids, rules, props);
+    }
+
+    /** Climate stress (carrot-colours-climate §4); a missing number takes its default without a warning. */
+    private ClimateStress climateStress(Object v) {
+        if (v == null) {
+            return ClimateStress.NONE;
+        }
+        Map<String, Object> c = obj(v, "climate_stress");
+        return new ClimateStress(numOr(c.get("wilt_margin"), Defaults.WILT_MARGIN, "climate_stress.wilt_margin", false),
+                numOr(c.get("humid_penalty"), 0, "climate_stress.humid_penalty", false),
+                numOr(c.get("buffer_shelter"), Defaults.SHELTER_BUFFER, "climate_stress.buffer_shelter", false),
+                numOr(c.get("buffer_irrigation"), Defaults.IRRIGATION_BUFFER, "climate_stress.buffer_irrigation", false),
+                intOr(c.get("grace_ticks"), Defaults.WILT_GRACE_TICKS, "climate_stress.grace_ticks", false),
+                intOr(c.get("shelter_sky_light"), Defaults.SHELTER_SKY_LIGHT, "climate_stress.shelter_sky_light", false));
     }
 
     // ---------------------------------------------------------------- helpers

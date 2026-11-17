@@ -66,6 +66,24 @@ class ConfigSpecTest {
         assertEquals(List.of(), CommonConfig.DISABLED_LINES.getDefault());
     }
 
+    /** WR-714: {@code climate.wilting} is on by default, and a GameTest can override it without writing the file. */
+    @Test
+    void climateWiltingDefaultsOnAndIsOverridableInTests() {
+        assertEquals(List.of("climate", "wilting"), ServerConfig.CLIMATE_WILTING.getPath());
+        assertTrue(ServerConfig.CLIMATE_WILTING.getDefault());
+        ServerConfig.overrideForTests(ServerConfig.CLIMATE_WILTING, false);
+        try {
+            assertFalse(ServerConfig.value(ServerConfig.CLIMATE_WILTING));
+            ServerConfig.overrideForTests(ServerConfig.CLIMATE_WILTING, true);
+            assertTrue(ServerConfig.value(ServerConfig.CLIMATE_WILTING));
+        } finally {
+            ServerConfig.overrideForTests(ServerConfig.CLIMATE_WILTING, null);
+        }
+        // the allow-list still refuses a value that is not read through value()
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class,
+                () -> ServerConfig.overrideForTests(ServerConfig.MIXIN_GRADE_FOOD, false));
+    }
+
     @Test
     void outOfRangeValuesAreCorrected() {
         CommentedConfig cfg = CommentedConfig.inMemory();

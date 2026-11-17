@@ -14,6 +14,12 @@ public final class PlantState {
     public static final int MOTHER = 1;
     public static final int MUTANT = 2;
     public static final int RARE_CLAIMED = 4;
+    /**
+     * The plant was placed by a version that knows climate wilting (carrot-colours-climate §4.6): every plant that
+     * {@link PlantBlockEntity#init} fills has it. A plant without it comes from an older save and does not wilt for
+     * the first {@code Wilting.OLD_PLANT_GRACE_TICKS} ticks after it is loaded; then it gets the flag.
+     */
+    public static final int CLIMATE_AWARE = 8;
 
     String species;
     /** Stored genome, {@code null} for a wild or village plant not touched yet. */
@@ -31,7 +37,7 @@ public final class PlantState {
     int generation;
     /** Flags of the ancestor lot ({@code LotFlags}). */
     byte lotFlags;
-    /** {@link #MOTHER}, {@link #MUTANT}, {@link #RARE_CLAIMED}. */
+    /** {@link #MOTHER}, {@link #MUTANT}, {@link #RARE_CLAIMED}, {@link #CLIMATE_AWARE}. */
     byte plantFlags;
     PendingLot pending;
 

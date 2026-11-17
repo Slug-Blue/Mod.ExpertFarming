@@ -141,7 +141,7 @@ public final class GrowthGameTests {
 
         float cached = be.growthChance();
         PlantBlockEntity.Live live = be.live(level).orElseThrow();
-        Environment env = GrowthLogic.environment(level, abs);
+        Environment env = GrowthLogic.environment(level, abs, PlantFixtures.carrot().def());
         Phenotype p = GrowthLogic.phenotype(live, env).orElseThrow();
         double expected = GrowthLogic.chance(live.def(), p, env, 1, 0);
         helper.assertTrue(!Float.isNaN(cached) && Math.abs(cached - expected) < 1e-6,
@@ -284,7 +284,7 @@ public final class GrowthGameTests {
                 changes++;
                 helper.assertTrue(FieldPlantBlock.stage(after) == FieldPlantBlock.stage(before) + 1, "skipped a stage");
                 PlantBlockEntity.Live live = be.live(level).orElseThrow();
-                Phenotype p = GrowthLogic.phenotype(live, GrowthLogic.environment(level, abs)).orElseThrow();
+                Phenotype p = GrowthLogic.phenotype(live, GrowthLogic.environment(level, abs, PlantFixtures.carrot().def())).orElseThrow();
                 helper.assertTrue(after == GrowthLogic.look(after, live.def(), p), "look not from the phenotype " + after);
                 helper.assertTrue(after.getValue(FieldPlantBlock.ACTIVE) && !after.getValue(FieldPlantBlock.VILLAGE),
                         "growth reset active/village");

@@ -20,6 +20,19 @@ public final class StarterPatchRules {
         }
     }
 
+    /**
+     * Plants of the player within this many blocks of the starter patch do not wilt when the patch had to be
+     * placed outside the window (carrot-colours-climate §4.6, appendix A) {@code [PLACEHOLDER]}.
+     */
+    public static final int WILT_FREE_RADIUS = 96;
+
+    /** Whether {@code pos} is within {@link #WILT_FREE_RADIUS} blocks (horizontally) of the patch at {@code centre}. */
+    public static boolean nearPatch(net.minecraft.core.BlockPos centre, net.minecraft.core.BlockPos pos) {
+        long dx = (long) pos.getX() - centre.getX();
+        long dz = (long) pos.getZ() - centre.getZ();
+        return dx * dx + dz * dz <= (long) WILT_FREE_RADIUS * WILT_FREE_RADIUS;
+    }
+
     /** Attempts before the starter patch gives up (review 2, T1; owner default pending confirmation). */
     public static final int MAX_ATTEMPTS = 3;
 

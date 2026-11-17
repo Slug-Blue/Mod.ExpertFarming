@@ -34,6 +34,7 @@ public final class ServerConfig {
     public static final ForgeConfigSpec.EnumValue<Mode> MODE;
     public static final ForgeConfigSpec.EnumValue<StarterPatch> STARTER_PATCH;
     public static final ForgeConfigSpec.BooleanValue GIVE_JOURNAL_ON_FIRST_HARVEST;
+    public static final ForgeConfigSpec.BooleanValue CLIMATE_WILTING;
 
     public static final ForgeConfigSpec.IntValue PACKET_BUCKET_CAPACITY;
     public static final ForgeConfigSpec.IntValue PACKET_REFILL_PER_SECOND;
@@ -57,6 +58,15 @@ public final class ServerConfig {
                 .defineEnum("starterPatch", StarterPatch.TRUE);
         GIVE_JOURNAL_ON_FIRST_HARVEST = b.comment("Give the field journal on the first harvest of a wild plant.")
                 .define("giveJournalOnFirstHarvest", true);
+        b.pop();
+
+        b.push("climate");
+        CLIMATE_WILTING = b.comment("Wilting (docs/design/carrot-colours-climate.md section 4): a young plant of a player",
+                "(growth stage 1-2) in a cell whose climate stress stays at the wilting margin for a few random ticks",
+                "wilts and gives nothing; a roof or irrigated farmland protects it. false: no plant ever wilts, a",
+                "wilted one stands up again, only the growth penalty of the temperature remains. Wild, village and",
+                "starter-patch plants never wilt either way.")
+                .define("wilting", true);
         b.pop();
 
         b.push("network");
@@ -115,7 +125,8 @@ public final class ServerConfig {
     /** GameTests only: {@code value} wins until cleared with {@code null}; the file is not touched. */
     public static <T> void overrideForTests(ForgeConfigSpec.ConfigValue<T> v, T value) {
         // only values read through value(); any other override would silently do nothing (review 2, n2)
-        if (v != MODE && v != GIVE_JOURNAL_ON_FIRST_HARVEST && v != NAME_SELECTION_PER_MINUTE) {
+        if (v != MODE && v != GIVE_JOURNAL_ON_FIRST_HARVEST && v != NAME_SELECTION_PER_MINUTE
+                && v != CLIMATE_WILTING) {
             throw new IllegalArgumentException("no test override for " + v.getPath());
         }
         if (value == null) {

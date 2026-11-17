@@ -35,6 +35,12 @@ public final class DataLimits {
     public static final double MAX_COLOUR_SATURATION = 4;
     /** Lower bound, exclusive, of the saturation multiplier (the food code reads 0 or less as 1). */
     public static final double MIN_COLOUR_SATURATION_EXCLUSIVE = 0;
+    /** Climate stress (carrot-colours-climate §3, §4): bounds of the species' wilting numbers. */
+    public static final double MAX_WILT_MARGIN = 2;
+    public static final double MAX_HUMID_PENALTY = 1;
+    public static final double MAX_STRESS_BUFFER = 0.9;
+    public static final int MAX_WILT_GRACE_TICKS = 64;
+    public static final int MAX_SKY_LIGHT = 15;
     public static final int MIN_LOCI = 1;
     public static final int MAX_LOCI = 16;
     public static final int MAX_LOAD_LOCI = 16;

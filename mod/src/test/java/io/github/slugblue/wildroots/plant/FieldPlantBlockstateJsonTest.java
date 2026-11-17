@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test;
  */
 class FieldPlantBlockstateJsonTest {
 
-    static final Set<String> MODEL_PROPERTIES = Set.of("stage", "size", "variant", "ailing");
+    static final Set<String> MODEL_PROPERTIES = Set.of("stage", "size", "variant", "ailing", "strain");
 
     static JsonObject read(String path) throws Exception {
         try (InputStream in = FieldPlantBlockstateJsonTest.class.getResourceAsStream(path)) {
@@ -62,8 +62,8 @@ class FieldPlantBlockstateJsonTest {
             assertNotNull(read(file), file);
         }
         assertEquals(Set.of(0, 1, 2, 3, 4, 5), stages, "every stage has a model");
-        // 960 states, but village and active never select a model: at most 6 × 4 × 5 × 2 = 240 models
-        assertTrue(models.size() <= 6 * 4 * 5 * 2, () -> models.size() + " models");
+        // 2880 states, but village and active never select a model: at most 6 × 4 × 5 × 3 × 2 = 720 models
+        assertTrue(models.size() <= 6 * 4 * 5 * 3 * 2, () -> models.size() + " models");
     }
 
     @Test
@@ -73,18 +73,20 @@ class FieldPlantBlockstateJsonTest {
             for (int size = 0; size <= 3; size++) {
                 for (int variant = 0; variant <= FieldPlantBlock.MAX_VARIANT; variant++) {
                     for (boolean ailing : new boolean[] {false, true}) {
-                        Map<String, String> state = Map.of("stage", "" + stage, "size", "" + size,
-                                "variant", "" + variant, "ailing", "" + ailing);
-                        int matches = 0;
-                        for (String key : variants.keySet()) {
-                            boolean all = true;
-                            for (Map.Entry<String, String> p : parseKey(key).entrySet()) {
-                                all &= p.getValue().equals(state.get(p.getKey()));
+                        for (int strain = 0; strain <= FieldPlantBlock.MAX_STRAIN; strain++) {
+                            Map<String, String> state = Map.of("stage", "" + stage, "size", "" + size,
+                                    "variant", "" + variant, "ailing", "" + ailing, "strain", "" + strain);
+                            int matches = 0;
+                            for (String key : variants.keySet()) {
+                                boolean all = true;
+                                for (Map.Entry<String, String> p : parseKey(key).entrySet()) {
+                                    all &= p.getValue().equals(state.get(p.getKey()));
+                                }
+                                matches += all ? 1 : 0;
                             }
-                            matches += all ? 1 : 0;
+                            int m = matches;
+                            assertEquals(1, m, () -> state + " matches " + m + " keys");
                         }
-                        int m = matches;
-                        assertEquals(1, m, () -> state + " matches " + m + " keys");
                     }
                 }
             }
@@ -110,5 +112,26 @@ class FieldPlantBlockstateJsonTest {
         assertEquals(8, red, "4 sizes × healthy and ailing");
         assertNotNull(FieldPlantBlockstateJsonTest.class.getResource("/assets/wildroots/textures/block/wild_carrot_crown_red.png"));
         assertNotNull(FieldPlantBlockstateJsonTest.class.getResource("/assets/wildroots/textures/item/eastern_carrot_red.png"));
+    }
+
+    /**
+     * WR-711: the young stages 1 and 2 have a drooping and a wilted model (the later stages never carry a strain),
+     * the wilted one with its own brown texture, and every texture the models name exists.
+     */
+    @Test
+    void strainModelsExist() throws Exception {
+        JsonObject variants = read("/assets/wildroots/blockstates/wild_carrot.json").getAsJsonObject("variants");
+        for (int stage = 1; stage <= 2; stage++) {
+            for (String name : new String[] {"drooping", "wilted"}) {
+                int strain = name.equals("drooping") ? 1 : 2;
+                String model = variants.getAsJsonObject("stage=" + stage + ",strain=" + strain).get("model").getAsString();
+                assertEquals("wildroots:block/wild_carrot_stage" + stage + "_" + name, model);
+                String file = read("/assets/wildroots/models/" + model.substring("wildroots:".length()) + ".json").toString();
+                String texture = com.google.gson.JsonParser.parseString(file).getAsJsonObject().getAsJsonObject("textures")
+                        .get("crop").getAsString();
+                assertNotNull(FieldPlantBlockstateJsonTest.class.getResource(
+                        "/assets/wildroots/textures/" + texture.substring("wildroots:".length()) + ".png"), texture);
+            }
+        }
     }
 }

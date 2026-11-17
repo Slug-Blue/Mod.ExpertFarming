@@ -119,7 +119,7 @@ public final class DeterminismGameTests {
         BlockPos abs = helper.absolutePos(PlantFixtures.PLANT);
         FieldPlantBlock block = ModBlocks.WILD_CARROT.get();
         PlantBlockEntity.Live live = be.live(level).orElseThrow();
-        Environment env = GrowthLogic.environment(level, abs);
+        Environment env = GrowthLogic.environment(level, abs, PlantFixtures.carrot().def());
         Phenotype p = GrowthLogic.phenotype(live, env).orElseThrow();
         float sentinel = 0.123f;
         for (int stage = 0; stage < FieldPlantBlock.MAX_STAGE; stage++) {

@@ -46,6 +46,15 @@
   "timing": { "to_harvest_min": 13, "seed_stage_min": 5 },
   "propagation": "seed",
   "quality_axes": { "fruit_size": 0.5, "flavor": 0.5 },
+  "climate_stress": {
+    "note": "[PLACEHOLDER] every number: balance pass WR-715 (docs/design/carrot-colours-climate.md 3.1, 4, appendix A). Wilting at stress >= wilt_margin after grace_ticks random ticks; humid_penalty is added to the cell temperature in #minecraft:is_jungle biomes in the stress calculation only; the buffers shrink the deviation from mid-window for a sheltered cell (sky light <= shelter_sky_light) and irrigated farmland.",
+    "wilt_margin": 0.35,
+    "humid_penalty": 0.40,
+    "buffer_shelter": 0.25,
+    "buffer_irrigation": 0.10,
+    "grace_ticks": 3,
+    "shelter_sky_light": 12
+  },
   "colours": {
     "note": "[PLACEHOLDER] every number: balance pass WR-715 (docs/design/carrot-colours-climate.md 2.1, appendix A). First matching rule wins; the position in ids is the block variant.",
     "ids": ["white", "yellow", "orange", "purple", "red"],

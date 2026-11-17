@@ -4,6 +4,7 @@ import static io.github.slugblue.wildroots.genetics.validation.DataLimits.range;
 
 import io.github.slugblue.wildroots.genetics.api.AlleleFreq;
 import io.github.slugblue.wildroots.genetics.api.Bees;
+import io.github.slugblue.wildroots.genetics.api.ClimateStress;
 import io.github.slugblue.wildroots.genetics.api.ColourProps;
 import io.github.slugblue.wildroots.genetics.api.ColourRules;
 import io.github.slugblue.wildroots.genetics.api.CultivarDef;
@@ -112,6 +113,7 @@ public final class DefinitionValidator {
         }
 
         colours(s.colours(), qual, out);
+        climateStress(s.climateStress(), out);
 
         intRange(s.load().loci(), 0, DataLimits.MAX_LOAD_LOCI, "load.loci", out);
         range(s.load().freq(), 0, 1, "load.freq", out);
@@ -278,6 +280,25 @@ public final class DefinitionValidator {
                 out.add(Problem.error(p + ".saturation_mult", "must be > 0"));
             }
         }
+    }
+
+    /**
+     * Climate stress (carrot-colours-climate §4): finite numbers in small bounds; the two buffers together
+     * stay below 1, so {@code T_eff} never passes the middle of the window.
+     */
+    private static void climateStress(ClimateStress c, List<Problem> out) {
+        if (c == ClimateStress.NONE) {
+            return;
+        }
+        range(c.wiltMargin(), 0, DataLimits.MAX_WILT_MARGIN, "climate_stress.wilt_margin", out);
+        range(c.humidPenalty(), 0, DataLimits.MAX_HUMID_PENALTY, "climate_stress.humid_penalty", out);
+        boolean a = range(c.shelterBuffer(), 0, DataLimits.MAX_STRESS_BUFFER, "climate_stress.buffer_shelter", out);
+        boolean b = range(c.irrigationBuffer(), 0, DataLimits.MAX_STRESS_BUFFER, "climate_stress.buffer_irrigation", out);
+        if (a && b && c.shelterBuffer() + c.irrigationBuffer() >= 1) {
+            out.add(Problem.error("climate_stress.buffer_shelter", "the two buffers together must stay below 1"));
+        }
+        range(c.graceTicks(), 0, DataLimits.MAX_WILT_GRACE_TICKS, "climate_stress.grace_ticks", out);
+        range(c.shelterSkyLight(), 0, DataLimits.MAX_SKY_LIGHT, "climate_stress.shelter_sky_light", out);
     }
 
     // ----------------------------------------------------------------- cultivar

@@ -167,7 +167,7 @@ public final class OldSaveGameTests {
         helper.assertTrue(y.genome().allele(rr, 0, 0) == 0 && y.genome().allele(rr, 0, 1) == 0, "color_r is not RR");
         // the colour (block variant) of every old plant is what the v1 alleles gave: P_ purple 3, y1y1 y2y2 orange 2, y1y1 yellow 1, else 0
         helper.assertTrue(GrowthLogic.variant(young.live(level).orElseThrow().def(), GrowthLogic.phenotype(y,
-                GrowthLogic.environment(level, helper.absolutePos(YOUNG))).orElseThrow()) == v1Variant(old, v1),
+                GrowthLogic.environment(level, helper.absolutePos(YOUNG), PlantFixtures.carrot().def())).orElseThrow()) == v1Variant(old, v1),
                 "the variant of the old plant changed");
         PlantBlockEntity.Live f = flowering.live(level).orElseThrow(() -> new AssertionError("flowering: " + flowering.inertReason()));
         helper.assertTrue(f.data().pending() != null && f.data().pending().fathers().size() == 2, "pending lot lost");

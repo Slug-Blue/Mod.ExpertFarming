@@ -81,7 +81,7 @@ public final class Lens {
         if (live.isEmpty()) {
             return Optional.empty();
         }
-        Environment env = GrowthLogic.environment(level, pos);
+        Environment env = GrowthLogic.environment(level, pos, live.get().def());
         Optional<Phenotype> p = GrowthLogic.phenotype(live.get(), env);
         if (p.isEmpty()) {
             return Optional.empty();
