@@ -60,4 +60,17 @@ class StarterPatchRulesTest {
             assertEquals(miss, o.failure(), o.name());
         }
     }
+
+    /** WR-714: the wilt-free radius of a starter patch is 96 blocks, horizontal, inclusive. */
+    @Test
+    void wiltFreeRadiusIs96BlocksHorizontally() {
+        net.minecraft.core.BlockPos c = new net.minecraft.core.BlockPos(1000, 70, -500);
+        org.junit.jupiter.api.Assertions.assertTrue(StarterPatchRules.nearPatch(c, c));
+        org.junit.jupiter.api.Assertions.assertTrue(StarterPatchRules.nearPatch(c, c.offset(96, 100, 0)), "height is ignored");
+        org.junit.jupiter.api.Assertions.assertTrue(StarterPatchRules.nearPatch(c, c.offset(0, 0, -96)));
+        org.junit.jupiter.api.Assertions.assertFalse(StarterPatchRules.nearPatch(c, c.offset(97, 0, 0)));
+        org.junit.jupiter.api.Assertions.assertFalse(StarterPatchRules.nearPatch(c, c.offset(68, 0, 68)), "diagonal 96.17");
+        org.junit.jupiter.api.Assertions.assertTrue(StarterPatchRules.nearPatch(c, c.offset(67, 0, 67)), "diagonal 94.75");
+        org.junit.jupiter.api.Assertions.assertEquals(96, StarterPatchRules.WILT_FREE_RADIUS);
+    }
 }

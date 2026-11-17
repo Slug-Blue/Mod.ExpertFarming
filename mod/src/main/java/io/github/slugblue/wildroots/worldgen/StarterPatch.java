@@ -27,6 +27,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -168,6 +169,14 @@ public final class StarterPatch {
         private int attempts;
         /** Transient: the login retry of this server run was made (not saved). */
         private boolean loginTried;
+        /**
+         * Where the patch was placed and whether that climate is outside the carrot's window for its stress
+         * (carrot-colours-climate §4.6): plants of the player within {@link StarterPatchRules#WILT_FREE_RADIUS}
+         * blocks do not wilt then, so the first lesson never ends with nothing to harvest.
+         */
+        private boolean hasCentre;
+        private long centre;
+        private boolean outsideWindow;
 
         public Data() {
         }
@@ -176,6 +185,9 @@ public final class StarterPatch {
             Data d = new Data();
             d.done = tag.getBoolean("starter_patch_done");
             d.attempts = Math.max(0, Math.min(StarterPatchRules.MAX_ATTEMPTS, tag.getInt("starter_patch_attempts")));
+            d.hasCentre = tag.contains("starter_patch_centre", Tag.TAG_LONG);
+            d.centre = d.hasCentre ? tag.getLong("starter_patch_centre") : 0;
+            d.outsideWindow = tag.getBoolean("starter_patch_outside_window");
             return d;
         }
 
@@ -183,6 +195,10 @@ public final class StarterPatch {
         public CompoundTag save(CompoundTag tag) {
             tag.putBoolean("starter_patch_done", done);
             tag.putInt("starter_patch_attempts", attempts);
+            if (hasCentre) {
+                tag.putLong("starter_patch_centre", centre);
+                tag.putBoolean("starter_patch_outside_window", outsideWindow);
+            }
             return tag;
         }
 
@@ -193,6 +209,19 @@ public final class StarterPatch {
         /** Failed attempts so far. */
         public int attempts() {
             return attempts;
+        }
+
+        /** Records the patch at {@code origin}; {@code outside}: its climate is outside the window of the carrot. */
+        public void setPatch(BlockPos origin, boolean outside) {
+            hasCentre = true;
+            centre = origin.asLong();
+            outsideWindow = outside;
+            setDirty();
+        }
+
+        /** Whether a plant of the player at {@code pos} is exempt from wilting by the starter patch (§4.6). */
+        public boolean exempts(BlockPos pos) {
+            return hasCentre && outsideWindow && StarterPatchRules.nearPatch(BlockPos.of(centre), pos);
         }
 
         /** A copy through NBT, as after a restart (tests). */
@@ -288,6 +317,9 @@ public final class StarterPatch {
             Data d = data.get();
             d.done = true;
             d.setDirty();
+            if (p.origin() != null) {
+                d.setPatch(p.origin(), outsideWindow(level, p.origin()));
+            }
             LOGGER.info("Wild Roots: starter patch ({}): {} at {} ({} plants)", trigger, p.outcome(), p.origin(),
                     p.plants());
         } else if (p.outcome().failure()) {
@@ -307,6 +339,21 @@ public final class StarterPatch {
             LOGGER.info("Wild Roots: starter patch ({}): {}", trigger, p.outcome());
         }
         return p;
+    }
+
+    /**
+     * Whether the climate at {@code origin} is outside the carrot's window as the wilting sees it (the cell
+     * temperature plus the humid penalty of a jungle, no protection; carrot-colours-climate §4.6). False for a
+     * species without climate stress.
+     */
+    static boolean outsideWindow(ServerLevel level, BlockPos origin) {
+        return Definitions.current().species(ModBlocks.WILD_CARROT_SPECIES).map(e -> {
+            SpeciesDef def = e.def();
+            Holder<Biome> biome = level.getBiome(origin.above());
+            double humid = def.climateStress().humid(biome.is(net.minecraft.tags.BiomeTags.IS_JUNGLE));
+            double t = ClimateService.temperature(biome, origin.above()) + humid;
+            return def.climateStress().enabled() && (t > def.tempMax() || t < def.tempMin());
+        }).orElse(false);
     }
 
     /** Share of the grid columns of the ring 24–128 whose {@value #AREA}-box is loaded (reads nothing else). */
