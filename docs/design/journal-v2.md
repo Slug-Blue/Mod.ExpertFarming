@@ -442,7 +442,7 @@ Ponder в миниатюре (В8): одно поколение моркови �
 | `guide.cycle` | Цикл двулетника / The Biennial Cycle | M1a | `hint.mother_plant` | scene `scene.carrot_cycle` (разворот) | Сеянец → корень на ст. 3 → сбор → маточник → цветы → пчёлы/кисть → лот | новый: 6 подписей шагов |
 | `guide.lens` | Лупа / The Hand Lens | M1a | всегда (рецепт нужен до лупы) | crafting `wildroots:hand_lens`, spotlight, text | Рецепт и как смотреть: лупа на курсоре над семенами, маточником, урожаем; ПКМ по растению | из `tool.hand_lens` + новый про В3 |
 | `guide.traits` | Как читать лупу / Reading the Lens | M1a | `tool.hand_lens` | trait_legend (разворот) | Пять делений, слова шкал, значки флагов (§3.4) | новый: 3 строки; шкалы — из `tooltip.scale.*` |
-| `guide.colors` | Цвет корня / Root Colour | M1a | `hint.yellow_root` или `hint.purple_root` | spotlight ×3 (каждая со своим `unlock`) | Жёлтый (рецессив), фиолетовый (доминант, перекрывает), оранжевый — только после `hint.orange_root` | из `hint.yellow_root`, `purple_root`, `orange_root` |
+| `guide.colors` | Цвет корня / Root Colour | M1a | `hint.yellow_root`, `purple_root`, `red_root` или `orange_root` | text, spotlight ×4 (каждая со своим `unlock`), text ×3 (WR-704) | Жёлтый (рецессив), фиолетовый (доминант, перекрывает), оранжевый — только после `hint.orange_root` | из `hint.yellow_root`, `purple_root`, `orange_root` |
 | `guide.selection` | Отбор / Selection | M1a | `species.*` | text, text | Грядка 5 × 5, каждый четвёртый — на семена, не отсекать слишком строго | из `small_population`, `select_quarter` + новый |
 | `guide.pollination` | Опыление / Pollination | M1a | `hint.plant_together` или `hint.bees` | text, spotlight (улей), text | Соседи, пчёлы, одинокое растение, пустые семенники | из `plant_together`, `lone_plant`, `bees`, `no_pollinators` |
 | `guide.inbreeding` | Близкая родня / Close Kin | M1a | `hint.inbreeding` или `hint.lone_plant` | text, text | Чахлость, свежая кровь, второй биом | из `inbreeding`, `second_biome` (+ `hybrid_vigor`, если сработала) |
@@ -476,7 +476,7 @@ Ponder в миниатюре (В8): одно поколение моркови �
 | `welcome`, `plant_together`, `lone_plant`, `no_pollinators`, `bees` | `guide.pollination` (у `welcome` — `guide.start`) |
 | `small_population`, `select_quarter` | `guide.selection` |
 | `mother_plant` (и `left_on_stalk`, когда выйдет из `PENDING`) | `guide.cycle` |
-| `yellow_root`, `orange_root`, `purple_root`, `mutation` | `guide.colors` |
+| `yellow_root`, `orange_root`, `purple_root`, `red_root`, `white_cold`, `mutation` | `guide.colors` |
 | `bitter`, `looks_like` | `guide.traits` / `guide.cultivars` |
 | `inbreeding`, `hybrid_vigor`, `second_biome`, `stagnation`, `missing_allele` | `guide.inbreeding` |
 | `first_landrace`, `first_cultivar` | `guide.cultivars` |
