@@ -37,6 +37,16 @@ import net.minecraft.world.level.block.state.BlockState;
  * blocks count, no block of its own. {@link GrowthLogic#environment(ServerLevel, BlockPos, SpeciesDef)} uses the
  * same protection for {@code E}.
  *
+ * <p>Growth chance: the cached chance of the block entity (and so the {@code E} behind it) takes shelter and
+ * irrigation as they were at the last stage change. A roof put up or taken away later changes the wilting at once
+ * (this class reads the cell on every tick that is at the margin) but the growth penalty only at the next stage
+ * change: a known, accepted lag (stages last minutes; a refresh here would cost a phenotype per tick).
+ *
+ * <p>Grace of an old plant: it starts at the first random tick after the chunk loaded and is held in memory
+ * only, so it restarts with every load until the plant gets {@link PlantState#CLIMATE_AWARE} (after one
+ * uninterrupted grace). Persisting the start would add a key to every old root for a case that ends after one
+ * long enough session; documented in the design (§4.6) instead.
+ *
  * <p>Cost: the tick reads the config flag, the passport, the cached limits of the block entity, one biome
  * temperature and compares. The light and the farmland below are read only when the unprotected stress is at the
  * margin, which is rare: a protection only moves the temperature towards the middle of the window, so a plant that
@@ -60,7 +70,10 @@ public final class Wilting {
         return isWilted(state) && enabled();
     }
 
-    /** The state is a wilted young plant, whatever the config says (a pure function of the state, for the client). */
+    /**
+     * The state is a wilted young plant, whatever the config says (a pure function of the state, for the client).
+     * Prepared for WR-713 (lens and journal wording).
+     */
     public static boolean isWilted(BlockState state) {
         return state.getBlock() instanceof FieldPlantBlock && youngStage(FieldPlantBlock.stage(state))
                 && FieldPlantBlock.strain(state) == FieldPlantBlock.WILTED;
@@ -78,7 +91,15 @@ public final class Wilting {
 
     /** GameTests only: the grace of a plant from an old save ends now (waiting 10 minutes in a test is no option). */
     public static void endGraceForTests(PlantBlockEntity be) {
+        requireGameTestServer(be.getLevel() == null ? null : be.getLevel().getServer());
         be.setGraceUntil(0);
+    }
+
+    /** The test seams do nothing outside a GameTest server: a mod or a command cannot reach them by accident. */
+    private static void requireGameTestServer(net.minecraft.server.MinecraftServer server) {
+        if (!(server instanceof net.minecraft.gametest.framework.GameTestServer)) {
+            throw new IllegalStateException("test seam outside the GameTest server");
+        }
     }
 
     // ------------------------------------------------------------------ exemptions
@@ -112,7 +133,10 @@ public final class Wilting {
 
     // ------------------------------------------------------------------ measuring
 
-    /** The stress of a plant now (§3.1) with what feeds it; {@code stress} is the signed {@code S}. */
+    /**
+     * The stress of a plant now (§3.1) with what feeds it; {@code stress} is the signed {@code S} (negative: margin
+     * to the nearest limit; {@code E} uses {@code max(0, S)}). Prepared for WR-713; nothing reads it yet.
+     */
     public record Reading(double stress, double unprotectedStress, double margin, boolean sheltered, boolean irrigated,
                           String exemption) {
 
@@ -124,7 +148,8 @@ public final class Wilting {
 
     /**
      * The stress of the plant at {@code pos}, with protection, for the lens and the journal (WR-713): the data a
-     * later window shows. Empty while the species has no climate stress or the plant is not readable.
+     * later window shows. Empty while the species has no climate stress or the plant is not readable. Prepared
+     * for WR-713; only GameTests call it so far.
      */
     public static Optional<Reading> read(ServerLevel level, BlockPos pos, BlockState state, PlantBlockEntity be,
                                          PlantBlockEntity.Live live) {
@@ -181,28 +206,27 @@ public final class Wilting {
     /**
      * One random tick of a plant (stages 1–2 reach here): moves the counter and the block's {@code strain}.
      *
-     * @return whether the plant is wilted now: the caller then does not let it grow
+     * @return {@code null} when the plant is wilted now (the caller does not let it grow), else the block state the
+     *         caller continues with: {@code state}, or the new one if the tick changed the strain (no second read of
+     *         the level, no allocation on the common path)
      */
-    static boolean tick(BlockState state, ServerLevel level, BlockPos pos, PlantBlockEntity be,
-                        PlantBlockEntity.Live live) {
+    static BlockState tick(BlockState state, ServerLevel level, BlockPos pos, PlantBlockEntity be,
+                           PlantBlockEntity.Live live) {
         int strain = FieldPlantBlock.strain(state);
         if (exemption(level, state, live) != null) {
-            if (strain != 0) {
-                setStrain(level, pos, state, be, 0, 0); // switched off or exempt now: stands up
-            }
-            return false;
+            return strain != 0 ? setStrain(level, pos, state, be, 0, 0) : state; // switched off or exempt now: stands up
         }
         ClimateStress cs = live.def().climateStress();
         if (!aware(level, be, live)) {
-            return false; // an old plant in its grace
+            return state; // an old plant in its grace
         }
         if (!limits(be, live)) {
-            return false;
+            return state;
         }
         int ticks = be.strainTicks() >= 0 ? be.strainTicks() : strain == FieldPlantBlock.WILTED ? cs.graceTicks() : strain;
         if (ticks >= cs.graceTicks()) {
             be.setStrainTicks(ticks);
-            return true; // wilted: for good
+            return null; // wilted: for good
         }
         Holder<Biome> biome = level.getBiome(pos);
         double t = ClimateService.temperature(biome, pos);
@@ -218,10 +242,11 @@ public final class Wilting {
             stressed = cs.wilts(s) && !startersPlant(level, pos);
         }
         int next = stressed ? ticks + 1 : Math.max(0, ticks - 1);
+        BlockState out = state;
         if (next != ticks || strain != strainOf(next, cs.graceTicks())) {
-            setStrain(level, pos, state, be, next, strainOf(next, cs.graceTicks()));
+            out = setStrain(level, pos, state, be, next, strainOf(next, cs.graceTicks()));
         }
-        return next >= cs.graceTicks();
+        return next >= cs.graceTicks() ? null : out;
     }
 
     /**
@@ -246,8 +271,12 @@ public final class Wilting {
     /** A starter patch placed outside the window shields the plants of the player around it (§4.6). */
     private static boolean startersPlant(ServerLevel level, BlockPos pos) {
         java.util.function.BiPredicate<ServerLevel, BlockPos> shield = starterShield;
-        return shield != null ? shield.test(level, pos)
-                : StarterPatch.data(level.getServer()).map(d -> d.exempts(pos)).orElse(false);
+        if (shield != null) {
+            return shield.test(level, pos);
+        }
+        // the starter patch is a fact of the overworld; its radius means nothing in another dimension
+        return level.dimension() == net.minecraft.world.level.Level.OVERWORLD
+                && StarterPatch.data(level.getServer()).map(d -> d.exempts(pos)).orElse(false);
     }
 
     /** GameTests only: replaces the answer of the world's starter-patch data; {@code null} restores it. */
@@ -259,14 +288,18 @@ public final class Wilting {
      * the world's data.
      */
     public static void overrideStarterShieldForTests(java.util.function.BiPredicate<ServerLevel, BlockPos> shield) {
+        requireGameTestServer(net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer());
         starterShield = shield;
     }
 
-    private static void setStrain(ServerLevel level, BlockPos pos, BlockState state, PlantBlockEntity be, int ticks,
-                                  int strain) {
+    private static BlockState setStrain(ServerLevel level, BlockPos pos, BlockState state, PlantBlockEntity be,
+                                        int ticks, int strain) {
         be.setStrainTicks(ticks);
-        if (FieldPlantBlock.strain(state) != strain) {
-            level.setBlock(pos, state.setValue(FieldPlantBlock.STRAIN, strain), 2);
+        if (FieldPlantBlock.strain(state) == strain) {
+            return state;
         }
+        BlockState next = state.setValue(FieldPlantBlock.STRAIN, strain);
+        level.setBlock(pos, next, 2);
+        return next;
     }
 }

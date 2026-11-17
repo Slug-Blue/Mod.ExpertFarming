@@ -428,6 +428,8 @@ public final class ClimateStressGameTests {
             ClimateKit.withWilting(false, () -> {
                 helper.assertFalse(Wilting.wilted(level.getBlockState(a)), "off: a wilted state does not count");
                 helper.assertFalse(ClimateKit.drops(level, a, player).isEmpty(), "off: the plant yields again");
+                helper.assertTrue(ModBlocks.WILD_CARROT.get().isValidBonemealTarget(level, a, level.getBlockState(a), false),
+                        "off: a plant with a wilted state is a bone meal target again");
                 denyingGrowth(List.of(a, b), () -> {
                     for (int i = 0; i < 20; i++) {
                         ClimateKit.tick(level, b, r, 1);

@@ -18,6 +18,7 @@ import io.github.slugblue.wildroots.item.MotherNbt;
 import io.github.slugblue.wildroots.item.PouchContents;
 import io.github.slugblue.wildroots.journal.JournalData;
 import io.github.slugblue.wildroots.plant.PlantNbt;
+import io.github.slugblue.wildroots.worldgen.StarterPatch;
 import io.github.slugblue.wildroots.pollination.BeePollen;
 import java.io.IOException;
 import java.io.InputStream;
@@ -238,6 +239,40 @@ class NbtDecoderFuzzTest {
             genome(m.get().genome());
             return Outcome.VALID;
         });
+    }
+
+    /** WR-714 review: the world data of the starter patch, with the keys S2 added (centre, outside window). */
+    @Test
+    void starterPatchData() {
+        CompoundTag pre = new CompoundTag();
+        pre.putBoolean("starter_patch_done", true);
+        pre.putInt("starter_patch_attempts", 1);
+        StarterPatch.Data placed = new StarterPatch.Data();
+        placed.setPatch(new net.minecraft.core.BlockPos(100, 70, -40), true);
+        CompoundTag s2 = placed.save(new CompoundTag());
+        s2.putBoolean("starter_patch_done", true);
+        fuzz("starter patch data", 2026, List.of(pre, s2), t -> {
+            StarterPatch.Data d = StarterPatch.Data.load(t);
+            d.exempts(new net.minecraft.core.BlockPos(0, 0, 0));
+            CompoundTag back = d.save(new CompoundTag());
+            assertEquals(back, StarterPatch.Data.load(back).save(new CompoundTag()), "saved data does not round-trip");
+            return d.done() ? Outcome.VALID : Outcome.INERT;
+        });
+    }
+
+    /** A world saved before S2 has no centre keys: the flag and the attempts load, nothing shields anything. */
+    @Test
+    void starterPatchDataOfAWorldBeforeS2() {
+        CompoundTag pre = new CompoundTag();
+        pre.putBoolean("starter_patch_done", true);
+        pre.putInt("starter_patch_attempts", 2);
+        StarterPatch.Data d = StarterPatch.Data.load(pre);
+        assertTrue(d.done());
+        assertEquals(2, d.attempts());
+        assertTrue(!d.exempts(new net.minecraft.core.BlockPos(0, 64, 0)));
+        CompoundTag back = d.save(new CompoundTag());
+        assertTrue(!back.contains("starter_patch_centre") && !back.contains("starter_patch_outside_window"),
+                "a data file without a centre stays without one: " + back);
     }
 
     @Test

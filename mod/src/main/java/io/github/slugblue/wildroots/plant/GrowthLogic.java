@@ -190,12 +190,11 @@ public final class GrowthLogic {
             return;
         }
         if (Wilting.youngStage(stage)) {
-            if (Wilting.tick(state, level, pos, be.get(), live.get())) {
+            // the tick may set the block's strain: a stage change builds on the state it returns, not on the old one
+            state = Wilting.tick(state, level, pos, be.get(), live.get());
+            if (state == null) {
                 return; // wilted: no growth (§4.3)
             }
-            // the tick may have set the block's strain: a stage change builds on the current state, not the old one
-            BlockState old = state;
-            state = LoadedLevelAccess.blockState(level, pos).filter(s -> s.is(old.getBlock())).orElse(state);
         }
         double chance = cachedChance(level, pos, stage, be.get(), live.get());
         if (chance > 0 && random.nextDouble() < chance && ForgeHooks.onCropsGrowPre(level, pos, state, true)) {
@@ -259,8 +258,9 @@ public final class GrowthLogic {
             PollinationService.seedSet(level, pos, be, live);
         }
         BlockState next = look(state.setValue(FieldPlantBlock.STAGE, newStage), live.def(), p.get());
-        if (!Wilting.youngStage(newStage)) {
-            // a ripe root waits and never wilts (§4.2): the strain of the young plant ends with the stage
+        if (!Wilting.youngStage(newStage) || !Wilting.enabled()) {
+            // a ripe root waits and never wilts (§4.2): the strain of the young plant ends with the stage; with
+            // climate.wilting off a plant that moves on (bone meal, growCrops) does not keep a stale wilted state
             next = next.setValue(FieldPlantBlock.STRAIN, 0);
             be.setStrainTicks(0);
         }

@@ -281,10 +281,15 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
      */
     @Override
     public boolean isValidBonemealTarget(LevelReader level, BlockPos pos, BlockState state, boolean isClient) {
-        if (!bonemealStage(stage(state)) || strain(state) == WILTED) {
-            return false; // a wilted plant is past help: the bone meal is not spent (§4.3)
+        if (!bonemealStage(stage(state))) {
+            return false;
         }
-        return !(level instanceof ServerLevel server) || !Guarded.call("plant bone meal target", pos,
+        if (!(level instanceof ServerLevel server)) {
+            // the client does not know the server's config: it predicts by the state, the server answer wins
+            return !Wilting.isWilted(state);
+        }
+        // a wilted plant is past help and the bone meal is not spent (§4.3); not while climate.wilting is off
+        return !Wilting.wilted(state) && !Guarded.call("plant bone meal target", pos,
                 () -> GrowthLogic.waits(server, pos, state), true);
     }
 

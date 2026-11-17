@@ -181,7 +181,7 @@ public final class StarterPatch {
         public Data() {
         }
 
-        static Data load(CompoundTag tag) {
+        public static Data load(CompoundTag tag) {
             Data d = new Data();
             d.done = tag.getBoolean("starter_patch_done");
             d.attempts = Math.max(0, Math.min(StarterPatchRules.MAX_ATTEMPTS, tag.getInt("starter_patch_attempts")));
