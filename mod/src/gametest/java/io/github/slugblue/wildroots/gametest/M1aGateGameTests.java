@@ -41,6 +41,24 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
  * starts from another starter patch (another fixed origin), at most
  * {@value #MAX_LINES} lines. The first generation of the first line has
  * real bees from a hive.
+ *
+ * <p><b>False failures.</b> Lines are independent (another origin, so another
+ * patch seed and starter population; the world seed differs in every run),
+ * and the gate passes as soon as one of them reaches the cultivar, so it
+ * fails falsely with probability {@code (1 − p)^MAX_LINES}, {@code p} being
+ * the share of lines that reach the cultivar under the player's rules
+ * ({@link #gateSucceeds}; the sweep logs it as "gate rule ... reached
+ * carrot"). Measured with the sweep ({@code WILDROOTS_SWEEP_LINES=120
+ * WILDROOTS_SWEEP_GENS=20}, five runs on clean worlds, 2026-11-17): 178 of
+ * 600 lines, p = 0.30 (0.26-0.38 per run, a little wider than binomial);
+ * the one-sided 99.9 % Clopper-Pearson lower bound is 0.24. With
+ * {@value #MAX_LINES} lines the false-failure probability is
+ * {@code (1 − 0.24)^120 = 4e-15} at that bound and stays below 1e-4 for every
+ * {@code p >= 1 − 1e-4^(1/120) = 0.074}, a quarter of the measured value, which
+ * is the margin for run-to-run spread. The earlier limit of 30 lines had
+ * {@code 0.70^30 = 2.6e-5} per run, too close: CI run 44041828594 found no
+ * carrot in 30 lines. A line takes 0.2-0.5 s and a run needs about three
+ * lines, so the margin costs time only in the failure case.
  */
 @GameTestHolder(WildRoots.MOD_ID)
 @PrefixGameTestTemplate(false)
@@ -49,7 +67,13 @@ public final class M1aGateGameTests {
     static final String FLOOR = SmokeGameTests.FLOOR_3X3X3;
     static final int MAX_GEN = 20;
     static final int ABANDON_WITHOUT_ORANGE = 10;
-    static final int MAX_LINES = 30;
+    /**
+     * Lines the gate player may start in all: one per starter-patch origin of the grid. The gate is a
+     * statistical claim ("a player gets the cultivar from <i>some</i> starter patch"), so its false-failure
+     * probability is {@code (1 − p)^MAX_LINES} for the per-line success share {@code p} of the player
+     * (see the class comment, "False failures").
+     */
+    static final int MAX_LINES = 120;
     /** Real bees: at most this many ticks for the first bee visits. */
     static final int BEE_WAIT = 12_000;
     static final int BEES = 8;
@@ -59,9 +83,38 @@ public final class M1aGateGameTests {
     private M1aGateGameTests() {
     }
 
+    /**
+     * The grid of starter-patch origins: 12 columns × 10 rows at x −14…−3, z −14…−5, which keeps the
+     * patches (spread ≤ 8) off the beds (x ≥ 2) and off the mother cells (x ≥ 6).
+     */
+    static final int ORIGIN_COLUMNS = 12;
+    static final int ORIGINS = ORIGIN_COLUMNS * 10;
+    static {
+        assert MAX_LINES <= ORIGINS;
+    }
+
     /** Fixed starter-patch origin of line {@code i} on the platform: other origin, other patch seed. */
     static BlockPos origin(SkyPlatform sky, int i) {
-        return sky.center.offset(-12 + i % 5, 1, -12 + i / 5);
+        if (i < 0 || i >= ORIGINS) {
+            throw new IllegalArgumentException("no starter-patch origin for line " + i);
+        }
+        return sky.center.offset(-14 + i % ORIGIN_COLUMNS, 1, -14 + i / ORIGIN_COLUMNS);
+    }
+
+    /** The gate player gives a line up: the generation limit, or no orange root by the abandon generation. */
+    static boolean abandon(int generation, int orangeGen) {
+        return generation >= MAX_GEN || (generation >= ABANDON_WITHOUT_ORANGE && orangeGen < 0);
+    }
+
+    /**
+     * Whether a line with this {@code carrotGen} (planting generation of the first {@code carrot}, -1 if none)
+     * and first orange root {@code orangeGen} reaches the cultivar under the gate player's rules; the same rule
+     * as {@link Gate#step} (a carrot is checked before the abandon rule), used by the sweep to report the
+     * per-line share {@code p} of the gate.
+     */
+    static boolean gateSucceeds(int carrotGen, int orangeGen) {
+        return carrotGen >= 0 && carrotGen <= MAX_GEN
+                && (carrotGen <= ABANDON_WITHOUT_ORANGE || (orangeGen >= 0 && orangeGen <= ABANDON_WITHOUT_ORANGE));
     }
 
     /** Async driver of the gate: one step per tick, so the server keeps ticking. */
@@ -96,7 +149,8 @@ public final class M1aGateGameTests {
             }
             lineNo++;
             if (lineNo >= MAX_LINES) {
-                fail("no carrot in " + MAX_LINES + " lines: " + lines);
+                fail("no carrot in " + MAX_LINES + " lines (the gate fails with probability below 1e-4 if the per-line"
+                        + " share is 0.074 or more; measured 0.26-0.38 per run): " + lines);
             }
             line = new BreedingLine(level, sky.center, 0x195_0000L + lineNo, "wr195-breeder-" + lineNo);
             line.start(sky, origin(sky, lineNo));
@@ -162,8 +216,7 @@ public final class M1aGateGameTests {
                 done();
                 return;
             }
-            if (line.generation >= MAX_GEN
-                    || (line.generation >= ABANDON_WITHOUT_ORANGE && line.orangeGen < 0)) {
+            if (abandon(line.generation, line.orangeGen)) {
                 newLine();
             }
             line.generation();
@@ -286,6 +339,7 @@ public final class M1aGateGameTests {
         int[] eastern = new int[linesN];
         int[] carrot = new int[linesN];
         int[] orange = new int[linesN];
+        int[] gateOk = {0};
         double[] secs = new double[linesN];
         int[] i = {0};
         BreedingLine[] cur = {null};
@@ -303,6 +357,7 @@ public final class M1aGateGameTests {
                 eastern[i[0]] = l.easternGen;
                 carrot[i[0]] = l.carrotGen;
                 orange[i[0]] = l.orangeGen;
+                gateOk[0] += gateSucceeds(l.carrotGen, l.orangeGen) ? 1 : 0;
                 secs[i[0]] = (System.nanoTime() - secs[i[0]]) / 1e9;
                 LOG.info("[WR-195] sweep line {}: {}; {} s; trace {}", i[0], l.summary(),
                         String.format(Locale.ROOT, "%.1f", secs[i[0]]), l.trace);
@@ -313,9 +368,11 @@ public final class M1aGateGameTests {
                     long ok = Arrays.stream(carrot).filter(x -> x >= 0).count();
                     int[] okGens = Arrays.stream(carrot).filter(x -> x >= 0).sorted().toArray();
                     int[] eGens = Arrays.stream(eastern).filter(x -> x >= 0).sorted().toArray();
-                    LOG.info("[WR-195] sweep SUMMARY: {} lines, carrot by gen {} in {} ({}%), carrot generations {}"
+                    LOG.info("[WR-195] sweep SUMMARY: {} lines, gate rule (give up at generation {} without orange,"
+                            + " at {}) reached carrot in {}, carrot by gen {} in {} ({}%), carrot generations {}"
                             + " (median {}), eastern generations {} (median {}), first orange root {}, seconds per line {}",
-                            linesN, gens, ok, 100 * ok / linesN, Arrays.toString(okGens), median(okGens),
+                            linesN, ABANDON_WITHOUT_ORANGE, MAX_GEN, gateOk[0], gens, ok, 100 * ok / linesN,
+                            Arrays.toString(okGens), median(okGens),
                             Arrays.toString(eGens), median(eGens), Arrays.toString(orange), Arrays.toString(secs));
                     sky.clear();
                     succeedWhenLit(helper, sky, 0);
