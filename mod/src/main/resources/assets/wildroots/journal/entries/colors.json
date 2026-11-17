@@ -5,7 +5,9 @@
   "order": 30,
   "unlock": [
     "hint.yellow_root",
-    "hint.purple_root"
+    "hint.purple_root",
+    "hint.red_root",
+    "hint.orange_root"
   ],
   "items": [
     "wildroots:eastern_carrot",
@@ -15,6 +17,10 @@
     "guide.cultivars"
   ],
   "pages": [
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.colors.1"
+    },
     {
       "type": "spotlight",
       "item": "wildroots:eastern_carrot",
@@ -39,6 +45,35 @@
       "text": "wildroots.journal.hint.orange_root",
       "unlock": [
         "hint.orange_root"
+      ]
+    },
+    {
+      "type": "spotlight",
+      "item": "wildroots:eastern_carrot",
+      "variant": "colour=red",
+      "text": "wildroots.journal.hint.red_root",
+      "unlock": [
+        "hint.red_root"
+      ]
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.colors.4"
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.colors.2",
+      "unlock": [
+        "hint.orange_root",
+        "hint.red_root"
+      ]
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.colors.3",
+      "unlock": [
+        "hint.orange_root",
+        "hint.red_root"
       ]
     }
   ]

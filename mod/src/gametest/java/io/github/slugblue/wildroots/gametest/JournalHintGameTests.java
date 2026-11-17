@@ -132,6 +132,10 @@ public final class JournalHintGameTests {
             ownCarrot(helper, a, 310, 3, Classification.WILD, null, 0);
             JournalTriggers.harvested(helper.getLevel(), abs, helper.getBlockState(PlantFixtures.PLANT), a);
             helper.assertTrue(JournalGameTests.journal(a).has("hint.purple_root"), "no purple_root");
+            helper.assertTrue(!JournalGameTests.journal(a).has("hint.red_root"), "red_root too early");
+            ownCarrot(helper, a, 311, 4, Classification.WILD, null, 0);
+            JournalTriggers.harvested(helper.getLevel(), abs, helper.getBlockState(PlantFixtures.PLANT), a);
+            helper.assertTrue(JournalGameTests.journal(a).has("hint.red_root"), "no red_root");
         } finally {
             rec.close();
             a.discard();

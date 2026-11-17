@@ -83,6 +83,7 @@ public final class HintTriggers {
                 case 1 -> hint(player, "yellow_root");
                 case 2 -> hint(player, "orange_root");
                 case 3 -> hint(player, "purple_root");
+                case 4 -> hint(player, "red_root");
                 default -> { }
             }
         } else if (stage >= FieldPlantBlock.SEED_STAGE) {

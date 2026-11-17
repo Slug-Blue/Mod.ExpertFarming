@@ -45,7 +45,9 @@ public final class JournalHints {
         // traits one can see
         core("bitter");
         line("tomato", "toxic_tomato");
-        line("carrot", "yellow_root", "orange_root", "purple_root");
+        line("carrot", "yellow_root", "orange_root", "purple_root", "red_root");
+        // white_cold has its text but no trigger yet (a GD question, WR-704): off until it gets one
+        line(PENDING, "white_cold");
         line("wheat", "shattering", "full_ear", "brush_for_wheat", "dormancy");
         line("maize", "teosinte_case", "single_stalk", "wind_pollen");
         line("cabbage", "cabbage_roads", "bud_pollination", "self_incompat");
