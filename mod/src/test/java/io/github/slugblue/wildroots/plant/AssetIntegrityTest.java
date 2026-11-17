@@ -31,8 +31,9 @@ class AssetIntegrityTest {
     static final Set<String> ALLOWED_CHUNKS = Set.of("IHDR", "PLTE", "tRNS", "IDAT", "IEND");
     static final List<String> M1A_ITEMS = List.of("wild_carrot_root", "eastern_carrot", "carrot", "mother_root",
             "seed_lot", "seed_pouch", "field_journal", "hand_lens",
-            // root colour models behind the wildroots:root_colour predicate (0 yellow = base look, 1 purple)
-            "eastern_carrot_yellow", "eastern_carrot_purple");
+            // root colour models behind the wildroots:root_colour predicate
+            "eastern_carrot_yellow", "eastern_carrot_purple", "eastern_carrot_red", "eastern_carrot_orange",
+            "carrot_yellow", "carrot_purple", "carrot_red");
 
     static Path assets() throws Exception {
         URL url = AssetIntegrityTest.class.getResource("/assets/wildroots/blockstates/wild_carrot.json");
