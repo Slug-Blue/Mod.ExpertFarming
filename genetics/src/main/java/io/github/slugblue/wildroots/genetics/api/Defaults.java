@@ -69,6 +69,19 @@ public final class Defaults {
         return new QuantTrait(id, EXTRA_TRAIT_LOCI, EXTRA_TRAIT_SIGMA, false);
     }
 
+    // ------------------------------------------------------------ climate stress (design carrot-colours-climate §4)
+
+    /** {@code W}: stress at which a plant wilts, a little above the cap of {@code E} {@code [PLACEHOLDER]}. */
+    public static final double WILT_MARGIN = 0.35;
+    /** {@code K}: random ticks at {@code S ≥ W} before a plant wilts (about 3.4 minutes) {@code [PLACEHOLDER]}. */
+    public static final int WILT_GRACE_TICKS = 3;
+    /** {@code buffer} of a sheltered cell (covered sky) {@code [PLACEHOLDER]}. */
+    public static final double SHELTER_BUFFER = 0.25;
+    /** {@code buffer} of irrigated farmland {@code [PLACEHOLDER]}. */
+    public static final double IRRIGATION_BUFFER = 0.10;
+    /** A cell is sheltered when its sky light is at most this {@code [PLACEHOLDER]}. */
+    public static final int SHELTER_SKY_LIGHT = 12;
+
     // ------------------------------------------------------------ cultivars
 
     /** Hysteresis of cultivar status (GDD §6.2). */

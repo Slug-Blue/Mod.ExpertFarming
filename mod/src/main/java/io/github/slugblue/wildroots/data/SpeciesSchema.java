@@ -15,6 +15,7 @@ import io.github.slugblue.wildroots.data.codec.PathCodecs;
 import io.github.slugblue.wildroots.genetics.api.AlleleFreq;
 import io.github.slugblue.wildroots.genetics.api.Bees;
 import io.github.slugblue.wildroots.genetics.api.Budget;
+import io.github.slugblue.wildroots.genetics.api.ClimateStress;
 import io.github.slugblue.wildroots.genetics.api.ColourProps;
 import io.github.slugblue.wildroots.genetics.api.ColourRules;
 import io.github.slugblue.wildroots.genetics.api.Defaults;
@@ -94,6 +95,11 @@ public final class SpeciesSchema {
                              Optional<Map<String, ColourPropsRaw>> properties) {
     }
 
+    public record ClimateStressRaw(Optional<Double> wiltMargin, Optional<Double> humidPenalty,
+                                   Optional<Double> bufferShelter, Optional<Double> bufferIrrigation,
+                                   Optional<Integer> graceTicks, Optional<Integer> shelterSkyLight) {
+    }
+
     public record Load(Optional<Integer> loci, Optional<Double> freq, Optional<Double> step) {
     }
 
@@ -117,7 +123,8 @@ public final class SpeciesSchema {
                       Pol pollination, TimingRaw timing, Optional<Map<String, Double>> qualityAxes,
                       Optional<Map<String, String>> displayTraits, Optional<String> lifeCycle,
                       Optional<ResourceLocation> block, Optional<String> archetype, Optional<Integer> color,
-                      Optional<String> rareAllele, Optional<String> propagation, Optional<ColoursRaw> colours) {
+                      Optional<String> rareAllele, Optional<String> propagation, Optional<ColoursRaw> colours,
+                      Optional<ClimateStressRaw> climateStress) {
     }
 
     // ------------------------------------------------------------------ codec
@@ -152,6 +159,10 @@ public final class SpeciesSchema {
 
     static final Codec<ColoursRaw> COLOURS = object(f -> new ColoursRaw(f.req("ids", list(STR)),
             f.req("rules", list(COLOUR_RULE)), f.opt("properties", map(COLOUR_PROPS))));
+
+    static final Codec<ClimateStressRaw> CLIMATE_STRESS = object(f -> new ClimateStressRaw(f.opt("wilt_margin", NUM),
+            f.opt("humid_penalty", NUM), f.opt("buffer_shelter", NUM), f.opt("buffer_irrigation", NUM),
+            f.opt("grace_ticks", INT), f.opt("shelter_sky_light", INT)));
 
     static final Codec<Load> LOAD = object(f -> new Load(f.opt("loci", INT), f.opt("freq", NUM), f.opt("step", NUM)));
 
@@ -190,7 +201,8 @@ public final class SpeciesSchema {
             f.opt("color", INT),
             f.opt("rare_allele", STR),
             f.opt("propagation", STR),
-            f.opt("colours", COLOURS)));
+            f.opt("colours", COLOURS),
+            f.opt("climate_stress", CLIMATE_STRESS)));
 
     // ------------------------------------------------------------------ defaults and mod checks
 
@@ -293,10 +305,21 @@ public final class SpeciesSchema {
 
         ColourRules colours = raw.colours().map(SpeciesSchema::colours).orElse(ColourRules.NONE);
 
+        ClimateStress stress = raw.climateStress().map(SpeciesSchema::climateStress).orElse(ClimateStress.NONE);
+
         SpeciesDef def = new SpeciesDef(raw.id(), tMin, tMax, quant, trade, budget,
                 new WildFrequencies(bg, el, eliteLoci, rich, richExtra), wildF, qual, starter, load, mut, pol,
-                timing, axes, colours);
+                timing, axes, colours, stress);
         return new Mapped(def, info(raw, p), p);
+    }
+
+    /** Climate stress of the JSON; a missing number takes its default ({@code Defaults}) without a warning. */
+    private static ClimateStress climateStress(ClimateStressRaw c) {
+        return new ClimateStress(c.wiltMargin().orElse(Defaults.WILT_MARGIN), c.humidPenalty().orElse(0.0),
+                c.bufferShelter().orElse(Defaults.SHELTER_BUFFER),
+                c.bufferIrrigation().orElse(Defaults.IRRIGATION_BUFFER),
+                c.graceTicks().orElse(Defaults.WILT_GRACE_TICKS),
+                c.shelterSkyLight().orElse(Defaults.SHELTER_SKY_LIGHT));
     }
 
     /** Colour rules of the JSON; missing property numbers are neutral (0, saturation 1), without a warning. */

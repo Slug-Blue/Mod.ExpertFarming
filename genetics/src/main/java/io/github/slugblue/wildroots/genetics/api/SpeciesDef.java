@@ -30,13 +30,15 @@ import java.util.SortedMap;
  * @param timing       stage timing
  * @param qualityAxes  quality axes of the line for wild plants (GDD §6.4: like the main cultivar)
  * @param colours      colour rules and properties ({@link ColourRules#NONE} when the species has no colours)
+ * @param climateStress wilting threshold, humid penalty and protection ({@link ClimateStress#NONE} = never wilts)
  */
 public record SpeciesDef(String id, double tempMin, double tempMax, List<QuantTrait> quantitative,
                          List<Tradeoff> tradeoffs, Budget budget, WildFrequencies wild, double wildF,
                          List<QualTrait> qualitative, SortedMap<TraitId, Double> starterFreq, LoadDef load,
                          MutationRates mutation, Pollination pollination, Timing timing,
-                         SortedMap<TraitId, Double> qualityAxes, ColourRules colours) {
+                         SortedMap<TraitId, Double> qualityAxes, ColourRules colours, ClimateStress climateStress) {
 
+    /** Without climate stress: the species never wilts. */
     public SpeciesDef(String id, double tempMin, double tempMax, List<QuantTrait> quantitative,
                       List<Tradeoff> tradeoffs, Budget budget, WildFrequencies wild, double wildF,
                       List<QualTrait> qualitative, Map<TraitId, Double> starterFreq, LoadDef load,
@@ -44,7 +46,17 @@ public record SpeciesDef(String id, double tempMin, double tempMax, List<QuantTr
                       Map<TraitId, Double> qualityAxes, ColourRules colours) {
         this(id, tempMin, tempMax, quantitative, tradeoffs, budget, wild, wildF, qualitative,
                 Immutable.sorted(starterFreq), load, mutation, pollination, timing, Immutable.sorted(qualityAxes),
-                colours);
+                colours, ClimateStress.NONE);
+    }
+
+    public SpeciesDef(String id, double tempMin, double tempMax, List<QuantTrait> quantitative,
+                      List<Tradeoff> tradeoffs, Budget budget, WildFrequencies wild, double wildF,
+                      List<QualTrait> qualitative, Map<TraitId, Double> starterFreq, LoadDef load,
+                      MutationRates mutation, Pollination pollination, Timing timing,
+                      Map<TraitId, Double> qualityAxes, ColourRules colours, ClimateStress climateStress) {
+        this(id, tempMin, tempMax, quantitative, tradeoffs, budget, wild, wildF, qualitative,
+                Immutable.sorted(starterFreq), load, mutation, pollination, timing, Immutable.sorted(qualityAxes),
+                colours, climateStress);
     }
 
     /** A species without colours. */
@@ -67,6 +79,7 @@ public record SpeciesDef(String id, double tempMin, double tempMax, List<QuantTr
         starterFreq = Immutable.sorted(starterFreq);
         qualityAxes = Immutable.sorted(qualityAxes);
         colours = colours == null ? ColourRules.NONE : colours;
+        climateStress = climateStress == null ? ClimateStress.NONE : climateStress;
     }
 
     /** Quantitative trait by id or {@code null}. */
