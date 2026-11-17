@@ -98,9 +98,11 @@ icons['carrot'] = px
 icons['carrot_yellow'] = render([(11.4, 4.2, 1.8, 14.8, 2.1, 0.25)], PAL['yellow'], MODERN_LEAVES)
 # purple: dark and thick, pale core hint
 icons['carrot_purple'] = render([(11.2, 4.6, 3.0, 13.8, 3.5, 0.4)], PAL['purple'], MODERN_LEAVES)
-# red: stubby and round, deep
-icons['carrot_red'] = render([(11.0, 5.0, 4.4, 12.6, 3.9, 1.7), (4.4, 12.6, 3.4, 13.8, 1.7, 0.4)],
-                             PAL['red'], MODERN_LEAVES)
+# red: a deep crimson taper, a little shorter than orange, clear pointed tip, ring pixels
+icons['carrot_red'] = render([(11.2, 4.6, 3.4, 13.4, 2.8, 0.2)], PAL['red'], MODERN_LEAVES)
+for p in [(8, 8), (7, 9), (6, 10), (9, 7)]:
+    if p in icons['carrot_red']:
+        icons['carrot_red'][p] = PAL['red']['D']
 
 
 def eastern(pal):
