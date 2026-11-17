@@ -119,11 +119,6 @@ public final class M1aGateGameTests {
                 && (carrotGen <= ABANDON_WITHOUT_ORANGE || (orangeGen >= 0 && orangeGen <= ABANDON_WITHOUT_ORANGE));
     }
 
-    /** {@code climate.wilting} for the gate: {@code WILDROOTS_GATE_WILTING=false} switches it off, otherwise on. */
-    static boolean gateWilting() {
-        return !"false".equalsIgnoreCase(System.getenv("WILDROOTS_GATE_WILTING"));
-    }
-
     /** Async driver of the gate: one step per tick, so the server keeps ticking. */
     static final class Gate {
         final GameTestHelper helper;
@@ -142,18 +137,19 @@ public final class M1aGateGameTests {
         int realBeeDonors;
         /** Undo of the plains biome painted over the platform (closed once). */
         Runnable undoBiome;
+        boolean closed;
 
-        Gate(GameTestHelper helper) {
+        Gate(GameTestHelper helper, boolean wilting) {
             this.helper = helper;
             this.level = helper.getLevel();
             this.sky = SkyPlatform.build(helper, BreedingLine.PLATFORM_RADIUS);
             level.setDayTime(1000);
             level.setWeatherParameters(20_000, 0, false, false);
-            // WR-715 (carrot-colours-climate §4.7): the gate runs with climate.wilting as WILDROOTS_GATE_WILTING says
-            // (default true; the claim is that it passes with both), in the climate it is designed for: the platform
+            // WR-715 (carrot-colours-climate §4.7): the gate runs twice, with climate.wilting on and off (two test
+            // functions, the flag is a parameter), in the climate it is designed for: the platform
             // lies at y 250, where the height takes 0.21 off the biome's temperature, so the biome of this world's seed
             // would decide whether the player's plants are stressed. Plains (0.8, 0.59 up there) is inside the window.
-            ServerConfig.overrideForTests(ServerConfig.CLIMATE_WILTING, gateWilting());
+            ServerConfig.overrideForTests(ServerConfig.CLIMATE_WILTING, wilting);
             undoBiome = ClimateKit.setBiome(level, sky.center, BreedingLine.PLATFORM_RADIUS + 8, Biomes.PLAINS);
         }
 
@@ -176,10 +172,18 @@ public final class M1aGateGameTests {
             throw new net.minecraft.gametest.framework.GameTestAssertException(why);
         }
 
+        /** Idempotent: restores the config override and the biome, whatever ended the gate (also a timeout). */
         void close() {
-            if (undoBiome != null) {
-                undoBiome.run();
-                undoBiome = null;
+            if (closed) {
+                return;
+            }
+            closed = true;
+            try {
+                if (undoBiome != null) {
+                    undoBiome.run();
+                    undoBiome = null;
+                }
+            } finally {
                 ServerConfig.overrideForTests(ServerConfig.CLIMATE_WILTING, ClimateGameTestDefaults.DEFAULT);
             }
             recorder.close();
@@ -209,6 +213,15 @@ public final class M1aGateGameTests {
         }
 
         void step() {
+            try {
+                stepBody();
+            } catch (RuntimeException | Error e) {
+                close();
+                throw e;
+            }
+        }
+
+        private void stepBody() {
             if (waitingMothers != null) {
                 beeTicks++;
                 int[] st = line.beeState(waitingMothers);
@@ -283,9 +296,10 @@ public final class M1aGateGameTests {
      * player, real bees in the first generation, until a plant planted by
      * the player is recognised as {@code carrot}.
      */
-    @GameTest(template = FLOOR, batch = "wr195_m1a_gate", timeoutTicks = TIMEOUT)
-    public static void fromStarterPatchToCarrot(GameTestHelper helper) {
-        Gate g = new Gate(helper);
+    static void fromStarterPatchToCarrot(GameTestHelper helper, boolean wilting) {
+        Gate g = new Gate(helper, wilting);
+        // a GameTest that times out is not told: close the gate (config, biome, platform) just before the timeout
+        helper.runAfterDelay(TIMEOUT - 5, g::close);
         whenEntitiesLoaded(helper, g.sky, () -> {
             try {
                 g.newLine();
@@ -337,6 +351,19 @@ public final class M1aGateGameTests {
      * {@code WILDROOTS_SWEEP_GENS} (30) generations without giving up,
      * accelerated bees in every generation. Log lines {@code [WR-195] sweep}.
      */
+    /**
+     * The gate as two test functions, {@code climate.wilting} on and off (WR-715: it must pass with both). Two
+     * batches, so they do not run side by side on platforms that overlap.
+     */
+    @GameTestGenerator
+    public static Collection<TestFunction> gates() {
+        return List.of(
+                new TestFunction("wr195_m1a_gate_wilting_on", "wildroots.m1a_gate_wilting_on", "wildroots:" + FLOOR,
+                        TIMEOUT, 0L, true, h -> fromStarterPatchToCarrot(h, true)),
+                new TestFunction("wr195_m1a_gate_wilting_off", "wildroots.m1a_gate_wilting_off", "wildroots:" + FLOOR,
+                        TIMEOUT, 0L, true, h -> fromStarterPatchToCarrot(h, false)));
+    }
+
     @GameTestGenerator
     public static Collection<TestFunction> sweep() {
         if (!sweepEnabled()) {

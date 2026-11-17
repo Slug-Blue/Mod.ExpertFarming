@@ -11,7 +11,7 @@ import net.minecraftforge.fml.common.Mod;
  * The GameTest server runs a world with a random seed, and the GameTest areas lie in whatever biome that seed gives
  * there: a desert or a savanna (temperature 2.0) would wilt young plants of player origin in any test that ticks
  * them. So the GameTest server starts with {@code climate.wilting} off; the tests of wilting
- * ({@code ClimateStressGameTests}, the M1a gate with {@code WILDROOTS_GATE_WILTING}) switch it on for the span of
+ * ({@code ClimateStressGameTests}, the two M1a gate functions) switch it on for the span of
  * their own synchronous bodies ({@link ClimateKit#withWilting}). Dev and production keep the config's default.
  */
 @Mod.EventBusSubscriber(modid = WildRoots.MOD_ID)
