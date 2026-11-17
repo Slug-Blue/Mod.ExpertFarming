@@ -30,8 +30,10 @@ class GuideUnlocksTest {
     static final GuideEntry START = entry("guide.start", "first", 0, List.of(), page("a"));
     static final GuideEntry CYCLE = entry("guide.cycle", "plant", 0, List.of("hint.mother_plant"), page("b"));
     static final GuideEntry STAGES = entry("guide.stages", "plant", 1, List.of("species.*"), page("c"));
-    static final GuideEntry COLORS = entry("guide.colors", "lens", 0, List.of("hint.yellow_root", "hint.purple_root"),
-            page("yellow", "hint.yellow_root"), page("purple", "hint.purple_root"), page("orange", "hint.orange_root"));
+    static final GuideEntry COLORS = entry("guide.colors", "lens", 0, List.of("hint.yellow_root", "hint.purple_root", "hint.red_root", "hint.orange_root"),
+            page("yellow", "hint.yellow_root"), page("purple", "hint.purple_root"), page("orange", "hint.orange_root"),
+            page("red", "hint.red_root"), page("props", "hint.orange_root", "hint.red_root"),
+            page("double", "hint.orange_root", "hint.red_root"), page("ratios", "hint.orange_root", "hint.red_root"));
     static final GuideEntry CULTIVARS = entry("guide.cultivars", "lens", 1, List.of("cultivar.*"), page("d"));
 
     static final GuideBook BOOK = new GuideBook(
@@ -110,12 +112,18 @@ class GuideUnlocksTest {
 
         u = new GuideUnlocks(BOOK, List.of(j("hint.yellow_root", JournalData.READ), j("hint.orange_root", JournalData.NEW)),
                 false);
-        assertEquals(List.of("yellow", "orange"), u.pages(COLORS).stream().map(p -> ((TextPage) p.data()).text()).toList());
+        assertEquals(List.of("yellow", "orange", "props", "double", "ratios"),
+                u.pages(COLORS).stream().map(p -> ((TextPage) p.data()).text()).toList());
         assertTrue(u.isNew(COLORS), "a new page makes its entry new");
         assertEquals(Set.of("hint.orange_root"), u.newOpeners(COLORS));
 
-        u = new GuideUnlocks(BOOK, List.of(j("hint.orange_root", JournalData.NEW)), false);
-        assertFalse(u.isOpen(COLORS), "a page cannot open its closed entry");
+        // only the red hint: the red page and the three article pages behind orange or red, no purple or orange
+        u = new GuideUnlocks(BOOK, List.of(j("hint.red_root", JournalData.READ)), false);
+        assertEquals(List.of("red", "props", "double", "ratios"),
+                u.pages(COLORS).stream().map(p -> ((TextPage) p.data()).text()).toList());
+
+        u = new GuideUnlocks(BOOK, List.of(j("hint.white_cold", JournalData.NEW)), false);
+        assertFalse(u.isOpen(COLORS), "a hint outside the entry's unlock list does not open it");
         assertEquals(Set.of(), u.newOpeners(COLORS));
     }
 
@@ -150,7 +158,7 @@ class GuideUnlocksTest {
     void showAllGuidesOpensEverythingButNewFollowsTheJournal() {
         GuideUnlocks u = new GuideUnlocks(BOOK, List.of(j("hint.purple_root", JournalData.NEW)), true);
         assertEquals(BOOK.entries().stream().map(GuideEntry::id).toList(), open(u));
-        assertEquals(3, u.pages(COLORS).size());
+        assertEquals(7, u.pages(COLORS).size());
         assertEquals(List.of(COLORS), u.newEntries());
         assertEquals(3, u.openCategories().size());
     }

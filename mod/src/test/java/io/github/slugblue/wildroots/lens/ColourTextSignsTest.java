@@ -49,6 +49,17 @@ class ColourTextSignsTest {
     }
 
     @Test
+    void theColoursAreExactlyTheFiveTheTextsKnow() throws IOException {
+        JsonObject c = colours();
+        java.util.Set<String> ids = new java.util.TreeSet<>();
+        c.getAsJsonArray("ids").forEach(e -> ids.add(e.getAsString()));
+        assertEquals(new java.util.TreeSet<>(SIGNS.keySet()), ids, "a colour was added or renamed: write its texts");
+        assertEquals(java.util.Set.of(), c.getAsJsonObject("properties").keySet().stream()
+                .filter(k -> !SIGNS.containsKey(k)).collect(java.util.stream.Collectors.toSet()),
+                "properties of a colour the texts do not know");
+    }
+
+    @Test
     void theSignsBehindTheColourTextsHold() throws IOException {
         JsonObject props = colours().getAsJsonObject("properties");
         for (Map.Entry<String, List<Integer>> e : SIGNS.entrySet()) {

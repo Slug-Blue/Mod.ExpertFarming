@@ -58,7 +58,11 @@
     },
     {
       "type": "text",
-      "text": "wildroots.journal.guide.colors.4"
+      "text": "wildroots.journal.guide.colors.4",
+      "unlock": [
+        "hint.orange_root",
+        "hint.red_root"
+      ]
     },
     {
       "type": "text",
