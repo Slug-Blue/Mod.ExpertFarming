@@ -65,7 +65,7 @@ public final class MotherRootGameTests {
         Player player = helper.makeMockSurvivalPlayer();
         PlantBlockEntity be = PlantFixtures.plant(PlantFixtures.place(helper, PlantFixtures.PLANT, FieldPlantBlock.HARVEST_STAGE), 71);
         PlantBlockEntity.Live live = be.live(level).orElseThrow();
-        Phenotype p = GrowthLogic.phenotype(live, GrowthLogic.environment(level, helper.absolutePos(PlantFixtures.PLANT)))
+        Phenotype p = GrowthLogic.phenotype(live, GrowthLogic.environment(level, helper.absolutePos(PlantFixtures.PLANT), PlantFixtures.carrot().def()))
                 .orElseThrow();
         ItemStack mother = drops(helper, PlantFixtures.PLANT, player).stream()
                 .filter(s -> s.is(ModItems.MOTHER_ROOT.get())).findFirst().orElseThrow();

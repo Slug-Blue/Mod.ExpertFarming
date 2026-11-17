@@ -90,7 +90,7 @@ public final class HarvestGameTests {
         Player player = helper.makeMockSurvivalPlayer();
         PlantBlockEntity be = PlantFixtures.plant(PlantFixtures.place(helper, PlantFixtures.PLANT, FieldPlantBlock.HARVEST_STAGE), 81);
         PlantBlockEntity.Live live = be.live(level).orElseThrow();
-        Phenotype p = GrowthLogic.phenotype(live, GrowthLogic.environment(level, helper.absolutePos(PlantFixtures.PLANT)))
+        Phenotype p = GrowthLogic.phenotype(live, GrowthLogic.environment(level, helper.absolutePos(PlantFixtures.PLANT), PlantFixtures.carrot().def()))
                 .orElseThrow();
         double x = 1.0 * (1 + 4 * p.pOr(Traits.YIELD, 0));
         List<ItemStack> d = MotherRootGameTests.drops(helper, PlantFixtures.PLANT, player);

@@ -102,7 +102,7 @@ public final class SeedSetGameTests {
         for (int i = 0; i < 10; i++) {
             BlockPos at = helper.absolutePos(new BlockPos(6 + i, 2, 10));
             Genome g = PlantService.seedling(level, l, 10 - i, at).orElseThrow().genome();
-            Environment env = GrowthLogic.environment(level, at);
+            Environment env = GrowthLogic.environment(level, at, PlantFixtures.carrot().def());
             Phenotype p = Definitions.current().genetics()
                     .phenotype(g, live.def(), env, PlantFixtures.noise(i)).orElseThrow();
             if (p.vigor() < GrowthLogic.AILING_BELOW) {
@@ -131,7 +131,7 @@ public final class SeedSetGameTests {
             BlockPos at = helper.absolutePos(new BlockPos(1 + i % 15, 2, 14));
             Genome g = PlantService.seedling(level, lot, n - i, at).orElseThrow().genome();
             Phenotype p = Definitions.current().genetics().phenotype(g, live.def(),
-                    GrowthLogic.environment(level, at), PlantFixtures.noise(i)).orElseThrow();
+                    GrowthLogic.environment(level, at, PlantFixtures.carrot().def()), PlantFixtures.noise(i)).orElseThrow();
             if (p.vigor() < GrowthLogic.AILING_BELOW) {
                 ailing++;
             }

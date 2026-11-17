@@ -121,7 +121,18 @@ public final class BenchDriver {
         return v == null ? def : Integer.parseInt(v.trim());
     }
 
+    /**
+     * The bench runs with {@code climate.wilting} on (the cost of the wilting check is part of what it measures;
+     * {@code WILDROOTS_BENCH_WILTING=false} switches it off for a comparison). The GameTest server starts with it
+     * off ({@code ClimateGameTestDefaults}); the bench puts it back when it finishes.
+     */
+    static boolean benchWilting() {
+        return !"false".equalsIgnoreCase(System.getenv("WILDROOTS_BENCH_WILTING"));
+    }
+
     public static BenchDriver start(ServerLevel level) {
+        io.github.slugblue.wildroots.core.config.ServerConfig.overrideForTests(
+                io.github.slugblue.wildroots.core.config.ServerConfig.CLIMATE_WILTING, benchWilting());
         BenchDriver d = new BenchDriver(level);
         d.setup();
         MinecraftForge.EVENT_BUS.register(d);
@@ -519,6 +530,8 @@ public final class BenchDriver {
 
     private void finish() {
         finished = true;
+        io.github.slugblue.wildroots.core.config.ServerConfig.overrideForTests(
+                io.github.slugblue.wildroots.core.config.ServerConfig.CLIMATE_WILTING, Boolean.FALSE);
         MinecraftForge.EVENT_BUS.unregister(this);
         clearPlants();
         // leave the world as found: day time, random tick speed, forced chunks (later batches, WR-195)

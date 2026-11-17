@@ -1,6 +1,7 @@
 package io.github.slugblue.wildroots.gametest;
 
 import io.github.slugblue.wildroots.WildRoots;
+import io.github.slugblue.wildroots.core.config.ServerConfig;
 import io.github.slugblue.wildroots.journal.CultivarBred;
 import io.github.slugblue.wildroots.journal.JournalData;
 import io.github.slugblue.wildroots.journal.JournalTriggers;
@@ -12,6 +13,7 @@ import java.util.Locale;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestGenerator;
+import net.minecraft.world.level.biome.Biomes;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.TestFunction;
 import net.minecraft.server.level.ServerLevel;
@@ -117,6 +119,11 @@ public final class M1aGateGameTests {
                 && (carrotGen <= ABANDON_WITHOUT_ORANGE || (orangeGen >= 0 && orangeGen <= ABANDON_WITHOUT_ORANGE));
     }
 
+    /** {@code climate.wilting} for the gate: {@code WILDROOTS_GATE_WILTING=false} switches it off, otherwise on. */
+    static boolean gateWilting() {
+        return !"false".equalsIgnoreCase(System.getenv("WILDROOTS_GATE_WILTING"));
+    }
+
     /** Async driver of the gate: one step per tick, so the server keeps ticking. */
     static final class Gate {
         final GameTestHelper helper;
@@ -133,6 +140,8 @@ public final class M1aGateGameTests {
         int totalGenerations;
         int realBeeVisited;
         int realBeeDonors;
+        /** Undo of the plains biome painted over the platform (closed once). */
+        Runnable undoBiome;
 
         Gate(GameTestHelper helper) {
             this.helper = helper;
@@ -140,6 +149,12 @@ public final class M1aGateGameTests {
             this.sky = SkyPlatform.build(helper, BreedingLine.PLATFORM_RADIUS);
             level.setDayTime(1000);
             level.setWeatherParameters(20_000, 0, false, false);
+            // WR-715 (carrot-colours-climate §4.7): the gate runs with climate.wilting as WILDROOTS_GATE_WILTING says
+            // (default true; the claim is that it passes with both), in the climate it is designed for: the platform
+            // lies at y 250, where the height takes 0.21 off the biome's temperature, so the biome of this world's seed
+            // would decide whether the player's plants are stressed. Plains (0.8, 0.59 up there) is inside the window.
+            ServerConfig.overrideForTests(ServerConfig.CLIMATE_WILTING, gateWilting());
+            undoBiome = ClimateKit.setBiome(level, sky.center, BreedingLine.PLATFORM_RADIUS + 8, Biomes.PLAINS);
         }
 
         void newLine() {
@@ -162,6 +177,11 @@ public final class M1aGateGameTests {
         }
 
         void close() {
+            if (undoBiome != null) {
+                undoBiome.run();
+                undoBiome = null;
+                ServerConfig.overrideForTests(ServerConfig.CLIMATE_WILTING, ClimateGameTestDefaults.DEFAULT);
+            }
             recorder.close();
             for (Bee b : bees) {
                 b.discard();
