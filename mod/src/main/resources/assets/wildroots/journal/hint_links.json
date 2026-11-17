@@ -17,6 +17,7 @@
   "hint.orange_root": "guide.colors",
   "hint.plant_together": "guide.pollination",
   "hint.purple_root": "guide.colors",
+  "hint.red_root": "guide.colors",
   "hint.root_ripe": "guide.stages",
   "hint.second_biome": "guide.inbreeding",
   "hint.seed_pouch": "guide.tool.seed_pouch",
@@ -25,5 +26,6 @@
   "hint.stagnation": "guide.inbreeding",
   "hint.unattended": "guide.stages",
   "hint.welcome": "guide.start",
+  "hint.white_cold": "guide.colors",
   "hint.yellow_root": "guide.colors"
 }
