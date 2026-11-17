@@ -68,15 +68,20 @@ public final class ClimateStressGameTests {
         return PlantFixtures.carrot().def();
     }
 
-    /** Paints {@code biome}, lights the cells, waits for the light, runs {@code body} with wilting on, restores. */
+    /**
+     * Lights the cells, waits for the light, then paints {@code biome}, runs {@code body} with wilting on and
+     * restores the biome, all in one synchronous span. The tests of a batch run side by side and their areas lie
+     * close together (the biome lookup blends the cells around), so a painting that outlived the span, for
+     * instance across the wait for the light, would be seen by the neighbour test whatever order the batch runs in.
+     */
     static void underground(GameTestHelper helper, ResourceKey<Biome> biome, List<BlockPos> cells,
                             Consumer<ServerLevel> body) {
         ServerLevel level = helper.getLevel();
-        Runnable undo = ClimateKit.setBiome(level, helper.absolutePos(PlantFixtures.PLANT), 12, biome);
         for (BlockPos c : cells) {
             PlantFixtures.litFarmland(helper, c);
         }
         PlantFixtures.whenLit(helper, cells, () -> {
+            Runnable undo = ClimateKit.setBiome(level, helper.absolutePos(PlantFixtures.PLANT), 12, biome);
             try {
                 ClimateKit.withWilting(true, () -> body.accept(level));
             } finally {
@@ -223,6 +228,36 @@ public final class ClimateStressGameTests {
                 ClimateKit.tick(level, a, r, 2);
                 helper.assertTrue(ClimateKit.strain(level, a) == 1, "two ticks of stress droop again");
             });
+        });
+    }
+
+    /**
+     * A stage change on the same random tick as a strain step builds on the strained state (the tick sets the
+     * property first, the growth roll after it): over many fresh seedlings, some of which grow on their first tick,
+     * the first tick always leaves {@code strain = 1}, and a plant that grew to stage 2 keeps counting.
+     */
+    @GameTest(template = FLOOR, batch = "climate_underground", timeoutTicks = TIMEOUT)
+    public static void aStageChangeKeepsTheStrain(GameTestHelper helper) {
+        underground(helper, Biomes.DESERT, List.of(A), level -> {
+            BlockPos a = helper.absolutePos(A);
+            Genome g = ClimateKit.genome(914, ClimateKit.PURPLE, 0, 0);
+            RandomSource r = RandomSource.create(914);
+            int grew = 0;
+            for (int trial = 0; trial < 120; trial++) {
+                ClimateKit.plant(level, a, 1, g, Passport.PLAYER, 0, 3);
+                ClimateKit.tick(level, a, r, 1);
+                int stage = FieldPlantBlock.stage(level.getBlockState(a));
+                grew += stage == 2 ? 1 : 0;
+                helper.assertTrue(ClimateKit.strain(level, a) == 1, "trial " + trial + ": strain " + ClimateKit.strain(level, a)
+                        + " at stage " + stage);
+                ClimateKit.tick(level, a, r, 2);
+                // wilted at the third tick, unless it grew into a ripe root (stage 3), which ends the strain
+                int now = FieldPlantBlock.stage(level.getBlockState(a));
+                helper.assertTrue(ClimateKit.strain(level, a) == (Wilting.youngStage(now) ? FieldPlantBlock.WILTED : 0),
+                        "trial " + trial + ": strain " + ClimateKit.strain(level, a) + " at stage " + now + " after three ticks");
+                level.setBlock(a, Blocks.AIR.defaultBlockState(), 2);
+            }
+            helper.assertTrue(grew > 5, "only " + grew + " of 120 seedlings grew on the first tick: the test says nothing");
         });
     }
 
@@ -459,7 +494,6 @@ public final class ClimateStressGameTests {
     public static void aRoofAndIrrigationProtectUnderTheOpenSky(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         SkyPlatform sky = SkyPlatform.build(helper, 18);
-        Runnable undoBiome = ClimateKit.setBiome(level, sky.center.above(), 30, Biomes.DESERT);
         BlockPos roofed = sky.center.offset(0, 1, 0);
         BlockPos roofedDry = sky.center.offset(2, 1, 0);
         BlockPos bareDry = sky.center.offset(14, 1, 0);
@@ -474,13 +508,13 @@ public final class ClimateStressGameTests {
         level.setBlock(roofed.above(), Blocks.LIGHT.defaultBlockState(), 2);
         level.setBlock(roofedDry.above(), Blocks.LIGHT.defaultBlockState(), 2);
         Runnable finish = () -> {
-            undoBiome.run();
             sky.fill(Blocks.AIR.defaultBlockState());
             sky.clear();
         };
         whenSky(helper, () -> level.getBrightness(LightLayer.SKY, roofed) <= 12
                 && level.getBrightness(LightLayer.SKY, roofedDry) <= 12 && level.getBrightness(LightLayer.SKY, bareDry) >= 15
                 && level.getBrightness(LightLayer.SKY, bareWet) >= 15, () -> {
+            Runnable undoBiome = ClimateKit.setBiome(level, sky.center.above(), 30, Biomes.DESERT);
             try {
                 ClimateKit.withWilting(true, () -> {
                     Genome g = ClimateKit.genome(970, ClimateKit.PURPLE, 0, 0);
@@ -511,9 +545,10 @@ public final class ClimateStressGameTests {
                     helper.assertTrue(ClimateKit.strain(level, bareWet) == FieldPlantBlock.WILTED, "irrigation only did not wilt");
                 });
             } finally {
+                undoBiome.run();
                 finish.run();
             }
-            helper.succeed();
+            M1aGateGameTests.succeedWhenLit(helper, sky, 0); // the next batch must not start in the roof's shadow
         }, 0, () -> "sky light roofed " + level.getBrightness(LightLayer.SKY, roofed) + ", roofed dry "
                 + level.getBrightness(LightLayer.SKY, roofedDry) + ", bare " + level.getBrightness(LightLayer.SKY, bareDry)
                 + ", bare wet " + level.getBrightness(LightLayer.SKY, bareWet), finish);
@@ -531,29 +566,23 @@ public final class ClimateStressGameTests {
     public static void theStarterPatchNeverWiltsAndShieldsItsNeighbourhood(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         SkyPlatform sky = SkyPlatform.build(helper, 18);
-        Runnable undoBiome = ClimateKit.setBiome(level, sky.center.above(), 30, Biomes.DESERT);
         Runnable cleanup = () -> {
-            undoBiome.run();
             sky.fill(Blocks.AIR.defaultBlockState());
             sky.clear();
         };
         whenSky(helper, sky::lightSettled, () -> {
-            net.minecraft.world.level.storage.DimensionDataStorage storage = level.getServer().overworld().getDataStorage();
-            StarterPatch.Data before = StarterPatch.data(level.getServer()).orElse(null);
+            Runnable undoBiome = ClimateKit.setBiome(level, sky.center.above(), 30, Biomes.DESERT);
             try {
-                ClimateKit.withWilting(true, () -> starter(helper, level, sky, storage));
+                ClimateKit.withWilting(true, () -> starter(helper, level, sky));
             } finally {
-                storage.set(StarterPatch.DATA, before == null ? new StarterPatch.Data() : before);
                 undoBiome.run();
-                sky.fill(Blocks.AIR.defaultBlockState());
-                sky.clear();
+                cleanup.run();
             }
-            helper.succeed();
+            M1aGateGameTests.succeedWhenLit(helper, sky, 0);
         }, 0, () -> "the platform's sky light is not back", cleanup);
     }
 
-    private static void starter(GameTestHelper helper, ServerLevel level, SkyPlatform sky,
-                                net.minecraft.world.level.storage.DimensionDataStorage storage) {
+    private static void starter(GameTestHelper helper, ServerLevel level, SkyPlatform sky) {
         List<BlockPos> origins = List.of(sky.surface().offset(-10, 0, -10), sky.surface().offset(10, 0, -10),
                 sky.surface().offset(0, 0, 10));
         RandomSource r = RandomSource.create(980);
@@ -593,7 +622,8 @@ public final class ClimateStressGameTests {
         helper.assertTrue(near.exempts(spot) && !far.exempts(spot) && !inside.exempts(spot), "Data.exempts");
         for (Case c : List.of(new Case("near, outside the window", near, false), new Case("far", far, true),
                 new Case("inside the window", inside, true), new Case("no patch at all", null, true))) {
-            storage.set(StarterPatch.DATA, c.data() == null ? new StarterPatch.Data() : c.data());
+            // the shield of this case's world data (the world's own starter patch, if any, is not asked)
+            Wilting.overrideStarterShieldForTests((l, p) -> c.data() != null && c.data().exempts(p));
             ClimateKit.plant(level, spot, 1, g, Passport.PLAYER, 0, 3);
             int[] max = {0};
             denyingGrowth(List.of(spot), () -> {

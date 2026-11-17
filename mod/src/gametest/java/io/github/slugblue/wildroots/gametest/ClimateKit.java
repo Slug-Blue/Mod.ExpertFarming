@@ -13,6 +13,7 @@ import io.github.slugblue.wildroots.plant.FieldPlantBlock;
 import io.github.slugblue.wildroots.plant.Passport;
 import io.github.slugblue.wildroots.plant.PlantBlockEntity;
 import io.github.slugblue.wildroots.plant.PlantService;
+import io.github.slugblue.wildroots.plant.Wilting;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -156,13 +157,25 @@ final class ClimateKit {
 
     // ------------------------------------------------------------------ config
 
-    /** Runs {@code body} with {@code climate.wilting} as given, then back to the GameTest default (off). */
+    /**
+     * Runs {@code body} with {@code climate.wilting} as given, then back to what it was (off by default in a
+     * GameTest). Switching it on also shuts the world's own starter-patch shield, which would cover the test area in
+     * a world whose spawn is in a desert: a test that wants a shield sets its own
+     * ({@link Wilting#overrideStarterShieldForTests}).
+     */
     static void withWilting(boolean on, Runnable body) {
+        Boolean before = ServerConfig.value(ServerConfig.CLIMATE_WILTING);
         ServerConfig.overrideForTests(ServerConfig.CLIMATE_WILTING, on);
+        if (on) {
+            Wilting.overrideStarterShieldForTests((level, pos) -> false);
+        }
         try {
             body.run();
         } finally {
-            ServerConfig.overrideForTests(ServerConfig.CLIMATE_WILTING, ClimateGameTestDefaults.DEFAULT);
+            if (on) {
+                Wilting.overrideStarterShieldForTests(null);
+            }
+            ServerConfig.overrideForTests(ServerConfig.CLIMATE_WILTING, before);
         }
     }
 }
