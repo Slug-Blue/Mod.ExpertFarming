@@ -464,7 +464,7 @@ Spike · WR-007 · AppSec + SD · 1 д
 Ссылки: архитектура §3 (`core.registry`, `core.config`), §9.2; SEC-48.
 Приёмка:
 - `DeferredRegister` для групп из §3; креативная вкладка `wildroots`.
-- `CommonConfig`: `disabledLines`, отладка; `ServerConfig`: `mode` (`strict` по умолчанию / `soft`), `starterPatch` (`true`/`false`/`force`), `giveJournalOnFirstHarvest`, пороги rate-limit, `breederRareFindDailyCap` (6), флаги отключения mixin.
+- `CommonConfig`: `disabledLines`, отладка; `ServerConfig`: `mode` (`strict` по умолчанию / `soft`), `starterPatch` (`true`/`false`/`force`), `giveJournalOnFirstHarvest`, `climate.wilting` (`true` по умолчанию, ADR-0017), пороги rate-limit, `breederRareFindDailyCap` (6), флаги отключения mixin.
 - JUnit: каждый числовой параметр объявлен через `defineInRange` (тест обходит спецификацию конфига).
 
 #### WR-121 · `core.safety`: `Guarded.run`, `LoadedLevelAccess`, `AuditLog`
