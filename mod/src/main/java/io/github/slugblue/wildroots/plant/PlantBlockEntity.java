@@ -93,6 +93,16 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
     private boolean claimedByRemoval;
     /** Cached chance of the next stage per random tick (§10.1); NaN = not computed. */
     private float growthChance = Float.NaN;
+    /**
+     * Transient climate cache (carrot-colours-climate §4.3), nothing of it is saved: the two limits of the
+     * effective temperature window ({@code ClimateStress#limits}; they depend only on genome, noise and colour, so
+     * the random tick needs no phenotype), the grace counter of the wilting (derived from the block state's
+     * {@code strain} after a load), and the end of the grace of a plant from an old save. NaN / −1 = not set.
+     */
+    private float limitHot = Float.NaN;
+    private float limitCold = Float.NaN;
+    private int strainTicks = -1;
+    private long graceUntil = -1;
 
     public PlantBlockEntity(BlockPos pos, BlockState blockState) {
         this(ModBlockEntities.PLANT.get(), pos, blockState);
@@ -117,6 +127,7 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
         genome = null;
         decodedFor = null;
         growthChance = Float.NaN;
+        dropClimateCache();
         PlantNbt.Result r = PlantNbt.read(root);
         if (r instanceof PlantNbt.Ok ok) {
             state = ok.state();
@@ -339,6 +350,44 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
         this.growthChance = chance;
     }
 
+    /** Upper limit of the effective temperature window, NaN until computed (see {@code Wilting}). */
+    float limitHot() {
+        return limitHot;
+    }
+
+    float limitCold() {
+        return limitCold;
+    }
+
+    void setLimits(double hot, double cold) {
+        limitHot = (float) hot;
+        limitCold = (float) cold;
+    }
+
+    /** Random ticks at stress ≥ W so far, −1 = derive from the block state. */
+    int strainTicks() {
+        return strainTicks;
+    }
+
+    void setStrainTicks(int ticks) {
+        strainTicks = ticks;
+    }
+
+    /** Game time when the grace of a plant from an old save ends, −1 = not started. */
+    long graceUntil() {
+        return graceUntil;
+    }
+
+    void setGraceUntil(long time) {
+        graceUntil = time;
+    }
+
+    private void dropClimateCache() {
+        limitHot = Float.NaN;
+        limitCold = Float.NaN;
+        strainTicks = -1;
+    }
+
     // ------------------------------------------------------------------ server access
 
     /**
@@ -365,6 +414,7 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
             raw = null;
             genome = null;
             growthChance = Float.NaN;
+            dropClimateCache();
         }
         SpeciesDef def = entry.get().def();
         if (genome == null || decodedFor != def) {
@@ -385,6 +435,7 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
             genome = v.genome();
             decodedFor = def;
             growthChance = Float.NaN;
+            dropClimateCache();
             if (v.migrated()) {
                 v.warnings().forEach(w -> LOGGER.warn("Wild Roots: plant at {}: {}", worldPosition, w));
                 NoiseVector n = new NoiseVector(state.noise);
@@ -442,6 +493,7 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
         genome = g.get();
         decodedFor = def;
         growthChance = Float.NaN;
+        dropClimateCache();
         state.genome = gs.encode(genome);
         state.noise = n.get().bytes();
         setStatus(c);
@@ -479,12 +531,13 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
         s.lineName = init.lineName();
         s.generation = init.generation();
         s.lotFlags = (byte) (init.lotFlags() & LotFlags.INHERITED);
-        s.plantFlags = (byte) init.plantFlags();
+        s.plantFlags = (byte) (init.plantFlags() | PlantState.CLIMATE_AWARE);
         status = Status.OK;
         raw = null;
         genome = init.genome();
         decodedFor = null;
         growthChance = Float.NaN;
+        dropClimateCache();
         setChanged();
     }
 
@@ -499,6 +552,7 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
         genome = null;
         decodedFor = null;
         growthChance = Float.NaN;
+        dropClimateCache();
         setChanged();
     }
 

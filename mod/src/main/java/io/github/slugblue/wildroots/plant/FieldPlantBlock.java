@@ -30,8 +30,8 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  *
  * <p>{@link BlockState} carries only what logic without the block entity and
  * the renderer need (§7.2): {@link #STAGE} 0–5, {@link #SIZE} 0–3,
- * {@link #VARIANT} 0–4, {@link #AILING}, {@link #VILLAGE}, {@link #ACTIVE};
- * 6 × 4 × 5 × 2 × 2 × 2 = 960 states. The vanilla {@code AGE} property is not
+ * {@link #VARIANT} 0–4, {@link #STRAIN} 0–2, {@link #AILING}, {@link #VILLAGE}, {@link #ACTIVE};
+ * 6 × 4 × 5 × 3 × 2 × 2 × 2 = 2880 states. The vanilla {@code AGE} property is not
  * part of the state: {@link #getAgeProperty()} is {@link #STAGE}.
  *
  * <p>{@code CropBlock.isMaxAge} is {@code final} in 1.20.1, so the farmer's
@@ -55,6 +55,15 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
      * (carrot: 0 white, 1 yellow, 2 orange, 3 purple, 4 red; WR-702). Older states 0–3 read unchanged.
      */
     public static final IntegerProperty VARIANT = IntegerProperty.create("variant", 0, MAX_VARIANT);
+    /** Highest {@link #STRAIN}. */
+    public static final int MAX_STRAIN = 2;
+    /** {@link #STRAIN} of a wilted plant. */
+    public static final int WILTED = 2;
+    /**
+     * Climate strain of a young plant (stage 1–2; carrot-colours-climate §4.3): 0 normal, 1 drooping (the grace
+     * counter of the wilting is running), 2 wilted (does not grow, drops nothing). {@code Wilting} sets it.
+     */
+    public static final IntegerProperty STRAIN = IntegerProperty.create("strain", 0, MAX_STRAIN);
     /** Vitality {@code V < 0.85} (GDD §3.7). */
     public static final BooleanProperty AILING = BooleanProperty.create("ailing");
     /** Village mark that the farmer sees (§11.6). */
@@ -79,7 +88,7 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
         super(properties);
         this.species = species;
         registerDefaultState(stateDefinition.any().setValue(STAGE, 0).setValue(SIZE, 0).setValue(VARIANT, 0)
-                .setValue(AILING, false).setValue(VILLAGE, false).setValue(ACTIVE, true));
+                .setValue(STRAIN, 0).setValue(AILING, false).setValue(VILLAGE, false).setValue(ACTIVE, true));
     }
 
     /** Species id of the block (built-in species, §7.1). */
@@ -90,7 +99,7 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
         // not super: the vanilla AGE property (0–7) is not part of our state
-        builder.add(STAGE, SIZE, VARIANT, AILING, VILLAGE, ACTIVE);
+        builder.add(STAGE, SIZE, VARIANT, STRAIN, AILING, VILLAGE, ACTIVE);
     }
 
     /** Set while {@link #canSurvive} checks a static wild state (worldgen threads too). */
@@ -153,6 +162,11 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
 
     public static int stage(BlockState state) {
         return state.getValue(STAGE);
+    }
+
+    /** {@link #STRAIN} of the state. */
+    public static int strain(BlockState state) {
+        return state.getValue(STRAIN);
     }
 
     /**
@@ -267,8 +281,8 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
      */
     @Override
     public boolean isValidBonemealTarget(LevelReader level, BlockPos pos, BlockState state, boolean isClient) {
-        if (!bonemealStage(stage(state))) {
-            return false;
+        if (!bonemealStage(stage(state)) || strain(state) == WILTED) {
+            return false; // a wilted plant is past help: the bone meal is not spent (§4.3)
         }
         return !(level instanceof ServerLevel server) || !Guarded.call("plant bone meal target", pos,
                 () -> GrowthLogic.waits(server, pos, state), true);

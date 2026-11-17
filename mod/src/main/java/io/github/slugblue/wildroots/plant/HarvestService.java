@@ -40,7 +40,8 @@ import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
  *
  * <ul>
  *   <li>stages 0–2 (young): one realised seedling lot, the same genome
- *   and noise when planted again (SEC-26, default of STATUS.md);</li>
+ *   and noise when planted again (SEC-26, default of STATUS.md); a <b>wilted</b>
+ *   plant ({@link Wilting}, {@code strain = 2}) gives nothing at all;</li>
  *   <li>stage 3 (harvest ripeness): {@code round_prob(food_mult·(1 + 4·P_yield))}
  *   harvest items of one grade and one mother root (GDD §5.2); a planted
  *   mother gives only its mother root back;</li>
@@ -78,8 +79,11 @@ public final class HarvestService {
         if (live.isEmpty()) {
             return List.of();
         }
+        if (Wilting.wilted(state)) {
+            return List.of(); // a wilted plant gives nothing: no food, no seedling lot, no mother root (§4.3)
+        }
         BlockPos pos = be.getBlockPos();
-        Environment env = GrowthLogic.environment(level, pos);
+        Environment env = GrowthLogic.environment(level, pos, live.get().def());
         Optional<Phenotype> p = GrowthLogic.phenotype(live.get(), env);
         if (p.isEmpty()) {
             return List.of();

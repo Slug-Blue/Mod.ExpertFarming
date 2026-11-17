@@ -102,7 +102,7 @@ public final class HintTriggers {
         if (own(d, player)) {
             selectQuarter(player, j, d.species(), level.getGameTime());
             if (d.lineName() != null && !d.lineName().isEmpty()) {
-                GrowthLogic.phenotype(live.get(), GrowthLogic.environment(level, pos)).ifPresent(p -> {
+                GrowthLogic.phenotype(live.get(), GrowthLogic.environment(level, pos, live.get().def())).ifPresent(p -> {
                     double score = targetScore(live.get(), p);
                     if (LineProgress.observe(j, LineProgress.lineKey(d.lineName()), d.generation(), score)) {
                         Journals.unlockForLine(player, "stagnation", d.lineName(), d.generation());
