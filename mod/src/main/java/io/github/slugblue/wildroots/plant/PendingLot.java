@@ -10,7 +10,11 @@ import java.util.List;
  * brush and bee flags. Seed set fills it (WR-141); harvest turns it into the
  * seed lot (WR-134).
  */
-public record PendingLot(List<LotFathersNbt.Father> fathers, float pOut, Brush brush, boolean bees) {
+public record PendingLot(List<LotFathersNbt.Father> fathers, float pOut, Brush brush, boolean bees, boolean butterflies) {
+
+    public PendingLot(List<LotFathersNbt.Father> fathers, float pOut, Brush brush, boolean bees) {
+        this(fathers, pOut, brush, bees, false);
+    }
 
     public PendingLot {
         fathers = List.copyOf(fathers);

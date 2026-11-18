@@ -1,0 +1,11 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:savanna_plateau",
+    "minecraft:windswept_savanna",
+    "minecraft:savanna",
+    "minecraft:jungle",
+    "minecraft:bamboo_jungle",
+    "minecraft:sparse_jungle"
+  ]
+}

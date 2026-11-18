@@ -80,6 +80,7 @@ public final class HintTriggers {
                 hint(player, "mother_plant");
             }
             switch (state.getValue(FieldPlantBlock.VARIANT)) {
+                case 0 -> hint(player, "white_cold");
                 case 1 -> hint(player, "yellow_root");
                 case 2 -> hint(player, "orange_root");
                 case 3 -> hint(player, "purple_root");
@@ -194,6 +195,10 @@ public final class HintTriggers {
             return;
         }
         PlantState d = live.get().data();
+        if (!d.has(PlantState.MOTHER) && player.connection != null) {
+            io.github.slugblue.wildroots.plant.Wilting.plantingWarning(level, pos, live.get().def()).ifPresent(k ->
+                    player.displayClientMessage(net.minecraft.network.chat.Component.translatable(k), true));
+        }
         hint(player, "plant_together");
         if (!j.get().has("hint.lone_plant") && live.get().def().pollination().outcross() >= 0.3
                 && ownNear(level, pos, d.species(), player.getUUID(), 1) == 0) {
@@ -276,6 +281,37 @@ public final class HintTriggers {
         }
     }
 
+    /** Avoid climate measurements for offline owners and gardens whose hint is already known. */
+    public static boolean climateNeeded(ServerLevel level, PlantState data, boolean wilted) {
+        return data.hasPlanter() && Journals.online(level.getServer(), data.planter())
+                .filter(p -> !(p instanceof FakePlayer)).flatMap(Journals::of)
+                .map(j -> !j.has("hint.climate") || wilted && (!j.has("hint.heat_wilt") || !j.has("hint.cold_wilt")))
+                .orElse(false);
+    }
+
+    /** Climate side effects are idempotent per player, just like the other journal hints. */
+    public static void climate(ServerLevel level, PlantState data,
+                               io.github.slugblue.wildroots.plant.Wilting.Reading reading, boolean wilted) {
+        if (!data.hasPlanter()) {
+            return;
+        }
+        Journals.online(level.getServer(), data.planter()).filter(p -> !(p instanceof FakePlayer)).ifPresent(p -> {
+            if (reading.stress() > 0) {
+                hint(p, "climate");
+            }
+            if (wilted && reading.exemption() == null) {
+                hint(p, reading.hot() ? "heat_wilt" : "cold_wilt");
+            }
+        });
+    }
+
+    public static void climateUpdate(ServerLevel level, PlantState data) {
+        if (data.hasPlanter()) {
+            Journals.online(level.getServer(), data.planter()).filter(p -> !(p instanceof FakePlayer))
+                    .ifPresent(p -> hint(p, "climate_update"));
+        }
+    }
+
     // ------------------------------------------------------------------ player events
 
     /** Forge bus: {@code bitter} after eating bitter produce of the mod. */
@@ -299,6 +335,22 @@ public final class HintTriggers {
                 && event.getBlock().getBlock() instanceof FieldPlantBlock) {
             Guarded.run("journal bone meal", p.getUUID(), () -> hint(p, "bone_meal"));
         }
+    }
+
+    /** Obtaining a coloured crop also discovers its colour (loot, trade, a chest or another player). */
+    public static void produceObtained(ServerPlayer player, ItemStack stack) {
+        if (player instanceof FakePlayer || stack.isEmpty()
+                || !(stack.getItem() instanceof ProduceItem item) || !item.rootColours()) {
+            return;
+        }
+        String id = switch (item.colourOf(stack)) {
+            case ProduceStacks.PURPLE -> "purple_root";
+            case ProduceStacks.RED -> "red_root";
+            case ProduceStacks.ORANGE -> "orange_root";
+            default -> "yellow_root";
+        };
+        // Most inventory ticks take only this read: no delta or toast for a known colour.
+        Journals.of(player).filter(j -> !j.has("hint." + id)).ifPresent(j -> hint(player, id));
     }
 
     /** A wave-1 tool first in the inventory: its tool page, and {@code seed_pouch} for the pouch. */

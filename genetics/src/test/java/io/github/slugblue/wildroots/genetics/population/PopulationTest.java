@@ -31,6 +31,41 @@ class PopulationTest {
     static final String SP = Carrot.SPECIES.id();
     static final PatchPassport MEADOW = new PatchPassport(SP, "meadow", false, 12345L, false, SEED);
 
+    @Test
+    void habitatFrequenciesExcludeEvenCarriersWithoutChangingOtherLoci() {
+        for (boolean starter : List.of(false, true)) {
+            var normal = new PatchPassport(SP, "meadow", false, 12345L, starter, SEED);
+            var restricted = new PatchPassport(SP, "meadow", false, 12345L, starter, SEED,
+                    Map.of(Carrot.P, 0.0, Carrot.Y1, 0.0));
+            for (int i = 0; i < 300; i++) {
+                long key = Hash64.of(SEED, i);
+                Genome before = WildPopulation.wildPlant(Carrot.SPECIES, Carrot.LAYOUT, normal, key);
+                Genome after = WildPopulation.wildPlant(Carrot.SPECIES, Carrot.LAYOUT, restricted, key);
+                assertEquals(after, WildPopulation.wildPlant(Carrot.SPECIES, Carrot.LAYOUT, restricted, key));
+                for (Locus locus : Carrot.LAYOUT.sections()) {
+                    for (int l = 0; l < locus.loci(); l++) {
+                        for (int copy = 0; copy < 2; copy++) {
+                            if (locus.trait().equals(Carrot.P) || locus.trait().equals(Carrot.Y1)) {
+                                assertEquals(0, after.allele(locus, l, copy), locus.trait().toString());
+                            } else {
+                                assertEquals(before.allele(locus, l, copy), after.allele(locus, l, copy),
+                                        "unrelated locus " + locus.trait());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    void habitatFrequenciesMustBeFiniteProbabilities() {
+        for (double invalid : new double[] {-0.1, 1.1, Double.NaN, Double.POSITIVE_INFINITY}) {
+            org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () ->
+                    new PatchPassport(SP, "meadow", false, 1, false, SEED, Map.of(Carrot.P, invalid)));
+        }
+    }
+
     /**
      * WR-701: the colour locus {@code color_r} is drawn last, so a lazy wild or village plant of an existing
      * world has every allele the released M1a species would have drawn for it; only the new locus is added.

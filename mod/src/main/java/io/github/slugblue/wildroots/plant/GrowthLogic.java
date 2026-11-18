@@ -196,11 +196,43 @@ public final class GrowthLogic {
                 return; // wilted: no growth (§4.3)
             }
         }
+        if (stage == FieldPlantBlock.FLOWER_STAGE) {
+            if (io.github.slugblue.wildroots.pollination.PollinationTiming.ready(level, pos, be.get(), live.get())
+                    && ForgeHooks.onCropsGrowPre(level, pos, state, true)) {
+                advance(level, pos, state, be.get(), live.get(), FieldPlantBlock.SEED_STAGE);
+                ForgeHooks.onCropsGrowPost(level, pos, state);
+            }
+            return;
+        }
         double chance = cachedChance(level, pos, stage, be.get(), live.get());
         if (chance > 0 && random.nextDouble() < chance && ForgeHooks.onCropsGrowPre(level, pos, state, true)) {
             advance(level, pos, state, be.get(), live.get(), stage + 1);
             ForgeHooks.onCropsGrowPost(level, pos, state);
         }
+    }
+
+    /** Active flowering alone has a server ticker, so even the thirty-second brush period is precise. */
+    static void floweringTick(BlockState state, ServerLevel level, BlockPos pos, PlantBlockEntity be) {
+        if (FieldPlantBlock.stage(state) != FieldPlantBlock.FLOWER_STAGE || !state.getValue(FieldPlantBlock.ACTIVE)
+                || level.getGameRules().getInt(net.minecraft.world.level.GameRules.RULE_RANDOMTICKING) <= 0) return;
+        // Missing definitions may return after a reload. Check recovery once a second, never accrue while asleep.
+        if (be.status() == PlantBlockEntity.Status.SLEEPING && level.getGameTime() % 20 == 0) be.live(level);
+        if (!io.github.slugblue.wildroots.pollination.PollinationTiming.gameTick(level, be)) return;
+        var pending = be.data().pending();
+        boolean knownMethod = pending != null && (pending.brush() != io.github.slugblue.wildroots.genetics.pollination.Brush.NONE
+                || pending.bees() || pending.butterflies() || !pending.fathers().isEmpty());
+        // Isolated flowers query the bloom index at most once a second; a known donor needs no search.
+        if (!knownMethod && level.getGameTime() % 20 != 0
+                && be.data().pollinationWork() < io.github.slugblue.wildroots.pollination.PollinationTiming.MAX_WORK) return;
+        if (knownMethod && be.data().pollinationWork()
+                < io.github.slugblue.wildroots.pollination.PollinationTiming.Method.BRUSH.ticks() * 3L) return;
+        be.live(level).ifPresent(live -> {
+            if (io.github.slugblue.wildroots.pollination.PollinationTiming.ready(level, pos, be, live)
+                    && ForgeHooks.onCropsGrowPre(level, pos, state, true)) {
+                advance(level, pos, state, be, live, FieldPlantBlock.SEED_STAGE);
+                ForgeHooks.onCropsGrowPost(level, pos, state);
+            }
+        });
     }
 
     /**
@@ -232,7 +264,9 @@ public final class GrowthLogic {
             return;
         }
         LoadedLevelAccess.blockEntity(level, pos, PlantBlockEntity.class)
-                .ifPresent(be -> be.live(level).filter(live -> !waitsForHarvest(live, stage))
+                .ifPresent(be -> be.live(level).filter(live -> !waitsForHarvest(live, stage)
+                        && (stage != FieldPlantBlock.FLOWER_STAGE
+                        || io.github.slugblue.wildroots.pollination.PollinationTiming.ready(level, pos, be, live)))
                         .ifPresent(live -> advance(level, pos, state, be, live, stage + 1)));
     }
 
@@ -253,9 +287,13 @@ public final class GrowthLogic {
         if (newStage == FieldPlantBlock.FLOWER_STAGE && oldStage < FieldPlantBlock.FLOWER_STAGE) {
             // a new flowering cycle: donors and fathers of an earlier cycle do not carry over
             be.setPendingLot(null);
+            be.setFloweringSince(level.getGameTime());
+            be.setPollinationWork(0);
         } else if (newStage == FieldPlantBlock.SEED_STAGE && oldStage == FieldPlantBlock.FLOWER_STAGE) {
             // seed set, once per cycle, while the plant is still in the bloom index (§10.2)
             PollinationService.seedSet(level, pos, be, live);
+            be.setFloweringSince(-1);
+            be.setPollinationWork(0);
         }
         BlockState next = look(state.setValue(FieldPlantBlock.STAGE, newStage), live.def(), p.get());
         if (!Wilting.youngStage(newStage) || !Wilting.enabled()) {

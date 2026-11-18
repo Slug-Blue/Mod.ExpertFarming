@@ -96,16 +96,21 @@ public final class PollinationService {
         }
         PendingLot before = live.data().pending();
         List<Donor> donors = donors(gs, def, live, before);
+        if (before != null && (before.brush() != Brush.NONE || !before.fathers().isEmpty())) {
+            nearby.clear();
+        }
         FatherSelector.Selection sel = gs.chooseFathers(def, live.genome(), nearby, donors, key)
                 .orElse(new FatherSelector.Selection(List.of(), 0, 0, 0));
         boolean bees = before != null && before.bees();
         Brush brush = before == null ? Brush.NONE : before.brush();
-        double pOut = gs.pOut(def, sel, bees, brush);
+        boolean butterflies = before != null && before.butterflies();
+        double pOut = brush == Brush.CROSS ? (sel.fathers().isEmpty() ? 0 : 1)
+                : brush == Brush.SELF ? 0 : gs.pOut(def, sel, bees || butterflies, brush);
         List<LotFathersNbt.Father> fathers = new ArrayList<>(sel.fathers().size());
         for (FatherPick f : sel.fathers()) {
             fathers.add(new LotFathersNbt.Father(gs.encode(f.genome()).toFather(), (float) f.weight(), f.donor()));
         }
-        be.setPendingLot(new PendingLot(fathers, (float) Math.max(0, Math.min(1, pOut)), brush, bees));
+        be.setPendingLot(new PendingLot(fathers, (float) Math.max(0, Math.min(1, pOut)), brush, bees, butterflies));
     }
 
     /** Donors (bee, brush) waiting in the pending lot, decoded in the mother's species. */
@@ -116,9 +121,6 @@ public final class PollinationService {
         int v = live.data().genome() == null ? 0 : live.data().genome().v();
         List<Donor> out = new ArrayList<>();
         for (LotFathersNbt.Father f : pending.fathers()) {
-            if (!f.donor()) {
-                continue;
-            }
             if (gs.decode(f.genome().withLot(v, def.id()), def) instanceof DecodeResult.Valid ok) {
                 out.add(new Donor(ok.genome(), f.weight(), false));
             }
@@ -156,13 +158,43 @@ public final class PollinationService {
         BeePollen p = pollen.get();
         String species = live.get().def().id();
         boolean donor = p.fresh() && species.equals(p.species()) && p.source() != pos.asLong();
-        be.get().beeVisit(donor ? p.genome() : null, (float) Defaults.BEE_DONOR_WEIGHT);
+        boolean accepted = be.get().pollinatorVisit(donor ? p.genome() : null, (float) Defaults.BEE_DONOR_WEIGHT, false);
+        boolean delivered = accepted && donor;
+        if (!accepted && donor && !be.get().hasForeignPollen())
+            be.get().pollinatorVisit(null, (float) Defaults.BEE_DONOR_WEIGHT, false);
         p.collect(species, pos.asLong(), live.get().genetics().encode(live.get().genome()).toFather());
         p.nectarFromUs = true;
         bee.setHasNectar(true); // package-private in 1.20.1, opened by the access transformer (S2)
         // the journal hook runs last and isolated: a failure never leaves the visit half done (review 1, M3)
         io.github.slugblue.wildroots.core.safety.Guarded.run("journal bee visit", pos,
                 () -> io.github.slugblue.wildroots.journal.HintTriggers.beeVisited(level, be.get()));
-        return donor ? Visit.DONOR : Visit.VISITED;
+        return delivered ? Visit.DONOR : Visit.VISITED;
+    }
+
+    /** Same bounded pollen transfer as a bee, with its own provenance and maturation speed. */
+    public static Visit butterflyVisit(ServerLevel level, BeePollen pollen, BlockPos pos) {
+        var be = BeeCropPollinateGoal.flowering(level, pos);
+        var live = be.flatMap(b -> b.live(level));
+        if (live.isEmpty() || live.get().def().pollination().bees().isEmpty()) return Visit.NONE;
+        if (be.get().hasForeignPollen() || live.get().data().pending() != null
+                && live.get().data().pending().brush() != Brush.NONE) return Visit.NONE;
+        String species = live.get().def().id();
+        boolean donor = pollen.fresh() && species.equals(pollen.species()) && pollen.source() != pos.asLong();
+        boolean accepted = be.get().pollinatorVisit(donor ? pollen.genome() : null, (float) Defaults.BEE_DONOR_WEIGHT, true);
+        boolean delivered = accepted && donor;
+        if (!accepted && donor && !be.get().hasForeignPollen())
+            accepted = be.get().pollinatorVisit(null, (float) Defaults.BEE_DONOR_WEIGHT, true);
+        if (!accepted) return Visit.NONE;
+        // An insect visit starts the seed cycle of a static wild flower too.
+        var block = be.get().getBlockState();
+        if (!block.getValue(FieldPlantBlock.ACTIVE)) level.setBlock(pos, block.setValue(FieldPlantBlock.ACTIVE, true), 2);
+        pollen.collect(species, pos.asLong(), live.get().genetics().encode(live.get().genome()).toFather());
+        var data = live.get().data();
+        if (data.hasPlanter()) {
+            io.github.slugblue.wildroots.core.safety.Guarded.run("journal butterfly", pos, () ->
+                    io.github.slugblue.wildroots.journal.Journals.online(level.getServer(), data.planter())
+                            .ifPresent(p -> io.github.slugblue.wildroots.journal.Journals.unlock(p, "hint.butterflies")));
+        }
+        return delivered ? Visit.DONOR : Visit.VISITED;
     }
 }

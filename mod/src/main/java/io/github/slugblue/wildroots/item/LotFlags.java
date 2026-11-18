@@ -18,6 +18,7 @@ public final class LotFlags {
     public static final int INSPECTED = 16;
     /** Analysed (tier 2). */
     public static final int ANALYZED = 32;
+    public static final int BUTTERFLIES = 64;
     /** Flags a plant passes to its seeds: only the mother line (GDD §5.3). */
     public static final int INHERITED = FROM_WILD | VILLAGE;
 

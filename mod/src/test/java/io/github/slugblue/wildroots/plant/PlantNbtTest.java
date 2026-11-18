@@ -24,6 +24,25 @@ class PlantNbtTest {
     static final String SP = "wildroots:wild_carrot";
     static final long LH = 0x0123_4567_89AB_CDEFL;
 
+    @Test
+    void floweringClockAndButterflyVisitSurviveSaveAndOldPlantsHaveNoClock() {
+        PlantState s = full();
+        s.floweringSince = 123456;
+        s.pending = new PendingLot(s.pending.fathers(), .95f, Brush.NONE, false, true);
+        CompoundTag root = PlantNbt.write(s);
+        PlantState decoded = assertInstanceOf(PlantNbt.Ok.class, PlantNbt.read(root)).state();
+        assertEquals(123456, decoded.floweringSince());
+        assertTrue(decoded.pending().butterflies());
+        assertFalse(decoded.pending().bees());
+        root.remove("ps");
+        root.getCompound("pl").remove("bf");
+        decoded = assertInstanceOf(PlantNbt.Ok.class, PlantNbt.read(root)).state();
+        assertEquals(-1, decoded.floweringSince());
+        assertFalse(decoded.pending().butterflies());
+        root.putString("ps", "bad");
+        assertInstanceOf(PlantNbt.Inert.class, PlantNbt.read(root));
+    }
+
     static PlantState full() {
         PlantState s = new PlantState();
         s.species = SP;
@@ -49,6 +68,24 @@ class PlantNbtTest {
         }
         s.pending = new PendingLot(f, 0.6f, Brush.CROSS, true);
         return s;
+    }
+
+    @Test
+    void pollinationWorkRoundTripsAndOldSavesStartAtZero() {
+        PlantState s = full();
+        s.pollinationWork = 12345;
+        CompoundTag root = PlantNbt.write(s);
+        assertEquals(12345, assertInstanceOf(PlantNbt.Ok.class, PlantNbt.read(root)).state().pollinationWork());
+        root.remove("pw");
+        assertEquals(0, assertInstanceOf(PlantNbt.Ok.class, PlantNbt.read(root)).state().pollinationWork());
+        root.putString("pw", "bad");
+        assertInstanceOf(PlantNbt.Inert.class, PlantNbt.read(root));
+        for (long malformed : new long[]{-1, Long.MAX_VALUE, 28801}) {
+            root.putLong("pw", malformed);
+            assertInstanceOf(PlantNbt.Inert.class, PlantNbt.read(root));
+        }
+        root.putLong("pw", 28800);
+        assertInstanceOf(PlantNbt.Ok.class, PlantNbt.read(root));
     }
 
     @Test

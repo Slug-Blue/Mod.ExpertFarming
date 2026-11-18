@@ -125,7 +125,13 @@ public final class DeterminismGameTests {
         for (int stage = 0; stage < FieldPlantBlock.MAX_STAGE; stage++) {
             be.setGrowthChance(sentinel);
             BlockState s = level.getBlockState(abs);
-            block.growCrops(level, abs, s);
+            if (stage == FieldPlantBlock.FLOWER_STAGE) {
+                block.growCrops(level, abs, s);
+                helper.assertTrue(PlantFixtures.stage(helper, PlantFixtures.PLANT) == stage, "growCrops bypassed clock");
+                PlantFixtures.acceleratedGrowthTick(level, abs, net.minecraft.util.RandomSource.create(61));
+            } else {
+                block.growCrops(level, abs, s);
+            }
             int now = PlantFixtures.stage(helper, PlantFixtures.PLANT);
             helper.assertTrue(now == stage + 1, "growCrops from " + stage + " gave " + now);
             float expected = (float) GrowthLogic.chance(live.def(), p, env, now, 0);
@@ -183,7 +189,7 @@ public final class DeterminismGameTests {
             if (Float.isNaN(be.growthChance()) || be.growthChance() > 0) {
                 be.setGrowthChance((float) GrowthLogic.MAX_CHANCE);
             }
-            level.getBlockState(abs).randomTick(level, abs, r);
+            PlantFixtures.acceleratedGrowthTick(level, abs, r);
             helper.assertTrue(level.getBlockState(abs).getBlock() == ModBlocks.WILD_CARROT.get(), "plant gone at tick " + i);
         }
         helper.assertTrue(PlantFixtures.stage(helper, PlantFixtures.PLANT) == FieldPlantBlock.MAX_STAGE, "did not finish");

@@ -78,11 +78,11 @@ public final class Batch4BoundaryGameTests {
     /**
      * Donors at 4 and 5 through real bee visits ({@code PollinationService.beeVisit}):
      * four bees' fresh pollen from four other plants gives four donors; the
-     * fifth evicts the oldest; pollen at the freshness edge (1 visit, 1200
+     * later pollen is ignored; pollen at the freshness edge (1 visit, 1200
      * ticks) still counts, one step past it does not.
      */
     @GameTest(template = BeeGameTests.FIELD, setupTicks = BeeGameTests.SETUP)
-    public static void beeDonorsCapAtFourViaVisits(GameTestHelper helper) {
+    public static void beeFirstDonorWinsAndFreshnessEdgesStillApply(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         BlockPos rel = new BlockPos(3, 2, 3);
         PlantBlockEntity be = SeedSetGameTests.flowering(helper, rel, 471);
@@ -91,24 +91,26 @@ public final class Batch4BoundaryGameTests {
         bee.setNoAi(true);
         BeePollen p = BeeGameTests.pollen(bee);
         var gs = Definitions.current().genetics();
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < 4; i++) {
             p.collect(PlantFixtures.SP, at.asLong() + 1 + i, gs.encode(PlantFixtures.genome(480 + i)).toFather());
-            p.setCounters(i == 4 ? BeePollen.MAX_VISITS - 1 : 0, i == 4 ? BeePollen.MAX_AGE_OUTSIDE : 0);
-            helper.assertTrue(PollinationService.beeVisit(level, bee, at) == PollinationService.Visit.DONOR,
-                    "visit " + i);
-            helper.assertTrue(BeeGameTests.donors(be) == Math.min(4, i + 1), "after " + (i + 1) + ": "
-                    + BeeGameTests.donors(be));
+            helper.assertTrue(PollinationService.beeVisit(level, bee, at)
+                    == (i == 0 ? PollinationService.Visit.DONOR : PollinationService.Visit.VISITED), "visit " + i);
+            helper.assertTrue(BeeGameTests.donors(be) == 1, "later pollen replaced the first donor");
         }
-        long[] first = PlantFixtures.saveLoad(be).data().pending().fathers().stream()
-                .filter(f -> f.donor()).findFirst().orElseThrow().genome().a();
-        helper.assertTrue(java.util.Arrays.equals(first, gs.encode(PlantFixtures.genome(481)).a()),
-                "the oldest donor was not evicted first");
-        // one tick past the edge: no new donor
-        p.collect(PlantFixtures.SP, at.asLong() + 99, gs.encode(PlantFixtures.genome(499)).toFather());
+        long[] first = PlantFixtures.saveLoad(be).data().pending().fathers().get(0).genome().a();
+        helper.assertTrue(java.util.Arrays.equals(first, gs.encode(PlantFixtures.genome(480)).a()), "first donor changed");
+        // Freshness edges require a new open cycle, not an already closed recipient.
+        be.setPendingLot(null);
+        p.collect(PlantFixtures.SP, at.asLong() + 20, gs.encode(PlantFixtures.genome(480)).toFather());
+        p.setCounters(BeePollen.MAX_VISITS - 1, BeePollen.MAX_AGE_OUTSIDE);
+        helper.assertTrue(PollinationService.beeVisit(level, bee, at) == PollinationService.Visit.DONOR
+                && BeeGameTests.donors(be) == 1, "freshness edge rejected");
+        be.setPendingLot(null);
+        p.collect(PlantFixtures.SP, at.asLong() + 99, gs.encode(PlantFixtures.genome(480)).toFather());
         p.setCounters(0, BeePollen.MAX_AGE_OUTSIDE + 1);
         helper.assertTrue(PollinationService.beeVisit(level, bee, at) == PollinationService.Visit.VISITED,
                 "1201 ticks");
-        helper.assertTrue(BeeGameTests.donors(be) == 4, "donors " + BeeGameTests.donors(be));
+        helper.assertTrue(BeeGameTests.donors(be) == 0, "stale pollen became a donor");
         bee.discard();
         helper.succeed();
     }

@@ -57,11 +57,11 @@ public final class Lens {
      * @param colour  the colour lines ({@link LensColour}): only from stage 3, when the root shows its colour
      */
     public record PlantReading(DispCodec.Line header, List<DispCodec.Line> lines, LensRow row, int env,
-                               String species, int model, List<DispCodec.Line> colour) {
+                               String species, int model, List<DispCodec.Line> colour, LensClimate climate) {
 
         /** The window, or empty if it cannot be sent (the caller falls back to chat). */
         public Optional<LensWindowPacket> packet() {
-            return LensWindowPacket.of(LensWindowPacket.Kind.PLANT, species, header, row.line(), env, model, colour);
+            return LensWindowPacket.of(LensWindowPacket.Kind.PLANT, species, header, row.line(), env, model, colour, climate);
         }
     }
 
@@ -103,6 +103,16 @@ public final class Lens {
         List<DispCodec.Line> colour = FieldPlantBlock.stage(state.get()) >= FieldPlantBlock.HARVEST_STAGE
                 ? LensColour.lines(def, p.get()) : List.of();
         out.addAll(colour);
+        LensClimate climate = LoadedLevelAccess.blockEntity(level, pos, PlantBlockEntity.class)
+                .flatMap(be -> io.github.slugblue.wildroots.plant.Wilting.read(level, pos, state.get(), be, live.get()))
+                .map(r -> {
+                    if (player != null) {
+                        io.github.slugblue.wildroots.journal.HintTriggers.climate(level, d, r, false);
+                    }
+                    return LensClimate.of(r.stress(), r.margin(), r.hot(), r.exemption(), r.minutes(),
+                            io.github.slugblue.wildroots.plant.Wilting.isWilted(state.get()), r.sheltered(), r.irrigated());
+                }).orElse(LensClimate.NONE);
+        out.addAll(climate.lines());
         boolean farmland = LoadedLevelAccess.blockState(level, pos.below())
                 .map(b -> b.getBlock() instanceof net.minecraft.world.level.block.FarmBlock).orElse(false);
         int model = farmland ? net.minecraft.world.level.block.Block.getId(state.get()) : LensWindowPacket.NO_MODEL;
@@ -112,7 +122,7 @@ public final class Lens {
                     DispCodec.keyArg(JournalTriggers.nameKey("cultivar", c.id().value()))));
         }
         return Optional.of(new PlantReading(header, List.copyOf(out), row, EnvModifiers.of(def, env, p.get()),
-                species, model, colour));
+                species, model, colour, climate));
     }
 
     /** Header key of the lot window: "%s · seeds". */
@@ -156,6 +166,11 @@ public final class Lens {
         if (pending == null) {
             return LensReading.Pollination.NONE;
         }
+        if (pending.brush() == Brush.CROSS) return LensReading.Pollination.HAND;
+        if (pending.brush() == Brush.SELF) return LensReading.Pollination.SELF;
+        if (pending.butterflies() && !pending.bees()) {
+            return LensReading.Pollination.BUTTERFLIES;
+        }
         if (pending.bees()) {
             return LensReading.Pollination.BEES;
         }
@@ -169,6 +184,10 @@ public final class Lens {
     static LensReading.Pollination lotPollination(LotNbt.Lot lot) {
         if (lot.seedling()) {
             return LensReading.Pollination.NONE;
+        }
+        if ((lot.flags() & LotFlags.BRUSH) != 0) return LensReading.Pollination.HAND;
+        if ((lot.flags() & LotFlags.BUTTERFLIES) != 0 && (lot.flags() & LotFlags.BEES) == 0) {
+            return LensReading.Pollination.BUTTERFLIES;
         }
         if ((lot.flags() & LotFlags.BEES) != 0) {
             return LensReading.Pollination.BEES;

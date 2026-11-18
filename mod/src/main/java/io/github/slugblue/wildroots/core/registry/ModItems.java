@@ -40,6 +40,11 @@ public final class ModItems {
     public static final RegistryObject<HandLensItem> HAND_LENS = REGISTER.register("hand_lens",
             () -> new HandLensItem(new Item.Properties()));
 
+    public static final RegistryObject<io.github.slugblue.wildroots.item.PollinationBrushItem> POLLINATION_BRUSH =
+            REGISTER.register("pollination_brush", () -> new io.github.slugblue.wildroots.item.PollinationBrushItem(new Item.Properties()));
+    public static final RegistryObject<Item> BUTTERFLY_SPAWN_EGG = REGISTER.register("butterfly_spawn_egg", () ->
+            new net.minecraftforge.common.ForgeSpawnEggItem(ModEntities.BUTTERFLY, 0xE5A631, 0x30261E, new Item.Properties()));
+
     /** Carrot line (GDD §7.3, economy §2): food reference 3 / 0.6 like the vanilla carrot. */
     public static final String CARROT_LINE = "carrot";
     private static final CultivarInfo.FoodReference CARROT_FOOD = new CultivarInfo.FoodReference(3, 0.6);

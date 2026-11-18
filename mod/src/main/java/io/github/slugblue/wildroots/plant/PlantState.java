@@ -39,6 +39,9 @@ public final class PlantState {
     byte lotFlags;
     /** {@link #MOTHER}, {@link #MUTANT}, {@link #RARE_CLAIMED}, {@link #CLIMATE_AWARE}. */
     byte plantFlags;
+    long floweringSince = -1;
+    /** Accumulated flowering work, in thirds of an ordinary game tick at randomTickSpeed 3. */
+    long pollinationWork;
     PendingLot pending;
 
     public String species() {
@@ -83,6 +86,14 @@ public final class PlantState {
 
     public boolean has(int plantFlag) {
         return (plantFlags & plantFlag) != 0;
+    }
+
+    public long floweringSince() {
+        return floweringSince;
+    }
+
+    public long pollinationWork() {
+        return pollinationWork;
     }
 
     public PendingLot pending() {

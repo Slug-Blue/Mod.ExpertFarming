@@ -46,15 +46,14 @@ public final class JournalHints {
         core("bitter");
         line("tomato", "toxic_tomato");
         line("carrot", "yellow_root", "orange_root", "purple_root", "red_root");
-        // white_cold has its text but no trigger yet (a GD question, WR-704): off until it gets one
-        line(PENDING, "white_cold");
+        line("carrot", "white_cold");
         line("wheat", "shattering", "full_ear", "brush_for_wheat", "dormancy");
         line("maize", "teosinte_case", "single_stalk", "wind_pollen");
         line("cabbage", "cabbage_roads", "bud_pollination", "self_incompat");
         line("rice", "rice_water");
         // pollination and bees
         core("bees", "no_pollinators");
-        line(BRUSH, "hand_pollination", "forced_self");
+        core("hand_pollination", "forced_self", "butterflies");
         // inbreeding and fresh blood
         core("inbreeding", "hybrid_vigor", "stagnation", "missing_allele", "second_biome", "climate", "bone_meal",
                 "unattended");
@@ -78,7 +77,7 @@ public final class JournalHints {
         line("beet", "beet_bolting", "beet_roads");
         // village, range, breeder
         line(VILLAGE, "village_field", "feral_planting", "breeder_met", "rare_find_sold");
-        core("seed_pouch");
+        core("seed_pouch", "heat_wilt", "cold_wilt", "climate_update");
     }
 
     private static void core(String... ids) {

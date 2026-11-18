@@ -34,7 +34,7 @@ public final class LensReading {
 
     /** How the mother was pollinated (narrative §9.4 ids). */
     public enum Pollination {
-        BEES, HAND, NEIGHBOURS, SELF, NONE
+        BEES, BUTTERFLIES, HAND, NEIGHBOURS, SELF, NONE
     }
 
     private LensReading() {
@@ -69,6 +69,7 @@ public final class LensReading {
 
     public static Optional<DispCodec.Line> pollination(Pollination how) {
         return switch (how) {
+            case BUTTERFLIES -> Optional.of(DispCodec.Line.of("wildroots.tooltip.pollination.butterflies"));
             case BEES -> Optional.of(DispCodec.Line.of("wildroots.tooltip.pollination.bees"));
             case HAND -> Optional.of(DispCodec.Line.of("wildroots.tooltip.pollination.hand"));
             case NEIGHBOURS -> Optional.of(DispCodec.Line.of("wildroots.tooltip.pollination.neighbours"));

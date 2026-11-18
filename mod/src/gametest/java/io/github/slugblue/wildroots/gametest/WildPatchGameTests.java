@@ -118,10 +118,10 @@ public final class WildPatchGameTests {
 
     /**
      * Review M4: on flat open ground a patch reaches its configured count.
-     * 20 origins (20 patch seeds) on one platform: every patch has 8–14
-     * plants, the configured range, and the mean is near its middle 11.
-     * The count does not depend on where the test runs or on the world seed:
-     * on flat ground every try lands, so the count is the sampled target.
+     * 20 origins on one platform, cycling every configured target count:
+     * each patch must reach that exact target on flat ground. A mean over
+     * 20 random targets can reject a valid world seed (9.45 versus 9.5);
+     * checking every target also catches missing plants without that lottery.
      */
     @GameTest(template = FLOOR, batch = "wr150_sky_counts", timeoutTicks = 400)
     public static void patchCountsMatchTheConfig(GameTestHelper helper) {
@@ -129,20 +129,19 @@ public final class WildPatchGameTests {
         SkyPlatform sky = SkyPlatform.build(helper, 12);
         try {
             WildPatchConfig c = carrotConfig(level);
-            int sum = 0;
             int n = 20;
             for (int i = 0; i < n; i++) {
                 sky.fill(Blocks.GRASS_BLOCK.defaultBlockState());
                 BlockPos origin = sky.surface().offset(i % 5 - 2, 0, i / 5 - 2);
-                WildPatchFeature.Result r = place(level, origin, c.withBeeNest(Optional.empty()), TEST);
+                int target = c.plants().getMinValue() + i % (c.plants().getMaxValue() - c.plants().getMinValue() + 1);
+                WildPatchFeature.Options fixed = new WildPatchFeature.Options(false,
+                        Optional.of(net.minecraft.util.valueproviders.ConstantInt.of(target)), Optional.empty(),
+                        "meadow", 0, WildPatchFeature.Rich.NEVER);
+                WildPatchFeature.Result r = place(level, origin, c.withBeeNest(Optional.empty()), fixed);
                 int k = r.plants().size();
-                helper.assertTrue(r.placed() && k >= c.plants().getMinValue() && k <= c.plants().getMaxValue(),
-                        "patch " + i + ": " + k + " plants");
-                sum += k;
+                helper.assertTrue(r.placed() && k == target,
+                        "patch " + i + ": " + k + " plants, expected " + target);
             }
-            double mean = sum / (double) n;
-            org.slf4j.LoggerFactory.getLogger(WildPatchGameTests.class).info("WR-150 mean plants {}", mean);
-            helper.assertTrue(Math.abs(mean - 11) <= 1.5, "mean plants " + mean);
         } finally {
             sky.clear();
         }

@@ -139,6 +139,7 @@ public record LensRow(String traits, char bitter, char pollination, boolean aili
         char bitter = def.qual(Traits.BITTERNESS) == null ? '-' : p.domestic(Traits.BITTERNESS) ? 'd' : 'w';
         char poll = switch (how) {
             case BEES -> 'B';
+            case BUTTERFLIES -> 'F';
             case HAND -> 'H';
             case NEIGHBOURS -> 'N';
             case SELF -> 'S';
@@ -205,7 +206,7 @@ public record LensRow(String traits, char bitter, char pollination, boolean aili
         int tilde = all.indexOf('~');
         String f = tilde < 0 ? all : all.substring(0, tilde);
         String bands = tilde < 0 ? "" : all.substring(tilde + 1);
-        if (f.length() < 3 || f.length() > 4 || "wd-".indexOf(f.charAt(0)) < 0 || "BHNS-".indexOf(f.charAt(1)) < 0
+        if (f.length() < 3 || f.length() > 4 || "wd-".indexOf(f.charAt(0)) < 0 || "BFHNS-".indexOf(f.charAt(1)) < 0
                 || "a-".indexOf(f.charAt(2)) < 0 || (f.length() == 4 && f.charAt(3) != '+')) {
             return Optional.empty();
         }
@@ -309,6 +310,7 @@ public record LensRow(String traits, char bitter, char pollination, boolean aili
         }
         String poll = switch (pollination) {
             case 'B' -> "bees";
+            case 'F' -> "butterflies";
             case 'H' -> "hand";
             case 'N' -> "neighbours";
             case 'S' -> "self";

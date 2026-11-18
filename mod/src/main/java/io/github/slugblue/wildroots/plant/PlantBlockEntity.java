@@ -37,8 +37,8 @@ import org.slf4j.Logger;
 /**
  * State of one planted plant (docs/05-architecture.md §6.1–6.2; ADR-0003):
  * genome, noise, passport, planter, cultivar status, line name, generation,
- * flags and the pending lot. <b>No ticker</b>; it works in random ticks,
- * interaction and saving only.
+ * flags and the pending lot. Only active flowering uses a server ticker;
+ * other stages work in random ticks, interaction and saving.
  *
  * <p>Lazy: the stored genome is decoded on the first server access, and a
  * wild plant keeps only its passport until then (worldgen §3.3); its genome
@@ -213,6 +213,8 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
         part(root, state, s -> s.generation = state.generation, "gen");
         part(root, state, s -> s.lotFlags = state.lotFlags, "fl");
         part(root, state, s -> s.plantFlags = state.plantFlags, "pf");
+        part(root, state, s -> s.floweringSince = state.floweringSince, "ps");
+        part(root, state, s -> s.pollinationWork = state.pollinationWork, "pw");
         if (root.contains("g")) {
             part(root, state, s -> {
                 s.genome = state.genome;
@@ -469,7 +471,7 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
                         ((DecodeResult.Inert) r).reason());
             }
         }
-        return new PendingLot(out, p.pOut(), p.brush(), p.bees());
+        return new PendingLot(out, p.pOut(), p.brush(), p.bees(), p.butterflies());
     }
 
     /** Wild plant touched for the first time: genome and ε from {@code (worldSeed, patchOrigin, pos)}. */
@@ -483,7 +485,9 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
         long pos = worldPosition.asLong();
         GeneticsService gs = snap.genetics();
         Optional<Genome> g = gs.wildPlant(def, new PatchPassport(state.species, p.category(), p.rich(),
-                p.patchOrigin(), p.starter(), seed), RngKeys.wildPlant(seed, p.patchOrigin(), pos));
+                p.patchOrigin(), p.starter(), seed,
+                io.github.slugblue.wildroots.worldgen.WildColourHabitats.frequencies(def, level.getBiome(worldPosition))),
+                RngKeys.wildPlant(seed, p.patchOrigin(), pos));
         Optional<NoiseVector> n = gs.rollNoise(def, RngKeys.wildNoise(seed, p.patchOrigin(), pos));
         if (g.isEmpty() || n.isEmpty()) {
             return false;
@@ -574,6 +578,30 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
     }
 
     /** Replaces the pending lot (seed set, WR-141). */
+    public void setFloweringSince(long time) {
+        if (state != null && state.floweringSince != time) {
+            state.floweringSince = time;
+            setChanged();
+        }
+    }
+
+    public void setPollinationWork(long work) {
+        long bounded = Math.max(0, Math.min(io.github.slugblue.wildroots.pollination.PollinationTiming.MAX_WORK, work));
+        if (state != null && state.pollinationWork != bounded) {
+            state.pollinationWork = bounded;
+            setChanged();
+        }
+    }
+
+    /** Transient scheduler guard: unloaded time never counts as flowering work. */
+    private long lastPollinationWorkTick = Long.MIN_VALUE;
+
+    public boolean claimPollinationTick(long gameTime) {
+        if (lastPollinationWorkTick == gameTime) return false;
+        lastPollinationWorkTick = gameTime;
+        return true;
+    }
+
     public void setPendingLot(PendingLot lot) {
         if (state != null) {
             state.pending = lot;
@@ -590,11 +618,37 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
      * inert plant or one without a stored genome.
      */
     public void beeVisit(io.github.slugblue.wildroots.genetics.codec.FatherRecord donor, float weight) {
+        pollinatorVisit(donor, weight, false);
+    }
+
+    /** A real foreign delivery closes the cycle; a background neighbour snapshot is still replaceable. */
+    public boolean hasForeignPollen() {
+        return state != null && state.pending != null && (state.pending.brush()
+                == io.github.slugblue.wildroots.genetics.pollination.Brush.CROSS
+                || state.pending.fathers().stream().anyMatch(LotFathersNbt.Father::donor));
+    }
+
+    public boolean pollinatorVisit(io.github.slugblue.wildroots.genetics.codec.FatherRecord donor, float weight,
+                                boolean butterfly) {
         if (status != Status.OK || state == null || state.genome == null) {
-            return;
+            return false;
         }
         PendingLot p = state.pending;
-        List<LotFathersNbt.Father> fathers = new ArrayList<>(p == null ? List.of() : p.fathers());
+        if (p != null && p.brush() != io.github.slugblue.wildroots.genetics.pollination.Brush.NONE) {
+            return false; // a hand-picked crossing is not replaced by a later insect
+        }
+        if (hasForeignPollen()) return false;
+        if (donor != null) {
+            if (!Float.isFinite(weight) || weight <= 0 || !(level instanceof ServerLevel server)) return false;
+            var live = live(server);
+            if (live.isEmpty()) return false;
+            var l = live.get();
+            var decoded = l.genetics().decode(donor.withLot(state.genome.v(), state.species), l.def());
+            if (!(decoded instanceof DecodeResult.Valid valid) || l.genetics().chooseFathers(l.def(), l.genome(), List.of(),
+                    List.of(new io.github.slugblue.wildroots.genetics.pollination.Donor(valid.genome(), weight, true)),
+                    worldPosition.asLong()).map(s -> s.compatibleDonors() == 0).orElse(true)) return false;
+        }
+        List<LotFathersNbt.Father> fathers = new ArrayList<>(donor != null || p == null ? List.of() : p.fathers());
         if (donor != null) {
             fathers.add(new LotFathersNbt.Father(donor, weight, true));
             long donors = fathers.stream().filter(LotFathersNbt.Father::donor).count();
@@ -608,8 +662,16 @@ public class PlantBlockEntity extends BlockEntity implements LotStacks.RareClaim
             }
         }
         state.pending = new PendingLot(fathers, p == null ? 0 : p.pOut(),
-                p == null ? io.github.slugblue.wildroots.genetics.pollination.Brush.NONE : p.brush(), true);
+                p == null ? io.github.slugblue.wildroots.genetics.pollination.Brush.NONE : p.brush(),
+                !butterfly || p != null && p.bees(), butterfly || p != null && p.butterflies());
+        if (donor != null && level instanceof ServerLevel server
+                && getBlockState().getBlock() instanceof FieldPlantBlock
+                && FieldPlantBlock.stage(getBlockState()) == FieldPlantBlock.FLOWER_STAGE
+                && !getBlockState().getValue(FieldPlantBlock.ACTIVE)) {
+            server.setBlock(worldPosition, getBlockState().setValue(FieldPlantBlock.ACTIVE, true), 2);
+        }
         setChanged();
+        return true;
     }
 
     /** Sets or clears a plant flag of {@link PlantState}. */

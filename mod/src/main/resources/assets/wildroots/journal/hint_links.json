@@ -2,7 +2,7 @@
   "hint.bees": "guide.pollination",
   "hint.bitter": "guide.traits",
   "hint.bone_meal": "guide.stages",
-  "hint.climate": "guide.stages",
+  "hint.climate": "guide.climate",
   "hint.first_cultivar": "guide.cultivars",
   "hint.first_landrace": "guide.cultivars",
   "hint.hybrid_vigor": "guide.inbreeding",
@@ -27,5 +27,11 @@
   "hint.unattended": "guide.stages",
   "hint.welcome": "guide.start",
   "hint.white_cold": "guide.colors",
-  "hint.yellow_root": "guide.colors"
+  "hint.yellow_root": "guide.colors",
+  "hint.heat_wilt": "guide.climate",
+  "hint.cold_wilt": "guide.climate",
+  "hint.climate_update": "guide.climate",
+  "hint.butterflies": "guide.pollination",
+  "hint.hand_pollination": "guide.pollination",
+  "hint.forced_self": "guide.pollination"
 }

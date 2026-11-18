@@ -11,6 +11,9 @@ import io.github.slugblue.wildroots.plant.ClimateService;
 import java.util.Optional;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.levelgen.placement.PlacementContext;
@@ -31,15 +34,23 @@ public final class SpeciesClimatePlacement extends PlacementFilter {
 
     public static final Codec<SpeciesClimatePlacement> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.STRING.fieldOf("species").forGetter(SpeciesClimatePlacement::species),
-            Codec.doubleRange(0, 2).optionalFieldOf("tolerance", 0.0).forGetter(SpeciesClimatePlacement::tolerance)
+            Codec.doubleRange(0, 2).optionalFieldOf("tolerance", 0.0).forGetter(SpeciesClimatePlacement::tolerance),
+            ResourceLocation.CODEC.xmap(id -> TagKey.create(Registries.BIOME, id), TagKey::location)
+                    .optionalFieldOf("extra_biomes").forGetter(SpeciesClimatePlacement::extraBiomes)
     ).apply(i, SpeciesClimatePlacement::new));
 
     private final String species;
     private final double tolerance;
+    private final Optional<TagKey<Biome>> extraBiomes;
 
     public SpeciesClimatePlacement(String species, double tolerance) {
+        this(species, tolerance, Optional.empty());
+    }
+
+    public SpeciesClimatePlacement(String species, double tolerance, Optional<TagKey<Biome>> extraBiomes) {
         this.species = species;
         this.tolerance = tolerance;
+        this.extraBiomes = extraBiomes;
     }
 
     public String species() {
@@ -48,6 +59,10 @@ public final class SpeciesClimatePlacement extends PlacementFilter {
 
     public double tolerance() {
         return tolerance;
+    }
+
+    public Optional<TagKey<Biome>> extraBiomes() {
+        return extraBiomes;
     }
 
     /** Whether the temperature at {@code pos} carries vanilla noise (above Y 80, or a frozen biome). */
@@ -68,6 +83,9 @@ public final class SpeciesClimatePlacement extends PlacementFilter {
             return false;
         }
         Holder<Biome> biome = context.getLevel().getBiome(pos);
+        if (extraBiomes.filter(biome::is).isPresent()) {
+            return true;
+        }
         double t = ClimateService.temperature(context.getLevel(), pos);
         return ClimateWindow.fits(t, def.get().tempMin(), def.get().tempMax(), tolerance, noisy(biome, pos));
     }

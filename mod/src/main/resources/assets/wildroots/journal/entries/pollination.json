@@ -5,10 +5,14 @@
   "order": 20,
   "unlock": [
     "hint.plant_together",
-    "hint.bees"
+    "hint.bees",
+    "hint.butterflies",
+    "hint.hand_pollination",
+    "hint.forced_self"
   ],
   "items": [
-    "minecraft:beehive"
+    "minecraft:beehive",
+    "wildroots:pollination_brush"
   ],
   "see_also": [
     "guide.inbreeding",
@@ -27,6 +31,25 @@
     {
       "type": "text",
       "text": "wildroots.journal.guide.pollination.3"
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.pollination.4"
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.pollination.5",
+      "unlock": [
+        "hint.butterflies"
+      ]
+    },
+    {
+      "type": "crafting",
+      "recipe": "wildroots:pollination_brush"
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.pollination.6"
     }
   ]
 }

@@ -82,7 +82,7 @@ public final class JournalHintGameTests {
         ServerPlayer p = JournalGameTests.survival(helper, "wr182_wave");
         try {
             for (String id : List.of("hint.shattering", "hint.brush_for_wheat", "hint.cabbage_roads", "hint.toxic_tomato",
-                    "hint.hand_pollination", "hint.genotype_lab", "hint.clone", "hint.red_flesh", "hint.village_seeds")) {
+                    "hint.genotype_lab", "hint.clone", "hint.red_flesh", "hint.village_seeds")) {
                 helper.assertTrue(Journals.unlock(p, id) == JournalData.Unlock.NONE, id + " fired in wave 1");
             }
             helper.assertTrue(JournalGameTests.journal(p).entries().isEmpty(), "late entries stored");
@@ -104,6 +104,64 @@ public final class JournalHintGameTests {
         helper.setBlock(PlantFixtures.PLANT, helper.getBlockState(PlantFixtures.PLANT)
                 .setValue(FieldPlantBlock.VARIANT, variant));
         return (PlantBlockEntity) helper.getBlockEntity(PlantFixtures.PLANT);
+    }
+
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "wr18x_journal")
+    public static void colouredProduceInInventoryDiscoversEachColourOnce(GameTestHelper helper) {
+        Rec rec = new Rec();
+        ServerPlayer p = JournalGameTests.survival(helper, "colour_inventory");
+        try {
+            var journal = JournalGameTests.journal(p);
+            var colours = List.of(io.github.slugblue.wildroots.item.ProduceStacks.PURPLE,
+                    io.github.slugblue.wildroots.item.ProduceStacks.RED,
+                    io.github.slugblue.wildroots.item.ProduceStacks.YELLOW,
+                    io.github.slugblue.wildroots.item.ProduceStacks.ORANGE);
+            var hints = List.of("purple_root", "red_root", "yellow_root", "orange_root");
+            for (int i = 0; i < colours.size(); i++) {
+                for (var item : List.of(io.github.slugblue.wildroots.core.registry.ModItems.EASTERN_CARROT.get(),
+                        io.github.slugblue.wildroots.core.registry.ModItems.CARROT.get())) {
+                    var stack = io.github.slugblue.wildroots.item.ProduceStacks.create(item, 3, false, colours.get(i), 1);
+                    for (int tick = 0; tick < 4; tick++) {
+                        item.inventoryTick(stack, helper.getLevel(), p, 0, false);
+                    }
+                }
+                for (int h = 0; h < hints.size(); h++) {
+                    helper.assertTrue(journal.has("hint." + hints.get(h)) == (h <= i), "wrong discovery " + hints.get(h));
+                }
+            }
+            for (String hint : hints) {
+                helper.assertTrue(journal.entries().stream().filter(e -> e.id().equals("hint." + hint)).count() == 1,
+                        "repeated " + hint);
+            }
+            helper.assertTrue(rec.toasts.size() == 1, "inventory colour discovery spammed toasts");
+        } finally {
+            rec.close();
+            p.discard();
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "wr18x_journal")
+    public static void whiteRootHarvestUnlocksItsPage(GameTestHelper helper) {
+        Rec rec = new Rec();
+        ServerPlayer p = JournalGameTests.survival(helper, "white_discovery");
+        try {
+            for (int i = 0; i < 2; i++) {
+                ownCarrot(helper, p, 1820 + i, 0, Classification.WILD, null, 0);
+                JournalTriggers.harvested(helper.getLevel(), helper.absolutePos(PlantFixtures.PLANT),
+                        helper.getBlockState(PlantFixtures.PLANT), p);
+            }
+            var j = JournalGameTests.journal(p);
+            helper.assertTrue(j.entries().stream().filter(e -> e.id().equals("hint.white_cold")).count() == 1,
+                    "white discovery missing or duplicated");
+            helper.assertTrue(!j.has("hint.yellow_root") && !j.has("hint.purple_root") && !j.has("hint.red_root")
+                    && !j.has("hint.orange_root"), "white harvest opened another colour");
+            helper.assertTrue(rec.toasts.size() == 1, "white discovery spammed toasts");
+        } finally {
+            rec.close();
+            p.discard();
+        }
+        helper.succeed();
     }
 
     @GameTest(template = SmokeGameTests.FLOOR_3X3X3, batch = "wr18x_journal")

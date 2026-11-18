@@ -50,7 +50,7 @@ public final class MotherRootGameTests {
         BlockPos abs = helper.absolutePos(rel);
         RandomSource r = RandomSource.create(seed);
         for (int i = 0; i < 20_000 && PlantFixtures.stage(helper, rel) < stage; i++) {
-            level.getBlockState(abs).randomTick(level, abs, r);
+            PlantFixtures.acceleratedGrowthTick(level, abs, r);
             int s = PlantFixtures.stage(helper, rel);
             if (s >= 0 && seen != null) {
                 seen[s] = true;

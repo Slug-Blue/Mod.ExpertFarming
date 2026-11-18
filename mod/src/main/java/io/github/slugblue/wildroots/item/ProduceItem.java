@@ -125,6 +125,19 @@ public class ProduceItem extends Item {
         });
     }
 
+    /** Colour pages unlock once when a real player obtains the crop, including an old saved stack. */
+    @Override
+    @EntryPoint
+    public void inventoryTick(ItemStack stack, Level level, net.minecraft.world.entity.Entity entity, int slot,
+                              boolean selected) {
+        if (rootColours && level instanceof net.minecraft.server.level.ServerLevel
+                && entity instanceof net.minecraft.server.level.ServerPlayer player
+                && !(player instanceof net.minecraftforge.common.util.FakePlayer)) {
+            Guarded.run("journal crop colour", player.getUUID(), () ->
+                    io.github.slugblue.wildroots.journal.HintTriggers.produceObtained(player, stack));
+        }
+    }
+
     /**
      * Playtest 2, item 4: the styled lens panel replaces the long text tooltip
      * (the client keeps the text lines for Shift, {@code client.ClientLensPanel}).

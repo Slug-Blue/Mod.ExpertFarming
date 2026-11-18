@@ -40,7 +40,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * {@code defaultBlockState()} are overridden on the real stage, otherwise
  * they would reset {@code village}, {@code size} and {@code variant}.
  *
- * <p>No ticker: {@link #getTicker} is {@code null} (ADR-0003).
+ * <p>Only active flowering has a server ticker (owner's short pollination periods, ADR-0003 exception).
  */
 public class FieldPlantBlock extends CropBlock implements EntityBlock {
 
@@ -106,11 +106,10 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
     private static final ThreadLocal<Boolean> WILD_CHECK = ThreadLocal.withInitial(() -> false);
 
     /**
-     * Farmland; for a static wild state ({@code active = false}, worldgen
-     * §12.2) also the wild soil of the species
+     * Farmland; for a static wild state or a realised wild-origin plant also the wild soil of the species
      * ({@code #wildroots:wild_soil/<species>}, worldgen §2.4), so a wild
      * patch on grass, dirt or podzol does not pop on the first neighbour
-     * update. An active (planted) plant needs farmland as vanilla crops do:
+     * update, even after pollination activates its growth. A planted plant needs farmland as vanilla crops do:
      * trampled to dirt, it pops (review 1, M3).
      */
     @Override
@@ -121,13 +120,21 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
     /**
      * Vanilla rule (light and the soil below, through Forge
      * {@code canSustainPlant} → {@link #mayPlaceOn}); the wild soil counts
-     * only while the state is static wild. The soil is not read here
+     * for static or realised wild-origin plants. The soil is not read here
      * directly: the decision travels to {@code mayPlaceOn} in a thread-local
      * flag, so the block keeps reading neighbours only through vanilla.
      */
     @Override
     public boolean canSurvive(BlockState state, LevelReader level, BlockPos pos) {
         boolean wild = state.hasProperty(ACTIVE) && !state.getValue(ACTIVE);
+        if (!wild && level instanceof Level actual) {
+            // A wild flower activated by pollination keeps its origin and its original soil.
+            // Planted crops still require farmland, including after trampling.
+            // Origin/genome is intentionally not sent to clients. Do not let their incomplete
+            // block entity delete an authoritative wild flower; the server still decides removal.
+            wild = actual.isClientSide || LoadedLevelAccess.blockEntity(actual, pos, PlantBlockEntity.class)
+                    .map(be -> be.data() != null && be.data().passport().origin() == Passport.Origin.WILD).orElse(false);
+        }
         boolean before = WILD_CHECK.get();
         WILD_CHECK.set(wild);
         try {
@@ -215,7 +222,7 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
         return true;
     }
 
-    /** +1 stage with chance 0.35 on stages 1–3 (GDD §5.1); flowering always takes real time. */
+    /** +1 stage with chance 0.35 on stages 1–3 (GDD §5.1); flowering needs accumulated random-tick work. */
     @Override
     @EntryPoint
     public void performBonemeal(ServerLevel level, RandomSource random, BlockPos pos, BlockState state) {
@@ -331,10 +338,17 @@ public class FieldPlantBlock extends CropBlock implements EntityBlock {
         return new PlantBlockEntity(pos, state);
     }
 
-    /** No ticker (ADR-0003): the plant works only in random ticks, interaction and saving. */
+    /** A narrow server ticker only while an active plant flowers; other states and foreign types have none. */
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state,
                                                                   BlockEntityType<T> type) {
-        return null;
+        if (level.isClientSide || !state.getValue(ACTIVE) || stage(state) != FLOWER_STAGE
+                || type != io.github.slugblue.wildroots.core.registry.ModBlockEntities.PLANT.get()) return null;
+        return (world, pos, current, entity) -> {
+            if (world instanceof ServerLevel server && entity instanceof PlantBlockEntity plant) {
+                Guarded.run("plant pollination tick", pos, () -> GrowthLogic.floweringTick(current, server, pos, plant),
+                        () -> fail(server, pos, "pollination tick failed"));
+            }
+        };
     }
 }

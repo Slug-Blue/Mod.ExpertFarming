@@ -15,7 +15,7 @@ public final class ModRegistries {
 
     /** Every register; the order follows the table of §3. */
     public static final List<DeferredRegister<?>> ALL = List.of(
-            ModBlocks.REGISTER, ModItems.REGISTER, ModBlockEntities.REGISTER, ModMenus.REGISTER,
+            ModBlocks.REGISTER, ModEntities.REGISTER, ModItems.REGISTER, ModBlockEntities.REGISTER, ModMenus.REGISTER,
             ModRecipeSerializers.REGISTER, ModLootModifiers.REGISTER, ModPoiTypes.REGISTER,
             ModProfessions.REGISTER, ModFeatures.REGISTER, ModPlacementModifiers.REGISTER, ModProcessors.REGISTER,
             ModPoolElements.REGISTER, ModLootConditions.REGISTER,

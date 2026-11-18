@@ -151,6 +151,19 @@ public final class PlantNbt {
         }
         s.lotFlags = root.getByte("fl");
         s.plantFlags = root.getByte("pf");
+        if (root.contains("ps")) {
+            if (!root.contains("ps", Tag.TAG_LONG) || root.getLong("ps") < 0) {
+                return new Inert("bad flowering clock", false);
+            }
+            s.floweringSince = root.getLong("ps");
+        }
+        if (root.contains("pw")) {
+            if (!root.contains("pw", Tag.TAG_LONG) || root.getLong("pw") < 0
+                    || root.getLong("pw") > io.github.slugblue.wildroots.pollination.PollinationTiming.MAX_WORK) {
+                return new Inert("bad pollination work", false);
+            }
+            s.pollinationWork = root.getLong("pw");
+        }
         if (root.contains("pl")) {
             if (s.genome == null || !(root.get("pl") instanceof CompoundTag pl)) {
                 return new Inert("bad pending lot", false);
@@ -161,7 +174,7 @@ public final class PlantNbt {
             if (f.isEmpty() || !Float.isFinite(po) || po < 0 || po > 1 || br < 0 || br >= Brush.values().length) {
                 return new Inert("bad pending lot", false);
             }
-            s.pending = new PendingLot(f.get(), po, Brush.values()[br], pl.getByte("bee") == 1);
+            s.pending = new PendingLot(f.get(), po, Brush.values()[br], pl.getByte("bee") == 1, pl.getByte("bf") == 1);
         }
         return new Ok(s);
     }
@@ -253,6 +266,12 @@ public final class PlantNbt {
         if (s.plantFlags != 0) {
             root.putByte("pf", s.plantFlags);
         }
+        if (s.floweringSince >= 0) {
+            root.putLong("ps", s.floweringSince);
+        }
+        if (s.pollinationWork > 0) {
+            root.putLong("pw", s.pollinationWork);
+        }
         if (s.pending != null && s.genome != null) {
             CompoundTag pl = new CompoundTag();
             pl.put("f", LotFathersNbt.encode(s.pending.fathers(), s.genome.lh()));
@@ -262,6 +281,9 @@ public final class PlantNbt {
             }
             if (s.pending.bees()) {
                 pl.putByte("bee", (byte) 1);
+            }
+            if (s.pending.butterflies()) {
+                pl.putByte("bf", (byte) 1);
             }
             root.put("pl", pl);
         }

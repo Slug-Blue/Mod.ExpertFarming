@@ -55,6 +55,8 @@ public final class LensWindowScreen extends Screen {
     private int top;
     private int sheetHeight;
     private int sheetWidth;
+    private int viewportHeight;
+    private int scroll;
     /** The sheet laid out in {@link #init} (again on a resize), not per frame. */
     private LensSheetLayout.Prepared prepared;
 
@@ -83,7 +85,10 @@ public final class LensWindowScreen extends Screen {
 
     /** The colour lines of a packet as components (a plant of stage 3 or more). */
     static java.util.List<Component> colour(LensWindowPacket p) {
-        return p.colour().stream().map(DispCodec::toComponent).toList();
+        java.util.List<Component> out = new java.util.ArrayList<>();
+        p.colour().stream().map(DispCodec::toComponent).forEach(out::add);
+        p.climate().lines().stream().map(DispCodec::toComponent).forEach(out::add);
+        return java.util.List.copyOf(out);
     }
 
     /** The plant's block state for the model, only a known non-air state. */
@@ -129,7 +134,9 @@ public final class LensWindowScreen extends Screen {
         sheetWidth = prepared.width();
         sheetHeight = prepared.layout().height();
         int w = sheetWidth + 2 * PAD + beside;
-        int h = Math.max(sheetHeight, plant.isPresent() ? MODEL : 0) + 2 * PAD;
+        viewportHeight = Math.min(sheetHeight, Math.max(1, height - 8 - 2 * PAD));
+        scroll = Math.max(0, Math.min(scroll, sheetHeight - viewportHeight));
+        int h = Math.max(viewportHeight, plant.isPresent() ? MODEL : 0) + 2 * PAD;
         left = (width - w) / 2;
         top = Math.max(4, (height - h) / 2);
     }
@@ -149,6 +156,16 @@ public final class LensWindowScreen extends Screen {
     }
 
     @Override
+    public boolean mouseScrolled(double x, double y, double delta) {
+        if (sheetHeight > viewportHeight && x >= left && x <= left + sheetWidth + 2 * PAD
+                && y >= top && y <= top + viewportHeight + 2 * PAD) {
+            scroll = (int) Math.max(0, Math.min(sheetHeight - viewportHeight, scroll - delta * 18));
+            return true;
+        }
+        return super.mouseScrolled(x, y, delta);
+    }
+
+    @Override
     public boolean mouseDragged(double x, double y, int button, double dx, double dy) {
         int mx = left + PAD + sheetWidth + PAD;
         int my = top + PAD;
@@ -165,9 +182,17 @@ public final class LensWindowScreen extends Screen {
         renderBackground(g);
         Guarded.run("lens window render", "client", () -> {
             int w = sheetWidth + 2 * PAD + (plant.isPresent() ? MODEL + PAD : 0);
-            int h = Math.max(sheetHeight, plant.isPresent() ? MODEL : 0) + 2 * PAD;
+            int h = Math.max(viewportHeight, plant.isPresent() ? MODEL : 0) + 2 * PAD;
             LensSheetView.paper(g, left, top, left + w, top + h);
-            LensSheetView.draw(g, font, sheet, prepared, left + PAD, top + PAD);
+            g.enableScissor(left + PAD, top + PAD, left + PAD + sheetWidth, top + PAD + viewportHeight);
+            LensSheetView.draw(g, font, sheet, prepared, left + PAD, top + PAD - scroll);
+            g.disableScissor();
+            if (sheetHeight > viewportHeight) {
+                int thumb = Math.max(6, viewportHeight * viewportHeight / sheetHeight);
+                int y = top + PAD + (viewportHeight - thumb) * scroll / (sheetHeight - viewportHeight);
+                g.fill(left + PAD + sheetWidth + 2, y, left + PAD + sheetWidth + 4, y + thumb,
+                        JournalColors.INK_FADED);
+            }
             plant.ifPresent(p -> {
                 int mx = left + PAD + sheetWidth + PAD;
                 int my = top + PAD;

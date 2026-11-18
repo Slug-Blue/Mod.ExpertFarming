@@ -131,14 +131,31 @@ public final class Wilting {
         return null;
     }
 
+    /** Warning uses a typical uncoloured plant, never the seed lot's hidden traits (WR-713). */
+    public static Optional<String> plantingWarning(ServerLevel level, BlockPos pos,
+                                                   io.github.slugblue.wildroots.genetics.api.SpeciesDef def) {
+        ClimateStress cs = def.climateStress();
+        if (!enabled() || !cs.enabled() || !level.dimensionType().hasSkyLight() || startersPlant(level, pos)) {
+            return Optional.empty();
+        }
+        Holder<Biome> biome = level.getBiome(pos);
+        double t = ClimateStress.effectiveTemperature(ClimateStress.mid(def), ClimateService.temperature(biome, pos),
+                cs.humid(humidBiome(cs, biome)), cs.buffer(sheltered(level, pos, cs), irrigated(level, pos)));
+        double hot = ClimateStress.hotLimit(def, 0.32, io.github.slugblue.wildroots.genetics.api.ColourProps.ZERO);
+        double cold = ClimateStress.coldLimit(def, 0.32, io.github.slugblue.wildroots.genetics.api.ColourProps.ZERO);
+        return cs.wilts(ClimateStress.stress(t, hot, cold))
+                ? Optional.of("wildroots.message.planting." + (t - hot >= cold - t ? "heat" : "cold"))
+                : Optional.empty();
+    }
+
     // ------------------------------------------------------------------ measuring
 
     /**
      * The stress of a plant now (§3.1) with what feeds it; {@code stress} is the signed {@code S} (negative: margin
-     * to the nearest limit; {@code E} uses {@code max(0, S)}). Prepared for WR-713; nothing reads it yet.
+     * to the nearest limit; {@code E} uses {@code max(0, S)}). Used by the lens and journal (WR-713).
      */
     public record Reading(double stress, double unprotectedStress, double margin, boolean sheltered, boolean irrigated,
-                          String exemption) {
+                          String exemption, boolean hot, int minutes) {
 
         /** Whether this plant would wilt at this stress (before the grace counter and the exemptions). */
         public boolean atMargin() {
@@ -147,9 +164,8 @@ public final class Wilting {
     }
 
     /**
-     * The stress of the plant at {@code pos}, with protection, for the lens and the journal (WR-713): the data a
-     * later window shows. Empty while the species has no climate stress or the plant is not readable. Prepared
-     * for WR-713; only GameTests call it so far.
+     * The stress of the plant at {@code pos}, with protection, for the lens and the journal (WR-713). Empty while the
+     * species has no climate stress or the plant is not readable. Does not advance grace or strain counters.
      */
     public static Optional<Reading> read(ServerLevel level, BlockPos pos, BlockState state, PlantBlockEntity be,
                                          PlantBlockEntity.Live live) {
@@ -167,7 +183,19 @@ public final class Wilting {
         boolean irrigated = irrigated(level, pos);
         double s = ClimateStress.stress(ClimateStress.effectiveTemperature(mid, t, humid, cs.buffer(sheltered, irrigated)),
                 be.limitHot(), be.limitCold());
-        return Optional.of(new Reading(s, raw, cs.wiltMargin(), sheltered, irrigated, exemption(level, state, live)));
+        double effective = ClimateStress.effectiveTemperature(mid, t, humid, cs.buffer(sheltered, irrigated));
+        boolean hot = effective - be.limitHot() >= be.limitCold() - effective;
+        String exempt = exemption(level, state, live);
+        if (exempt == null && startersPlant(level, pos)) {
+            exempt = "starter";
+        }
+        if (exempt == null && !live.data().has(PlantState.CLIMATE_AWARE)) {
+            exempt = "old_save";
+        }
+        int speed = level.getGameRules().getInt(net.minecraft.world.level.GameRules.RULE_RANDOMTICKING);
+        int ticks = be.strainTicks() >= 0 ? be.strainTicks() : FieldPlantBlock.strain(state);
+        int minutes = speed <= 0 ? 0 : (int) Math.ceil(Math.max(0, cs.graceTicks() - ticks) * 4096.0 / speed / 1200);
+        return Optional.of(new Reading(s, raw, cs.wiltMargin(), sheltered, irrigated, exempt, hot, minutes));
     }
 
     /** Fills the cached limits of the block entity; false when the phenotype cannot be computed. */
@@ -218,6 +246,10 @@ public final class Wilting {
         }
         ClimateStress cs = live.def().climateStress();
         if (!aware(level, be, live)) {
+            if (live.data().hasPlanter()) {
+                io.github.slugblue.wildroots.core.safety.Guarded.run("journal climate update", pos, () ->
+                        io.github.slugblue.wildroots.journal.HintTriggers.climateUpdate(level, live.data()));
+            }
             return state; // an old plant in its grace
         }
         if (!limits(be, live)) {
@@ -240,6 +272,13 @@ public final class Wilting {
             double s = ClimateStress.stress(ClimateStress.effectiveTemperature(mid, t, humid,
                     cs.buffer(sheltered(level, pos, cs), irrigated(level, pos))), be.limitHot(), be.limitCold());
             stressed = cs.wilts(s) && !startersPlant(level, pos);
+        }
+        if (raw > 0 && io.github.slugblue.wildroots.journal.HintTriggers.climateNeeded(level, live.data(),
+                stressed && ticks + 1 >= cs.graceTicks())) {
+            io.github.slugblue.wildroots.core.safety.Guarded.run("journal climate", pos, () ->
+                    read(level, pos, state, be, live).ifPresent(r ->
+                            io.github.slugblue.wildroots.journal.HintTriggers.climate(level, live.data(), r,
+                                    r.exemption() == null && r.atMargin() && ticks + 1 >= cs.graceTicks())));
         }
         int next = stressed ? ticks + 1 : Math.max(0, ticks - 1);
         BlockState out = state;

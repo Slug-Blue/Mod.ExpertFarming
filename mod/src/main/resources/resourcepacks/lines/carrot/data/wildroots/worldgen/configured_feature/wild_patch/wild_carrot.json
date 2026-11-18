@@ -6,7 +6,8 @@
       "meadow",
       "flower_fields",
       "plains",
-      "forest_edge"
+      "forest_edge",
+      "carrot_colour_habitat"
     ],
     "plants": {
       "type": "minecraft:uniform",
@@ -40,7 +41,7 @@
     },
     "bee_nest": {
       "chance": 0.6,
-      "rich_chance": 1.0,
+      "rich_chance": 1,
       "min_distance": 6,
       "max_distance": 16,
       "bees": {

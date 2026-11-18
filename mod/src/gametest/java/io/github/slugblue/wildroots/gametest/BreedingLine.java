@@ -333,7 +333,7 @@ final class BreedingLine {
             if (!(s.getBlock() instanceof FieldPlantBlock) || FieldPlantBlock.stage(s) >= stage) {
                 return;
             }
-            s.randomTick(level, p, ticks);
+            PlantFixtures.acceleratedGrowthTick(level, p, ticks);
         }
         throw new IllegalStateException("plant at " + p + " did not reach stage " + stage);
     }

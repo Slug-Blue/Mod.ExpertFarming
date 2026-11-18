@@ -3,7 +3,7 @@
   "placement": [
     {
       "type": "wildroots:chunk_band",
-      "from": 0.0,
+      "from": 0,
       "to": 0.036
     },
     {
@@ -19,7 +19,8 @@
     {
       "type": "wildroots:species_climate",
       "species": "wildroots:wild_carrot",
-      "tolerance": 0.0
+      "tolerance": 0,
+      "extra_biomes": "wildroots:wild_colour/wild_carrot_purple"
     }
   ]
 }

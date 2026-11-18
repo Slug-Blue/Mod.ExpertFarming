@@ -42,6 +42,8 @@ public final class WildRoots {
     public WildRoots(FMLJavaModLoadingContext context) {
         IEventBus modBus = context.getModEventBus();
         ModRegistries.register(modBus);
+        modBus.addListener(io.github.slugblue.wildroots.core.registry.ModEntities::attributes);
+        MinecraftForge.EVENT_BUS.addListener(io.github.slugblue.wildroots.butterfly.ButterflySpawning::onLevelTick);
         context.registerConfig(ModConfig.Type.COMMON, CommonConfig.SPEC);
         context.registerConfig(ModConfig.Type.SERVER, ServerConfig.SPEC);
         context.registerConfig(ModConfig.Type.CLIENT, io.github.slugblue.wildroots.core.config.ClientConfig.SPEC);

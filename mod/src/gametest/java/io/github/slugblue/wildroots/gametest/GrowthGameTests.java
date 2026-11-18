@@ -276,7 +276,7 @@ public final class GrowthGameTests {
         int changes = 0;
         for (int i = 0; i < 5000 && FieldPlantBlock.stage(level.getBlockState(abs)) < 5; i++) {
             BlockState before = level.getBlockState(abs);
-            before.randomTick(level, abs, random);
+            PlantFixtures.acceleratedGrowthTick(level, abs, random);
             BlockState after = level.getBlockState(abs);
             if (FieldPlantBlock.stage(after) == FieldPlantBlock.stage(before)) {
                 helper.assertTrue(after == before, "state changed without a stage change: " + before + " -> " + after);

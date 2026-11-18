@@ -136,7 +136,9 @@ public final class WildPopulation {
                     Alleles.drawLocus(b, c, 0, w, f, rng);
                 } else {
                     Double starter = p.starter() ? s.starterFreq().get(c.trait()) : null;
-                    Alleles.drawLocus(b, c, 0, Alleles.biallelic(starter != null ? starter : def.wildFreq()), f, rng);
+                    double frequency = p.qualitativeFrequencies().getOrDefault(c.trait(),
+                            starter != null ? starter : def.wildFreq());
+                    Alleles.drawLocus(b, c, 0, Alleles.biallelic(frequency), f, rng);
                 }
             }
         }

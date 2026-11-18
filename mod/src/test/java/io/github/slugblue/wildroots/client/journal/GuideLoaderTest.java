@@ -335,7 +335,8 @@ class GuideLoaderTest {
                 || rl.getNamespace().equals("minecraft"));
         assertEquals(List.of(), r.log());
         assertTrue(r.book().entry("guide.start").isPresent());
-        assertEquals(15, r.book().entries().size(), "the 15 M1a entries (§4.1)");
+        assertEquals(16, r.book().entries().size(), "M1a entries plus WR-713 climate guide");
+        assertTrue(r.book().entry("guide.climate").isPresent());
         // unlock only on ids the server can send (§5.7): known hints, species/cultivar kinds, tools with an item
         List<String> unlocks = new ArrayList<>();
         for (GuideEntry e : r.book().entries()) {

@@ -1,0 +1,43 @@
+{
+  "id": "guide.climate",
+  "category": "lens",
+  "icon": "wildroots:hand_lens",
+  "order": 40,
+  "unlock": [
+    "hint.climate",
+    "hint.heat_wilt",
+    "hint.cold_wilt",
+    "hint.climate_update"
+  ],
+  "items": [],
+  "see_also": [
+    "guide.lens",
+    "guide.colors"
+  ],
+  "pages": [
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.climate.1"
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.climate.2"
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.climate.3"
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.climate.4"
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.climate.5",
+      "unlock": [
+        "hint.heat_wilt",
+        "hint.cold_wilt"
+      ]
+    }
+  ]
+}

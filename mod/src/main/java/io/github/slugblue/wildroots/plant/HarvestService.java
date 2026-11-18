@@ -170,7 +170,7 @@ public final class HarvestService {
         Brush brush = pending == null ? Brush.NONE : pending.brush();
         boolean bees = pending != null && pending.bees();
         FatherSelector.Selection sel = new FatherSelector.Selection(List.of(), 0, fathers.size() - donors, donors);
-        double expected = live.genetics().expectedSeeds(live.def(), p, sel, bees || brush != Brush.NONE, brush);
+        double expected = live.genetics().expectedSeeds(live.def(), p, sel, bees || pending != null && pending.butterflies() || brush != Brush.NONE, brush);
         int count = roundProb(expected, random);
         if (count <= 0) {
             return Optional.empty();
@@ -178,7 +178,8 @@ public final class HarvestService {
         if (!withFathers) {
             return Optional.of(LotStacks.seeds(level, live, List.of(), 0, 0, be::rareForDrops, count));
         }
-        int flags = (bees ? LotFlags.BEES : 0) | (brush != Brush.NONE ? LotFlags.BRUSH : 0);
+        int flags = (bees ? LotFlags.BEES : 0) | (brush != Brush.NONE ? LotFlags.BRUSH : 0)
+                | (pending != null && pending.butterflies() ? LotFlags.BUTTERFLIES : 0);
         return Optional.of(LotStacks.seeds(level, live, fathers, pending == null ? 0 : pending.pOut(), flags, be::rareForDrops,
                 count));
     }

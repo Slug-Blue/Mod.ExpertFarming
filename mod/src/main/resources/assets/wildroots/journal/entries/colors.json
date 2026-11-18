@@ -7,14 +7,16 @@
     "hint.yellow_root",
     "hint.purple_root",
     "hint.red_root",
-    "hint.orange_root"
+    "hint.orange_root",
+    "hint.white_cold"
   ],
   "items": [
     "wildroots:eastern_carrot",
     "wildroots:carrot"
   ],
   "see_also": [
-    "guide.cultivars"
+    "guide.cultivars",
+    "guide.climate"
   ],
   "pages": [
     {
@@ -23,9 +25,51 @@
     },
     {
       "type": "spotlight",
+      "item": "wildroots:wild_carrot_root",
+      "text": "wildroots.journal.hint.white_cold",
+      "unlock": [
+        "hint.white_cold"
+      ]
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.colors.white",
+      "unlock": [
+        "hint.white_cold"
+      ],
+      "title": "wildroots.journal.hint.white_cold.title"
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.colors.5"
+    },
+    {
+      "type": "spotlight",
       "item": "wildroots:eastern_carrot",
       "variant": "colour=yellow",
       "text": "wildroots.journal.hint.yellow_root",
+      "unlock": [
+        "hint.yellow_root"
+      ]
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.colors.yellow",
+      "unlock": [
+        "hint.yellow_root"
+      ],
+      "title": "wildroots.journal.hint.yellow_root.title"
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.colors.yellow_habitat",
+      "unlock": [
+        "hint.yellow_root"
+      ]
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.colors.yellow_habitat2",
       "unlock": [
         "hint.yellow_root"
       ]
@@ -40,12 +84,35 @@
       ]
     },
     {
+      "type": "text",
+      "text": "wildroots.journal.guide.colors.purple",
+      "unlock": [
+        "hint.purple_root"
+      ],
+      "title": "wildroots.journal.hint.purple_root.title"
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.colors.purple_habitat",
+      "unlock": [
+        "hint.purple_root"
+      ]
+    },
+    {
       "type": "spotlight",
       "item": "wildroots:carrot",
       "text": "wildroots.journal.hint.orange_root",
       "unlock": [
         "hint.orange_root"
       ]
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.colors.orange",
+      "unlock": [
+        "hint.orange_root"
+      ],
+      "title": "wildroots.journal.hint.orange_root.title"
     },
     {
       "type": "spotlight",
@@ -55,6 +122,14 @@
       "unlock": [
         "hint.red_root"
       ]
+    },
+    {
+      "type": "text",
+      "text": "wildroots.journal.guide.colors.red",
+      "unlock": [
+        "hint.red_root"
+      ],
+      "title": "wildroots.journal.hint.red_root.title"
     },
     {
       "type": "text",

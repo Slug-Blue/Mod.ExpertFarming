@@ -114,9 +114,11 @@ public final class BeeGameTests {
         BlockPos a = new BlockPos(3, 2, 3);
         BlockPos b = new BlockPos(6, 2, 3);
         BlockPos c = new BlockPos(9, 2, 3);
+        BlockPos d = new BlockPos(12, 2, 3);
         PlantBlockEntity pa = SeedSetGameTests.flowering(helper, a, 401);
         PlantBlockEntity pb = SeedSetGameTests.flowering(helper, b, 402);
         PlantFixtures.plant(PlantFixtures.place(helper, c, FieldPlantBlock.HARVEST_STAGE), 403);
+        PlantBlockEntity pd = SeedSetGameTests.flowering(helper, d, 404);
         Bee bee = helper.spawn(EntityType.BEE, new BlockPos(4, 4, 4));
         bee.setNoAi(true);
         BeePollen p = pollen(bee);
@@ -147,8 +149,8 @@ public final class BeeGameTests {
 
         // two visits in between (vanilla flowers)
         p.setCounters(BeePollen.MAX_VISITS, 0);
-        helper.assertTrue(PollinationService.beeVisit(level, bee, ab) == PollinationService.Visit.VISITED, "2 visits");
-        helper.assertTrue(donors(pb) == 1, "pollen after 2 visits became a donor");
+        helper.assertTrue(PollinationService.beeVisit(level, bee, helper.absolutePos(d)) == PollinationService.Visit.VISITED, "2 visits");
+        helper.assertTrue(donors(pd) == 0, "pollen after 2 visits became a donor");
 
         // another species: no donor, and the visit replaces it
         p.collect("wildroots:gametest_other", aa.asLong() + 1, new FatherRecord(1L, new long[] {1}));
@@ -157,26 +159,33 @@ public final class BeeGameTests {
 
         // fresh pollen of A after one vanilla visit still counts
         p.setCounters(1, 1200);
-        helper.assertTrue(PollinationService.beeVisit(level, bee, ab) == PollinationService.Visit.DONOR, "1 visit");
-        helper.assertTrue(donors(pb) == 2, "B donors " + donors(pb));
+        helper.assertTrue(PollinationService.beeVisit(level, bee, helper.absolutePos(d)) == PollinationService.Visit.DONOR, "1 visit");
+        helper.assertTrue(donors(pd) == 1, "fresh pollen was not accepted by an open flower");
+        helper.assertTrue(PollinationService.beeVisit(level, bee, ab) == PollinationService.Visit.VISITED,
+                "a completed flower accepted another donor");
+        helper.assertTrue(donors(pb) == 1, "B received foreign pollen more than once");
         bee.discard();
         helper.succeed();
     }
 
-    /** At most 4 donors wait in the plant; the oldest goes first. */
+    /** The first compatible foreign donor closes the flower; later visits cannot replace it, including after save/load. */
     @GameTest(template = FIELD, setupTicks = SETUP)
-    public static void atMostFourDonorsOldestEvicted(GameTestHelper helper) {
+    public static void firstForeignDonorStaysAndLaterDonorsAreIgnored(GameTestHelper helper) {
         PlantBlockEntity be = SeedSetGameTests.flowering(helper, new BlockPos(3, 2, 3), 451);
+        var firstDonor = io.github.slugblue.wildroots.data.Definitions.current().genetics()
+                .encode(PlantFixtures.genome(460)).toFather();
+        helper.assertTrue(be.pollinatorVisit(firstDonor, 2.0f, false), "first compatible donor was not accepted");
         for (int i = 0; i < 6; i++) {
             be.beeVisit(io.github.slugblue.wildroots.data.Definitions.current().genetics()
-                    .encode(PlantFixtures.genome(460 + i)).toFather(), 2.0f);
+                    .encode(PlantFixtures.genome(461 + i)).toFather(), 2.0f);
         }
-        helper.assertTrue(donors(be) == 4, "donors " + donors(be));
+        helper.assertTrue(donors(be) == 1, "closed flower accepted more donors: " + donors(be));
         PlantBlockEntity again = PlantFixtures.saveLoad(be);
         long[] first = again.data().pending().fathers().get(0).genome().a();
         long[] expected = io.github.slugblue.wildroots.data.Definitions.current().genetics()
-                .encode(PlantFixtures.genome(462)).a();
-        helper.assertTrue(java.util.Arrays.equals(first, expected), "oldest donors were not evicted first");
+                .encode(PlantFixtures.genome(460)).a();
+        helper.assertTrue(java.util.Arrays.equals(first, expected) && again.hasForeignPollen(),
+                "first donor or the closed state changed after save/load");
         helper.succeed();
     }
 

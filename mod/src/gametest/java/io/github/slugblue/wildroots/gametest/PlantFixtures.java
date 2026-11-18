@@ -41,6 +41,36 @@ final class PlantFixtures {
     private PlantFixtures() {
     }
 
+    /** Advances the real flowering ticker and its game clock once, as the server does. */
+    static void pollinationGameTick(net.minecraft.server.level.ServerLevel level, BlockPos pos) {
+        ((net.minecraft.world.level.storage.ServerLevelData) level.getLevelData()).setGameTime(level.getGameTime() + 1);
+        var state = level.getBlockState(pos);
+        if (state.getBlock() instanceof FieldPlantBlock plant && level.getBlockEntity(pos) instanceof PlantBlockEntity be) {
+            var ticker = plant.getTicker(level, state, io.github.slugblue.wildroots.core.registry.ModBlockEntities.PLANT.get());
+            if (ticker != null) ticker.tick(level, pos, state, be);
+        }
+    }
+
+    /** Accelerates the flowering gamerule; never bypasses the real ticker or production seed set. */
+    static void acceleratedGrowthTick(net.minecraft.server.level.ServerLevel level, BlockPos pos, net.minecraft.util.RandomSource random) {
+        var state = level.getBlockState(pos);
+        if (FieldPlantBlock.stage(state) == FieldPlantBlock.FLOWER_STAGE) {
+            long before = level.getGameTime();
+            var rule = level.getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_RANDOMTICKING);
+            int oldSpeed = rule.get();
+            try {
+                rule.set((int) io.github.slugblue.wildroots.pollination.PollinationTiming.MAX_WORK, level.getServer());
+                for (int i = 0; i < 2 && FieldPlantBlock.stage(level.getBlockState(pos)) == FieldPlantBlock.FLOWER_STAGE; i++)
+                    pollinationGameTick(level, pos);
+            } finally {
+                rule.set(oldSpeed, level.getServer());
+                ((net.minecraft.world.level.storage.ServerLevelData) level.getLevelData()).setGameTime(before);
+            }
+        } else {
+            level.getBlockState(pos).randomTick(level, pos, random);
+        }
+    }
+
     static DefinitionsSnapshot.SpeciesEntry carrot() {
         return Definitions.current().species(SP).orElseThrow(() -> new IllegalStateException("no wild_carrot"));
     }

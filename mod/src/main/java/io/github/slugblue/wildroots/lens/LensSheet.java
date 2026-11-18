@@ -106,6 +106,7 @@ public record LensSheet(Component title, List<Component> header, Icon headIcon, 
         }
         String poll = switch (row.pollination()) {
             case 'B' -> "bees";
+            case 'F' -> "butterflies";
             case 'H' -> "hand";
             case 'N' -> "neighbours";
             case 'S' -> "self";
